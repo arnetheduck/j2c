@@ -1,0 +1,55 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<?eclipse version="3.4"?>
+<plugin>
+
+   <extension
+         point="org.eclipse.ui.commands">
+      <category
+            name="Java to C++ converter category"
+            id="se.arnetheduck.j2c.category">
+      </category>
+      <command
+            categoryId="se.arnetheduck.j2c.category"
+            defaultHandler="se.arnetheduck.j2c.handlers.TestHandler"
+            id="se.arnetheduck.j2c.commands.Test"
+            name="Tansform test project">
+      </command>
+      <command
+            categoryId="se.arnetheduck.j2c.category"
+            defaultHandler="se.arnetheduck.j2c.handlers.TransformHandler"
+            id="se.arnetheduck.j2c.commands.Translate"
+            name="Translate to C++">
+      </command>
+   </extension>
+   <extension
+         point="org.eclipse.ui.handlers">
+   </extension>
+   <extension
+         point="org.eclipse.ui.bindings">
+   </extension>
+   <extension
+         point="org.eclipse.ui.menus">
+      <menuContribution
+            locationURI="toolbar:org.eclipse.ui.main.toolbar?after=additions">
+         <toolbar
+               id="se.arnetheduck.j2c.toolbars.TranslateToolbar">
+            <command
+                  commandId="se.arnetheduck.j2c.commands.Test"
+                  icon="icons/sample.gif"
+                  tooltip="Translate test project"
+                  id="se.arnetheduck.j2c.toolbars.TestCommand">
+            </command>
+         </toolbar>
+      </menuContribution>
+      <menuContribution
+            allPopups="false"
+            locationURI="popup:org.eclipse.jdt.ui.PackageExplorer?after=additions">
+         <command
+               commandId="se.arnetheduck.j2c.commands.Translate"
+               label="Translate to C++"
+               style="push">
+         </command>
+      </menuContribution>
+   </extension>
+
+</plugin>

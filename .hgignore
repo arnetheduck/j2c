@@ -1,0 +1,6 @@
+syntax: glob
+bin/*
+*.o
+ctest/*.cpp
+ctest/Makefile
+ctest/*.h
