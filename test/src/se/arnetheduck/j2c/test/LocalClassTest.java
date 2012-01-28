@@ -23,4 +23,16 @@ public class LocalClassTest {
 		return lpc.getV();
 
 	}
+
+	public int testArrayAccess() {
+		ParamConstructor lpc = new ParamConstructor(3) {
+			@Override
+			public int run(int[] x) {
+				return testClosure(x[0]);
+			}
+		};
+
+		return lpc.run(new int[] { 5 });
+
+	}
 }

@@ -10,4 +10,8 @@ public class ParamConstructor {
 	public int getV() {
 		return v;
 	}
+
+	public int run(int[] x) {
+		return 0;
+	}
 }

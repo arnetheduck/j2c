@@ -145,10 +145,13 @@ public class ImplWriter extends TransformWriter {
 
 	@Override
 	public boolean visit(ArrayAccess node) {
+		addDep(node.getArray().resolveTypeBinding(), hardDeps);
+
 		node.getArray().accept(this);
 		out.print("->operator[](");
 		node.getIndex().accept(this);
 		out.print(")");
+
 		return false;
 	}
 
