@@ -192,9 +192,10 @@ public class HeaderWriter extends TransformWriter {
 				out.print(TransformUtil.fieldModifiers(node.getModifiers(),
 						true, hasInitilializer(fragments)));
 
-				out.print(TransformUtil.qualifiedCName(node.getType()
-						.resolveBinding()
-						.createArrayType(f.getExtraDimensions())));
+				ITypeBinding at = node.getType().resolveBinding()
+						.createArrayType(f.getExtraDimensions());
+
+				out.print(TransformUtil.qualifiedCName(at));
 
 				out.print(" ");
 

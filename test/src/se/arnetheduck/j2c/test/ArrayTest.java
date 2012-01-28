@@ -15,4 +15,5 @@ public class ArrayTest {
 
 	void f(int g[]) {
 	}
+
 }

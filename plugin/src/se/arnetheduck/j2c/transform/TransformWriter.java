@@ -182,7 +182,13 @@ public abstract class TransformWriter extends ASTVisitor {
 
 	@Override
 	public boolean visit(ArrayType node) {
-		node.getComponentType().accept(this);
+		if (node.getComponentType().isArrayType()
+				|| node.getComponentType() instanceof QualifiedType) {
+			node.getComponentType().accept(this);
+		} else {
+			out.print(TransformUtil.qualifiedCName(node.getComponentType()
+					.resolveBinding()));
+		}
 		addDep(node.resolveBinding(), softDeps);
 		out.print("Array");
 
@@ -392,7 +398,6 @@ public abstract class TransformWriter extends ASTVisitor {
 
 	@Override
 	public boolean visit(SimpleName node) {
-
 		IBinding b = node.resolveBinding();
 
 		if (b instanceof IVariableBinding) {
