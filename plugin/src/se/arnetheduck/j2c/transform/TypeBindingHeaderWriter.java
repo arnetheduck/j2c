@@ -197,7 +197,6 @@ public class TypeBindingHeaderWriter {
 			pw.print(" ");
 			pw.print(TransformUtil.ref(pb));
 			pw.print("a" + i);
-
 		}
 
 		pw.print(")");

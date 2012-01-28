@@ -38,6 +38,7 @@ import org.eclipse.jdt.core.dom.ForStatement;
 import org.eclipse.jdt.core.dom.IBinding;
 import org.eclipse.jdt.core.dom.IMethodBinding;
 import org.eclipse.jdt.core.dom.ITypeBinding;
+import org.eclipse.jdt.core.dom.IVariableBinding;
 import org.eclipse.jdt.core.dom.IfStatement;
 import org.eclipse.jdt.core.dom.ImportDeclaration;
 import org.eclipse.jdt.core.dom.InfixExpression;
@@ -114,6 +115,8 @@ public class ImplWriter extends TransformWriter {
 
 		StringWriter old = initializer;
 		ITypeBinding oldType = type;
+		int oldIndent = indent;
+		indent = 0;
 
 		ITypeBinding tb = node.resolveBinding();
 
@@ -134,10 +137,9 @@ public class ImplWriter extends TransformWriter {
 		hardDeps.addAll(hw.getHardDeps());
 		softDeps.addAll(hw.getSoftDeps());
 
-		closures.clear();
-
 		initializer = old;
 		type = oldType;
+		indent = oldIndent;
 		return false;
 	}
 
@@ -303,10 +305,28 @@ public class ImplWriter extends TransformWriter {
 			addDep(node.getType(), hardDeps);
 		}
 
-		Iterable<Expression> arguments = node.arguments();
-		visitAllCSV(arguments, true);
+		String sep = "";
 
-		out.print(")");
+		out.print("(");
+		if (node.getAnonymousClassDeclaration() != null) {
+			out.print("this");
+			sep = ", ";
+
+			for (IVariableBinding closure : closures) {
+				out.print(sep);
+				sep = ", ";
+				out.print(closure.getName());
+				out.print("_");
+			}
+		}
+
+		closures.clear();
+
+		out.print(sep);
+		Iterable<Expression> arguments = node.arguments();
+		visitAllCSV(arguments, false);
+
+		out.print("))");
 
 		for (Expression e : arguments) {
 			addDep(e.resolveTypeBinding(), hardDeps);
@@ -1097,6 +1117,92 @@ public class ImplWriter extends TransformWriter {
 
 			out.print(body.toString());
 
+			if (tb.isLocal()) {
+				// For local classes, synthesize base class constructors
+				String qname = TransformUtil.qualifiedCName(tb);
+				String name = TransformUtil.name(tb);
+				for (IMethodBinding mb : tb.getSuperclass()
+						.getDeclaredMethods()) {
+					if (!mb.isConstructor()) {
+						continue;
+					}
+
+					out.print(TransformUtil.indent(indent));
+					out.print(qname);
+					out.print("::");
+					out.print(name);
+
+					out.print("(");
+
+					String sep = "";
+					if (!Modifier.isStatic(tb.getModifiers())) {
+						out.print(TransformUtil.relativeCName(
+								tb.getDeclaringClass(), tb));
+						out.print(" *"
+								+ TransformUtil.name(tb.getDeclaringClass())
+								+ "_this");
+						sep = ", ";
+					}
+
+					for (IVariableBinding closure : closures) {
+						out.print(sep);
+						sep = ", ";
+						out.print(TransformUtil.relativeCName(
+								closure.getType(), tb));
+						out.print(" ");
+						out.print(closure.getName());
+						out.print("_");
+					}
+
+					for (int i = 0; i < mb.getParameterTypes().length; ++i) {
+						out.print(sep);
+						sep = ", ";
+
+						ITypeBinding pb = mb.getParameterTypes()[i];
+						TransformUtil.addDep(pb, softDeps);
+
+						out.print(TransformUtil.relativeCName(pb, tb));
+						out.print(" ");
+						out.print(TransformUtil.ref(pb));
+						out.print("a" + i);
+					}
+
+					out.println(") : ");
+					indent++;
+					out.print(TransformUtil.indent(indent));
+					out.print(TransformUtil.relativeCName(tb.getSuperclass(),
+							tb));
+
+					out.print("(");
+					sep = "";
+					for (int i = 0; i < mb.getParameterTypes().length; ++i) {
+						out.print(sep);
+						sep = ", ";
+						out.print("a" + i);
+					}
+
+					out.print(")");
+
+					sep = ", ";
+					if (!Modifier.isStatic(tb.getModifiers())) {
+						out.println(", ");
+						out.print(TransformUtil.indent(indent));
+						printInit(TransformUtil.name(tb.getDeclaringClass())
+								+ "_this");
+					}
+
+					for (IVariableBinding closure : closures) {
+						out.println(", ");
+						out.print(TransformUtil.indent(indent));
+						printInit(closure.getName() + "_");
+					}
+
+					indent--;
+					out.println("{ }");
+
+				}
+			}
+
 			if (closeInitializer()) {
 				out.print(initializer.toString());
 			}
@@ -1105,6 +1211,13 @@ public class ImplWriter extends TransformWriter {
 		} finally {
 			out = old;
 		}
+	}
+
+	private void printInit(String n) {
+		out.print(n);
+		out.print("(");
+		out.print(n);
+		out.print(")");
 	}
 
 	@Override

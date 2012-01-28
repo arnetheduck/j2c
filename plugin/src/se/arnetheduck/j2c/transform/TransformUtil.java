@@ -35,9 +35,27 @@ public final class TransformUtil {
 	}
 
 	public static String qualifiedCName(ITypeBinding tb) {
-		IPackageBinding pkg = tb.isArray() ? tb.getElementType().getPackage()
-				: tb.getErasure().getPackage();
+		IPackageBinding pkg = elementPackage(tb);
 		return cname(pkg == null ? name(tb) : (pkg.getName() + "." + name(tb)));
+	}
+
+	public static String relativeCName(ITypeBinding tb, ITypeBinding root) {
+		IPackageBinding pkg = elementPackage(tb);
+		if (pkg == null) {
+			return name(tb);
+		}
+
+		IPackageBinding rootPkg = elementPackage(root);
+		if (rootPkg == null || !rootPkg.getKey().equals(pkg.getKey())) {
+			return qualifiedCName(tb);
+		}
+
+		return name(tb);
+	}
+
+	private static IPackageBinding elementPackage(ITypeBinding tb) {
+		return tb.isArray() ? tb.getElementType().getPackage() : tb
+				.getErasure().getPackage();
 	}
 
 	public static String name(ITypeBinding tb) {

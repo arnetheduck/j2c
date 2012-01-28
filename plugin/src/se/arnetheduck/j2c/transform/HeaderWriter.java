@@ -450,12 +450,20 @@ public class HeaderWriter extends TransformWriter {
 		return false;
 	}
 
+	/** Write a header for a local or anonymous class */
 	public void writeAnonymousHeader(AST ast, ITypeBinding tb,
 			List<ImportDeclaration> imports,
 			List<BodyDeclaration> declarations,
 			Collection<IVariableBinding> closures) {
-		State old = state;
 
+		if (!tb.isLocal()) {
+			System.out.print("Not a local class: " + tb.getKey());
+			return;
+		}
+
+		State old = state;
+		int oldIndent = indent;
+		indent = 0;
 		try {
 			out = TransformUtil.openHeader(root, tb);
 			state = new State(tb, out);
@@ -486,7 +494,7 @@ public class HeaderWriter extends TransformWriter {
 				out.print(sep);
 				sep = ", public ";
 				out.print(TransformUtil.inherit(base));
-				out.print(TransformUtil.qualifiedCName(base));
+				out.print(TransformUtil.relativeCName(base, tb));
 				addDep(base, hardDeps);
 			}
 
@@ -500,7 +508,8 @@ public class HeaderWriter extends TransformWriter {
 				printIndent(out);
 				out.print("typedef ");
 				if (tb.getSuperclass() != null) {
-					out.print(TransformUtil.qualifiedCName(tb.getSuperclass()));
+					out.print(TransformUtil.relativeCName(tb.getSuperclass(),
+							tb));
 				} else {
 					out.print("java::lang::Object");
 				}
@@ -510,20 +519,72 @@ public class HeaderWriter extends TransformWriter {
 
 			visitAll(declarations);
 
-			if (tb.isNested() && !Modifier.isStatic(tb.getModifiers())) {
+			out.println("public:");
+			if (!Modifier.isStatic(tb.getModifiers())) {
 				printIndent(out);
-				out.print(TransformUtil.qualifiedCName(tb.getDeclaringClass()));
+				out.print(TransformUtil.relativeCName(tb.getDeclaringClass(),
+						tb));
 				out.println(" *" + TransformUtil.name(tb.getDeclaringClass())
 						+ "_this;");
 			}
 
 			for (IVariableBinding closure : closures) {
-				out.print(TransformUtil.qualifiedCName(closure.getType()));
+				out.print(TransformUtil.relativeCName(closure.getType(), tb));
 				out.print(" ");
 				out.print(closure.getName());
 				out.println("_;");
 			}
 
+			if (tb.isLocal()) {
+				// For local classes, synthesize base class constructors
+				String name = TransformUtil.name(tb);
+				for (IMethodBinding mb : tb.getSuperclass()
+						.getDeclaredMethods()) {
+					if (!mb.isConstructor()) {
+						continue;
+					}
+
+					out.print(TransformUtil.indent(indent));
+					out.print(name);
+
+					out.print("(");
+
+					sep = "";
+					if (!Modifier.isStatic(tb.getModifiers())) {
+						out.print(TransformUtil.relativeCName(
+								tb.getDeclaringClass(), tb));
+						out.print(" *"
+								+ TransformUtil.name(tb.getDeclaringClass())
+								+ "_this");
+						sep = ", ";
+					}
+
+					for (IVariableBinding closure : closures) {
+						out.print(sep);
+						sep = ", ";
+						out.print(TransformUtil.relativeCName(
+								closure.getType(), tb));
+						out.print(" ");
+						out.print(closure.getName());
+						out.print("_");
+					}
+
+					for (int i = 0; i < mb.getParameterTypes().length; ++i) {
+						out.print(sep);
+						sep = ", ";
+
+						ITypeBinding pb = mb.getParameterTypes()[i];
+						TransformUtil.addDep(pb, softDeps);
+
+						out.print(TransformUtil.relativeCName(pb, tb));
+						out.print(" ");
+						out.print(TransformUtil.ref(pb));
+						out.print("a" + i);
+					}
+
+					out.println(");");
+				}
+			}
 			indent--;
 
 			printIndent(out);
@@ -541,6 +602,7 @@ public class HeaderWriter extends TransformWriter {
 			out = state.out;
 		}
 
+		indent = oldIndent;
 	}
 
 	@Override

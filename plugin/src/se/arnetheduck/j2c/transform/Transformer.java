@@ -67,7 +67,8 @@ public class Transformer {
 		File[] files = root.toFile().listFiles();
 
 		for (File f : files) {
-			if (f.getName().endsWith(".h") || f.getName().endsWith(".cpp")) {
+			if (f.getName().endsWith(".h") || f.getName().endsWith(".cpp")
+					|| f.getName().endsWith(".o")) {
 				f.delete();
 			}
 		}
@@ -87,6 +88,7 @@ public class Transformer {
 
 		MakefileWriter mw = new MakefileWriter(root);
 		mw.write(impls);
+		System.out.println("Done.");
 	}
 
 	private CompilationUnit parse(ICompilationUnit unit) {
