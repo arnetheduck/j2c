@@ -109,6 +109,13 @@ public class TypeBindingHeaderWriter {
 		if (tb.getQualifiedName().equals("java.lang.String")) {
 			pw.print("int compareTo(Object* o);");
 		}
+
+		if (tb.getQualifiedName().equals("java.lang.Object")) {
+			pw.println("public:");
+			pw.print(TransformUtil.indent(1));
+			pw.println("virtual ~Object() { }");
+		}
+
 		pw.println("};");
 
 		if (tb.getQualifiedName().equals("java.lang.String")) {
