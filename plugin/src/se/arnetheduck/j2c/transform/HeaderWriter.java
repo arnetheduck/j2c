@@ -341,15 +341,20 @@ public class HeaderWriter extends TransformWriter {
 
 	@Override
 	public boolean visit(SingleVariableDeclaration node) {
-		node.getType().accept(this);
-
+		ITypeBinding tb = node.getType().resolveBinding();
+		if (node.getExtraDimensions() > 0) {
+			tb = tb.createArrayType(node.getExtraDimensions());
+			out.print(TransformUtil.name(tb));
+		} else {
+			node.getType().accept(this);
+		}
 		if (node.isVarargs()) {
-			out.print("...");
+			out.print("/*...*/");
 		}
 
 		out.print(" ");
 
-		out.print((TransformUtil.ref(node.getType())));
+		out.print(TransformUtil.ref(tb));
 
 		node.getName().accept(this);
 
