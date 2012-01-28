@@ -410,6 +410,7 @@ public abstract class TransformWriter extends ASTVisitor {
 						&& !vb.getDeclaringClass().getKey()
 								.equals(ptb.getKey())) {
 					if (!(node.getParent() instanceof QualifiedName)) {
+						addDep(vb.getDeclaringClass(), hardDeps);
 						out.print(TransformUtil.name(vb.getDeclaringClass()));
 						out.print("_this->");
 					}

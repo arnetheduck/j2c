@@ -1,6 +1,8 @@
 package se.arnetheduck.j2c.test;
 
 public class LocalClassTest {
+	LocalClassTest lct;
+
 	public int testLocalParamConstructor() {
 		ParamConstructor lpc = new ParamConstructor(3) {
 			@Override
@@ -21,7 +23,17 @@ public class LocalClassTest {
 		};
 
 		return lpc.getV();
+	}
 
+	public int testClassClosure(final Empty p) {
+		ParamConstructor lpc = new ParamConstructor(3) {
+			@Override
+			public int getV() {
+				return p.hashCode();
+			}
+		};
+
+		return lpc.getV();
 	}
 
 	public int testArrayAccess() {
@@ -33,6 +45,17 @@ public class LocalClassTest {
 		};
 
 		return lpc.run(new int[] { 5 });
+	}
 
+	public int testSameClassAccess() {
+		ParamConstructor lpc = new ParamConstructor(3) {
+			@Override
+			public int run(int[] x) {
+				LocalClassTest same = lct;
+				return same.testClosure(4);
+			}
+		};
+
+		return lpc.run(null);
 	}
 }

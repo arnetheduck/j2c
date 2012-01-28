@@ -529,8 +529,10 @@ public class HeaderWriter extends TransformWriter {
 			}
 
 			for (IVariableBinding closure : closures) {
+				printIndent(out);
 				out.print(TransformUtil.relativeCName(closure.getType(), tb));
 				out.print(" ");
+				out.print(TransformUtil.ref(closure.getType()));
 				out.print(closure.getName());
 				out.println("_;");
 			}
@@ -565,6 +567,7 @@ public class HeaderWriter extends TransformWriter {
 						out.print(TransformUtil.relativeCName(
 								closure.getType(), tb));
 						out.print(" ");
+						out.print(TransformUtil.ref(closure.getType()));
 						out.print(closure.getName());
 						out.print("_");
 					}

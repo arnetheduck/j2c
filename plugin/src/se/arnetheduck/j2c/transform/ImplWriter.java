@@ -790,10 +790,11 @@ public class ImplWriter extends TransformWriter {
 
 		out.print(TransformUtil.typeArguments(node.typeArguments()));
 
-		if (type.isNested()) {
+		if (type.isNested() && node.getExpression() == null) {
 			IMethodBinding mb = node.resolveMethodBinding();
 			if (mb.getDeclaringClass().getKey()
 					.equals(type.getDeclaringClass().getKey())) {
+				TransformUtil.addDep(mb.getDeclaringClass(), hardDeps);
 				out.print(TransformUtil.name(mb.getDeclaringClass()));
 				out.print("_this->");
 			}
@@ -1098,7 +1099,7 @@ public class ImplWriter extends TransformWriter {
 			out = new PrintWriter(new FileOutputStream(root
 					+ TransformUtil.implName(tb)));
 
-			out.println(TransformUtil.include(tb.getPackage()));
+			out.println(TransformUtil.include(tb));
 
 			for (ITypeBinding dep : getHardDeps()) {
 				out.println(TransformUtil.include(dep));
@@ -1155,6 +1156,7 @@ public class ImplWriter extends TransformWriter {
 						out.print(TransformUtil.relativeCName(
 								closure.getType(), tb));
 						out.print(" ");
+						out.print(TransformUtil.ref(closure.getType()));
 						out.print(closure.getName());
 						out.print("_");
 					}
@@ -1203,7 +1205,7 @@ public class ImplWriter extends TransformWriter {
 					}
 
 					indent--;
-					out.println("{ }");
+					out.println(" { }");
 
 				}
 			}
