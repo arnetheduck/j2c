@@ -111,7 +111,7 @@ public class Transformer {
 		softDeps.addAll(hw.getSoftDeps());
 	}
 
-	private void writeHeader(IPath root, ITypeBinding tb) throws IOException {
+	private void writeHeader(IPath root, ITypeBinding tb) throws Exception {
 		TypeBindingHeaderWriter hw = new TypeBindingHeaderWriter(object, root);
 		hw.write(tb);
 

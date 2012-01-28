@@ -325,15 +325,17 @@ public class ImplWriter extends TransformWriter {
 
 		closures.clear();
 
-		out.print(sep);
-		Iterable<Expression> arguments = node.arguments();
-		visitAllCSV(arguments, false);
+		if (!node.arguments().isEmpty()) {
+			out.print(sep);
+			Iterable<Expression> arguments = node.arguments();
+			visitAllCSV(arguments, false);
+
+			for (Expression e : arguments) {
+				addDep(e.resolveTypeBinding(), hardDeps);
+			}
+		}
 
 		out.print("))");
-
-		for (Expression e : arguments) {
-			addDep(e.resolveTypeBinding(), hardDeps);
-		}
 
 		return false;
 	}

@@ -10,6 +10,8 @@ import java.util.Arrays;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.List;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 import org.eclipse.core.runtime.IPath;
 import org.eclipse.jdt.core.dom.AST;
@@ -69,6 +71,15 @@ public final class TransformUtil {
 			String m = tb.getDeclaringMethod() == null ? "m" + tb.hashCode()
 					: tb.getDeclaringMethod().getName();
 
+			if (tb.isLocal()) {
+				// We use a hack here to avoid getting the same name for two
+				// local classes
+				String key = tb.getKey();
+				Matcher x = Pattern.compile("\\$([^;]*);$").matcher(key);
+				if (x.find()) {
+					return c + "_" + m + x.group(1);
+				}
+			}
 			return c + "_" + m;
 		}
 
