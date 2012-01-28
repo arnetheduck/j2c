@@ -56,8 +56,8 @@ public final class TransformUtil {
 	}
 
 	private static IPackageBinding elementPackage(ITypeBinding tb) {
-		return tb.isArray() ? tb.getElementType().getPackage() : tb
-				.getErasure().getPackage();
+		return tb.isArray() ? tb.getElementType().getErasure().getPackage()
+				: tb.getErasure().getPackage();
 	}
 
 	public static String name(ITypeBinding tb) {
