@@ -132,6 +132,8 @@ public class TypeBindingHeaderWriter {
 				pw.println("java::lang::String *join(" + type
 						+ "lhs, java::lang::String *rhs);");
 			}
+
+			pw.println("java::lang::String *lit(const wchar_t *chars);");
 		}
 
 		pw.close();

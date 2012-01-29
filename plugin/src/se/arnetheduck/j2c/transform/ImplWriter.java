@@ -163,7 +163,6 @@ public class ImplWriter extends TransformWriter {
 
 		at.accept(this);
 
-		Type elementType = at.getElementType();
 		// elementType.accept(this);
 		for (Iterator it = node.dimensions().iterator(); it.hasNext();) {
 			out.print("(");
@@ -182,13 +181,26 @@ public class ImplWriter extends TransformWriter {
 
 	@Override
 	public boolean visit(ArrayInitializer node) {
-		out.print("/*{ ");
+		if (!(node.getParent() instanceof ArrayCreation)) {
+			out.print("(new ");
+			ITypeBinding at = node.resolveTypeBinding();
+			out.print(TransformUtil.qualifiedCName(at));
+			addDep(at, hardDeps);
+		}
 
-		visitAllCSV(node.expressions(), false);
-
-		out.print(" }*/(");
+		out.print("(");
 		out.print(node.expressions().size());
+
+		if (!node.expressions().isEmpty()) {
+			out.print(", ");
+			visitAllCSV(node.expressions(), false);
+		}
+
 		out.print(")");
+
+		if (!(node.getParent() instanceof ArrayCreation)) {
+			out.print(")");
+		}
 
 		return false;
 	}
@@ -199,7 +211,7 @@ public class ImplWriter extends TransformWriter {
 		if (tb.getQualifiedName().equals("java.lang.String")
 				&& node.getOperator() == Operator.PLUS_ASSIGN) {
 			node.getLeftHandSide().accept(this);
-			out.print(" = join(");
+			out.print(" = ::join(");
 			node.getLeftHandSide().accept(this);
 			out.print(", ");
 			node.getRightHandSide().accept(this);
@@ -525,9 +537,9 @@ public class ImplWriter extends TransformWriter {
 		final List<Expression> extendedOperands = node.extendedOperands();
 		ITypeBinding tb = node.resolveTypeBinding();
 		if (tb != null && tb.getQualifiedName().equals("java.lang.String")) {
-			out.print("join(");
+			out.print("::join(");
 			for (int i = 0; i < extendedOperands.size(); ++i) {
-				out.print("join(");
+				out.print("::join(");
 			}
 
 			node.getLeftOperand().accept(this);

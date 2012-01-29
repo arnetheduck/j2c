@@ -36,11 +36,23 @@ public class ArrayWriter {
 		pw.println("class " + cname + " : public java::lang::Object {");
 		pw.println("public:");
 
-		pw.println("    " + name + "(int i) : length_(i) { }");
+		pw.println("    template<typename... T>");
+		pw.println("    " + name + "(int n, T... args) : length_(n), p(new "
+				+ ret + TransformUtil.ref(ct) + "[n]) { init(0, args...); }");
 
+		pw.println();
+		pw.println("    void init(int i) { }");
+		pw.println("    template<typename T, typename... TRest>");
+		pw.println("    void init(int i, T first, TRest... rest) { (*this)[i] = first; init(i+1, rest...); }");
+
+		pw.println();
 		pw.println("    " + ret + " " + TransformUtil.ref(ct)
-				+ "&operator[](int i);");
+				+ "&operator[](int i) { return p[i]; }");
+
+		pw.println();
 		pw.println("    int length_;");
+
+		pw.println("    " + ret + " *" + TransformUtil.ref(ct) + "p;");
 		pw.println("};");
 
 		pw.close();
