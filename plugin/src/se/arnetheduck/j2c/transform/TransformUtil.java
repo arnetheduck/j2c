@@ -174,7 +174,21 @@ public final class TransformUtil {
 			}
 
 			return "'" + ch + "'";
+		} else if (cv instanceof Integer) {
+			if ((int) cv == Integer.MIN_VALUE) {
+				// In C++, the part before '-' is parsed first which overflows
+				// so we do a trick
+				return "(-0x7fffffff-1)";
+			}
+
+			return cv;
 		} else if (cv instanceof Long) {
+			if ((long) cv == Long.MIN_VALUE) {
+				// In C++, the part before '-' is parsed first which overflows
+				// so we do a trick
+				return "(-0x7fffffffffffffffLL-1)";
+			}
+
 			return cv + "ll";
 		}
 

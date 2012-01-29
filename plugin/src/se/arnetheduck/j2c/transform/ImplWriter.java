@@ -696,13 +696,7 @@ public class ImplWriter extends TransformWriter {
 
 		if (!node.typeParameters().isEmpty()) {
 			out.print("/*<");
-			for (Iterator it = node.typeParameters().iterator(); it.hasNext();) {
-				TypeParameter t = (TypeParameter) it.next();
-				t.accept(this);
-				if (it.hasNext()) {
-					out.print(",");
-				}
-			}
+			visitAllCSV(node.typeParameters(), false);
 			out.print(">*/");
 		}
 
