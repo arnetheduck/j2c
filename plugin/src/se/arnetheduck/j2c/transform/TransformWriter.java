@@ -4,7 +4,6 @@ import java.io.PrintWriter;
 import java.lang.reflect.Modifier;
 import java.util.ArrayList;
 import java.util.Collection;
-import java.util.HashSet;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Set;
@@ -394,7 +393,7 @@ public abstract class TransformWriter extends ASTVisitor {
 		return false;
 	}
 
-	protected Set<IVariableBinding> closures = new HashSet<IVariableBinding>();
+	protected Set<IVariableBinding> closures;
 
 	@Override
 	public boolean visit(SimpleName node) {
@@ -409,15 +408,19 @@ public abstract class TransformWriter extends ASTVisitor {
 					&& !Modifier.isStatic(ptb.getModifiers())) {
 				IMethodBinding pmb = parentMethod(node);
 
-				if (vb.isField()
-						&& vb.getDeclaringClass() != null
-						&& ptb != null
-						&& !vb.getDeclaringClass().getKey()
-								.equals(ptb.getKey())) {
+				ITypeBinding dc = vb.getDeclaringClass();
+				if (vb.isField() && dc != null && ptb != null
+						&& !dc.getKey().equals(ptb.getKey())) {
 					if (!(node.getParent() instanceof QualifiedName)) {
-						addDep(vb.getDeclaringClass(), hardDeps);
-						out.print(TransformUtil.name(vb.getDeclaringClass()));
-						out.print("_this->");
+
+						for (ITypeBinding x = ptb; x.getDeclaringClass() != null
+								&& !x.getKey().equals(dc.getKey()); x = x
+								.getDeclaringClass()) {
+							addDep(x.getDeclaringClass(), hardDeps);
+
+							out.print(TransformUtil.name(x.getDeclaringClass()));
+							out.print("_this->");
+						}
 					}
 				} else if (Modifier.isFinal(vb.getModifiers())) {
 					if (pmb != null

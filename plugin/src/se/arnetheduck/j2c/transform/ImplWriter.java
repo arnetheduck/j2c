@@ -7,8 +7,10 @@ import java.io.PrintWriter;
 import java.io.StringWriter;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.HashSet;
 import java.util.Iterator;
 import java.util.List;
+import java.util.Set;
 
 import org.eclipse.core.runtime.IPath;
 import org.eclipse.jdt.core.dom.AST;
@@ -304,6 +306,9 @@ public class ImplWriter extends TransformWriter {
 			out.print(".");
 		}
 
+		Set<IVariableBinding> oldClosures = closures;
+		closures = new HashSet<IVariableBinding>();
+
 		out.print("(new ");
 
 		if (node.getAnonymousClassDeclaration() != null) {
@@ -335,7 +340,7 @@ public class ImplWriter extends TransformWriter {
 			}
 		}
 
-		closures.clear();
+		closures = oldClosures;
 
 		if (!node.arguments().isEmpty()) {
 			out.print(sep);
@@ -1067,11 +1072,16 @@ public class ImplWriter extends TransformWriter {
 		StringWriter oldInitializer = initializer;
 		ITypeBinding oldType = type;
 		PrintWriter oldOut = out;
+		Set<IVariableBinding> oldClosures = closures;
 
 		final ITypeBinding tb = node.resolveBinding();
 
 		type = tb;
 		addType(tb);
+
+		if (type.isNested()) {
+			closures = new HashSet<IVariableBinding>();
+		}
 
 		try {
 			StringWriter body = getBody(node.bodyDeclarations());
@@ -1084,6 +1094,7 @@ public class ImplWriter extends TransformWriter {
 		initializer = oldInitializer;
 		type = oldType;
 		out = oldOut;
+		closures = oldClosures;
 
 		return false;
 	}

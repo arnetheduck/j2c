@@ -58,4 +58,42 @@ public class LocalClassTest {
 
 		return lpc.run(null);
 	}
+
+	public int testNestedClass() {
+		ParamConstructor lpc = new ParamConstructor(3) {
+			@Override
+			public int run(int[] x) {
+				ParamConstructor lpc2 = new ParamConstructor(3) {
+					@Override
+					public int run(int[] x) {
+						return lct.testClosure(x[0]);
+					}
+				};
+
+				return lpc2.run(new int[] { 10 });
+			}
+		};
+
+		return lpc.run(new int[] { 10 });
+	}
+
+	/*
+	public int testNestedClosure(final int outermost) {
+		ParamConstructor lpc = new ParamConstructor(3) {
+			@Override
+			public int run(int[] x) {
+				ParamConstructor lpc2 = new ParamConstructor(3) {
+					@Override
+					public int run(int[] x) {
+						return x[0] + outermost;
+					}
+				};
+
+				return lpc2.run(new int[] { 10 });
+			}
+		};
+
+		return lpc.run(new int[] { 10 });
+
+	} */
 }
