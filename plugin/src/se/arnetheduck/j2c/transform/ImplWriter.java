@@ -13,7 +13,6 @@ import java.util.List;
 import java.util.Set;
 
 import org.eclipse.core.runtime.IPath;
-import org.eclipse.jdt.core.dom.AST;
 import org.eclipse.jdt.core.dom.ASTNode;
 import org.eclipse.jdt.core.dom.AnonymousClassDeclaration;
 import org.eclipse.jdt.core.dom.ArrayAccess;
@@ -37,7 +36,6 @@ import org.eclipse.jdt.core.dom.Expression;
 import org.eclipse.jdt.core.dom.FieldAccess;
 import org.eclipse.jdt.core.dom.FieldDeclaration;
 import org.eclipse.jdt.core.dom.ForStatement;
-import org.eclipse.jdt.core.dom.IBinding;
 import org.eclipse.jdt.core.dom.IMethodBinding;
 import org.eclipse.jdt.core.dom.ITypeBinding;
 import org.eclipse.jdt.core.dom.IVariableBinding;
@@ -87,27 +85,24 @@ public class ImplWriter extends TransformWriter {
 	}
 
 	public String getImports() {
-		PrintWriter old = out;
+		PrintWriter old = getOut();
 		StringWriter sw = new StringWriter();
-		out = new PrintWriter(sw);
+		setOut(new PrintWriter(sw));
 
 		for (ImportDeclaration node : imports) {
-			IBinding b = node.resolveBinding();
-
+			print("using ");
 			if (node.isOnDemand()) {
-				out.print("using namespace ");
-			} else {
-				out.print("using ");
+				print("namespace ");
 			}
 
 			node.getName().accept(this);
 			// TODO static imports
-			out.println(";");
+			println(";");
 		}
 
-		out.close();
+		getOut().close();
 
-		out = old;
+		setOut(old);
 		return sw.toString();
 	}
 
@@ -150,58 +145,57 @@ public class ImplWriter extends TransformWriter {
 		addDep(node.getArray().resolveTypeBinding(), hardDeps);
 
 		node.getArray().accept(this);
-		out.print("->operator[](");
+		print("->operator[](");
 		node.getIndex().accept(this);
-		out.print(")");
+		print(")");
 
 		return false;
 	}
 
 	@Override
 	public boolean visit(ArrayCreation node) {
-		out.print("(new ");
+		print("(new ");
 		ArrayType at = node.getType();
 		addDep(at.resolveBinding(), hardDeps);
 
 		at.accept(this);
 
-		// elementType.accept(this);
 		for (Iterator it = node.dimensions().iterator(); it.hasNext();) {
-			out.print("(");
+			print("(");
 			Expression e = (Expression) it.next();
 			e.accept(this);
-			out.print(")");
+			print(")");
 			break;
 		}
 
 		if (node.getInitializer() != null) {
 			node.getInitializer().accept(this);
 		}
-		out.print(")");
+		print(")");
 		return false;
 	}
 
 	@Override
 	public boolean visit(ArrayInitializer node) {
 		if (!(node.getParent() instanceof ArrayCreation)) {
-			out.print("(new ");
+			print("(new ");
 			ITypeBinding at = node.resolveTypeBinding();
-			out.print(TransformUtil.qualifiedCName(at));
+			print(TransformUtil.qualifiedCName(at));
 			addDep(at, hardDeps);
 		}
 
-		out.print("(");
-		out.print(node.expressions().size());
+		print("(");
+		print(node.expressions().size());
 
 		if (!node.expressions().isEmpty()) {
-			out.print(", ");
+			print(", ");
 			visitAllCSV(node.expressions(), false);
 		}
 
-		out.print(")");
+		print(")");
 
 		if (!(node.getParent() instanceof ArrayCreation)) {
-			out.print(")");
+			print(")");
 		}
 
 		return false;
@@ -213,20 +207,18 @@ public class ImplWriter extends TransformWriter {
 		if (tb.getQualifiedName().equals("java.lang.String")
 				&& node.getOperator() == Operator.PLUS_ASSIGN) {
 			node.getLeftHandSide().accept(this);
-			out.print(" = ::join(");
+			print(" = ::join(");
 			node.getLeftHandSide().accept(this);
-			out.print(", ");
+			print(", ");
 			node.getRightHandSide().accept(this);
-			out.print(")");
+			print(")");
 
 			return false;
 		}
 
 		node.getLeftHandSide().accept(this);
 
-		out.print(" ");
-		out.print(node.getOperator().toString());
-		out.print(" ");
+		print(" ", node.getOperator(), " ");
 
 		node.getRightHandSide().accept(this);
 
@@ -242,16 +234,15 @@ public class ImplWriter extends TransformWriter {
 	@Override
 	public boolean visit(Block node) {
 		if (handledBlocks.contains(node.getParent().getClass())) {
-			out.println("{");
+			println("{");
 
 			indent++;
 
 			visitAll(node.statements());
 
 			indent--;
-			printIndent(out);
-			out.println("}");
-			out.println();
+			printlni("}");
+			println();
 		} else {
 			System.out.println("Skipped " + node.getParent().getClass()
 					+ " block");
@@ -262,38 +253,37 @@ public class ImplWriter extends TransformWriter {
 
 	@Override
 	public boolean visit(BreakStatement node) {
-		printIndent(out);
-		out.print("break");
+		printi("break");
 		if (node.getLabel() != null) {
-			out.print(" ");
+			print(" ");
 			node.getLabel().accept(this);
 		}
-		out.println(";");
+		println(";");
 		return false;
 	}
 
 	@Override
 	public boolean visit(CastExpression node) {
-		out.print(node.getType().isPrimitiveType() ? "static_cast<"
+		print(node.getType().isPrimitiveType() ? "static_cast<"
 				: "dynamic_cast<");
 
 		node.getType().accept(this);
-		out.print(TransformUtil.ref(node.getType()));
+		print(TransformUtil.ref(node.getType()));
 
-		out.print(">(");
+		print(">(");
 
 		node.getExpression().accept(this);
 
-		out.print(")");
+		print(")");
 		return false;
 	}
 
 	@Override
 	public boolean visit(CatchClause node) {
-		out.print("catch (");
+		print("catch (");
 		node.getException().accept(this);
 		addDep(node.getException().getType(), hardDeps);
-		out.print(") ");
+		print(") ");
 		node.getBody().accept(this);
 
 		return false;
@@ -303,22 +293,22 @@ public class ImplWriter extends TransformWriter {
 	public boolean visit(ClassInstanceCreation node) {
 		if (node.getExpression() != null) {
 			node.getExpression().accept(this);
-			out.print(".");
+			print(".");
 		}
 
 		Set<IVariableBinding> oldClosures = closures;
 		closures = new HashSet<IVariableBinding>();
 
-		out.print("(new ");
+		print("(new ");
 
 		if (node.getAnonymousClassDeclaration() != null) {
 			ITypeBinding atb = node.getAnonymousClassDeclaration()
 					.resolveBinding();
-			out.print(TransformUtil.name(atb));
+			print(TransformUtil.name(atb));
 			node.getAnonymousClassDeclaration().accept(this);
 			addDep(atb, hardDeps);
 		} else {
-			out.print(TransformUtil.typeArguments(node.typeArguments()));
+			print(TransformUtil.typeArguments(node.typeArguments()));
 
 			node.getType().accept(this);
 
@@ -327,23 +317,21 @@ public class ImplWriter extends TransformWriter {
 
 		String sep = "";
 
-		out.print("(");
+		print("(");
 		if (node.getAnonymousClassDeclaration() != null) {
-			out.print("this");
+			print("this");
 			sep = ", ";
 
 			for (IVariableBinding closure : closures) {
-				out.print(sep);
+				print(sep, closure.getName(), "_");
 				sep = ", ";
-				out.print(closure.getName());
-				out.print("_");
 			}
 		}
 
 		closures = oldClosures;
 
 		if (!node.arguments().isEmpty()) {
-			out.print(sep);
+			print(sep);
 			Iterable<Expression> arguments = node.arguments();
 			visitAllCSV(arguments, false);
 
@@ -352,7 +340,7 @@ public class ImplWriter extends TransformWriter {
 			}
 		}
 
-		out.print("))");
+		print("))");
 
 		return false;
 	}
@@ -360,60 +348,56 @@ public class ImplWriter extends TransformWriter {
 	@Override
 	public boolean visit(ConditionalExpression node) {
 		node.getExpression().accept(this);
-		out.print(" ? ");
+		print(" ? ");
 		node.getThenExpression().accept(this);
-		out.print(" : ");
+		print(" : ");
 		node.getElseExpression().accept(this);
 		return false;
 	}
 
 	@Override
 	public boolean visit(ConstructorInvocation node) {
-		printIndent(out);
+		printi(TransformUtil.typeArguments(node.typeArguments()));
 
-		out.print(TransformUtil.typeArguments(node.typeArguments()));
-
-		out.print("_construct(");
+		print("_construct(");
 
 		visitAllCSV(node.arguments(), false);
 
-		out.println(");");
+		println(");");
 		return false;
 	}
 
 	@Override
 	public boolean visit(ContinueStatement node) {
-		printIndent(out);
-		out.print("continue");
+		printi("continue");
 
 		if (node.getLabel() != null) {
-			out.print(" ");
+			print(" ");
 			node.getLabel().accept(this);
 		}
-		out.println(";");
+		println(";");
 
 		return false;
 	}
 
 	@Override
 	public boolean visit(DoStatement node) {
-		printIndent(out);
-		out.print("do ");
+		printi("do ");
 		node.getBody().accept(this);
-		out.print(" while (");
+		print(" while (");
 		node.getExpression().accept(this);
-		out.println(");");
+		println(");");
+
 		return false;
 	}
 
 	@Override
 	public boolean visit(EnhancedForStatement node) {
-		printIndent(out);
-		out.print("for (");
+		printi("for (");
 		node.getParameter().accept(this);
-		out.print(" : ");
+		print(" : ");
 		node.getExpression().accept(this);
-		out.print(") ");
+		print(") ");
 		node.getBody().accept(this);
 		return false;
 	}
@@ -422,7 +406,7 @@ public class ImplWriter extends TransformWriter {
 	public boolean visit(FieldAccess node) {
 		node.getExpression().accept(this);
 		addDep(node.getExpression().resolveTypeBinding(), hardDeps);
-		out.print("->");
+		print("->");
 		node.getName().accept(this);
 		return false;
 	}
@@ -449,14 +433,13 @@ public class ImplWriter extends TransformWriter {
 		if (node.getJavadoc() != null) {
 			node.getJavadoc().accept(this);
 		}
-		printIndent(out);
 
-		out.print(TransformUtil.fieldModifiers(node.getModifiers(), false,
+		printi(TransformUtil.fieldModifiers(node.getModifiers(), false,
 				hasInitilializer(fragments)));
 
 		node.getType().accept(this);
 
-		out.print(" ");
+		print(" ");
 		for (Iterator<VariableDeclarationFragment> it = fragments.iterator(); it
 				.hasNext();) {
 			VariableDeclarationFragment f = it.next();
@@ -464,45 +447,43 @@ public class ImplWriter extends TransformWriter {
 				continue;
 			}
 
-			out.print(TransformUtil.ref(node.getType()));
+			print(TransformUtil.ref(node.getType()));
 
-			out.print(TransformUtil.qualifiedCName(type));
-			out.print("::");
+			print(TransformUtil.qualifiedCName(type), "::");
 
 			f.getName().accept(this);
 
 			if (f.getInitializer() != null) {
-				out.print(" = ");
+				print(" = ");
 				f.getInitializer().accept(this);
 			}
 
 			if (it.hasNext()) {
-				out.print(", ");
+				print(", ");
 			}
 		}
 
-		out.println(";");
+		println(";");
 		return false;
 	}
 
 	@Override
 	public boolean visit(ForStatement node) {
-		printIndent(out);
-		out.print("for (");
+		printi("for (");
 
 		visitAllCSV(node.initializers(), false);
 
-		out.print("; ");
+		print("; ");
 
 		if (node.getExpression() != null) {
 			node.getExpression().accept(this);
 		}
 
-		out.print("; ");
+		print("; ");
 
 		visitAllCSV(node.updaters(), false);
 
-		out.print(") ");
+		print(") ");
 		node.getBody().accept(this);
 
 		return false;
@@ -510,17 +491,15 @@ public class ImplWriter extends TransformWriter {
 
 	@Override
 	public boolean visit(IfStatement node) {
-		printIndent(out);
-
-		out.print("if(");
+		printi("if(");
 		node.getExpression().accept(this);
-		out.print(")");
+		print(")");
 
 		boolean isBlock = node.getThenStatement() instanceof Block;
 		if (isBlock) {
-			out.print(" ");
+			print(" ");
 		} else {
-			out.println();
+			println();
 			indent++;
 		}
 
@@ -530,7 +509,7 @@ public class ImplWriter extends TransformWriter {
 			indent--;
 		}
 		if (node.getElseStatement() != null) {
-			out.print(" else ");
+			print(" else ");
 			node.getElseStatement().accept(this);
 		}
 
@@ -542,39 +521,38 @@ public class ImplWriter extends TransformWriter {
 		final List<Expression> extendedOperands = node.extendedOperands();
 		ITypeBinding tb = node.resolveTypeBinding();
 		if (tb != null && tb.getQualifiedName().equals("java.lang.String")) {
-			out.print("::join(");
+			print("::join(");
 			for (int i = 0; i < extendedOperands.size(); ++i) {
-				out.print("::join(");
+				print("::join(");
 			}
 
 			node.getLeftOperand().accept(this);
-			out.print(", ");
+			print(", ");
 			node.getRightOperand().accept(this);
-			out.print(")");
+			print(")");
 
 			for (Expression e : extendedOperands) {
-				out.print(", ");
+				print(", ");
 				e.accept(this);
-				out.print(")");
+				print(")");
 			}
 			return false;
 		}
 
 		node.getLeftOperand().accept(this);
-		out.print(' '); // for cases like x= i - -1; or x= i++ + ++i;
+		print(' '); // for cases like x= i - -1; or x= i++ + ++i;
 
-		out.print(node.getOperator().toString());
+		print(node.getOperator().toString());
 
-		out.print(' ');
+		print(' ');
 
 		node.getRightOperand().accept(this);
 
 		if (!extendedOperands.isEmpty()) {
-			out.print(' ');
+			print(' ');
 
 			for (Expression e : extendedOperands) {
-				out.print(node.getOperator().toString());
-				out.print(' ');
+				print(node.getOperator().toString(), " ");
 				e.accept(this);
 			}
 		}
@@ -585,42 +563,37 @@ public class ImplWriter extends TransformWriter {
 	@Override
 	public boolean visit(Initializer node) {
 		if (initializer != null) {
-			PrintWriter oldOut = out;
-			out = new PrintWriter(initializer);
+			PrintWriter oldOut = getOut();
+			setOut(new PrintWriter(initializer));
 
 			node.getBody().accept(this);
 
-			out.close();
-			out = oldOut;
+			getOut().close();
+			setOut(oldOut);
 
 			return false;
 		}
 
 		initializer = new StringWriter();
-		PrintWriter oldOut = out;
-		out = new PrintWriter(initializer);
+		PrintWriter oldOut = getOut();
+		setOut(new PrintWriter(initializer));
 
 		if (node.getJavadoc() != null) {
 			node.getJavadoc().accept(this);
 		}
 
 		String name = TransformUtil.name(type);
+		String qcname = TransformUtil.qualifiedCName(type);
 
-		out.print(TransformUtil.qualifiedCName(type));
-
-		out.print("::");
-		out.print(name);
-		out.print("Initializer::");
-		out.print(name);
-		out.println("Initializer() {");
+		println(qcname, "::", name, "Initializer::", name, "Initializer() {");
 		indent++;
 
 		node.getBody().accept(this);
 
 		indent--;
 
-		out.close();
-		out = oldOut;
+		getOut().close();
+		setOut(oldOut);
 
 		return false;
 	}
@@ -630,36 +603,30 @@ public class ImplWriter extends TransformWriter {
 			return false;
 		}
 
-		PrintWriter oldOut = out;
+		PrintWriter oldOut = getOut();
 
-		out = new PrintWriter(initializer);
-		printIndent(out);
-		out.println("}");
-		out.println();
+		setOut(new PrintWriter(initializer));
+		printlni("}");
+		println();
 
 		String name = TransformUtil.name(type);
 		String cname = TransformUtil.qualifiedCName(type);
-		out.print(cname);
+		print(cname, "::", name, "Initializer ", cname, "::staticInitializer;");
 
-		out.print("::");
-		out.print(name);
-		out.print("Initializer ");
-		out.print(cname);
-		out.println("::staticInitializer;");
-		out.close();
-		out = oldOut;
+		getOut().close();
+		setOut(oldOut);
 
 		return true;
 	}
 
 	@Override
 	public boolean visit(InstanceofExpression node) {
-		out.print("dynamic_cast<");
+		print("dynamic_cast<");
 		node.getRightOperand().accept(this);
 		addDep(node.getRightOperand(), hardDeps);
-		out.print("*>(");
+		print("*>(");
 		node.getLeftOperand().accept(this);
-		out.print(")");
+		print(")");
 		return false;
 	}
 
@@ -667,21 +634,20 @@ public class ImplWriter extends TransformWriter {
 	public boolean visit(Javadoc node) {
 		if (true)
 			return false;
-		printIndent(out);
-		out.print("/** ");
+		printi("/** ");
 		for (Iterator it = node.tags().iterator(); it.hasNext();) {
 			ASTNode e = (ASTNode) it.next();
 			e.accept(this);
 		}
-		out.println("\n */");
+		println("\n */");
 		return false;
 	}
 
 	@Override
 	public boolean visit(LabeledStatement node) {
-		printIndent(out);
+		printi();
 		node.getLabel().accept(this);
-		out.print(": ");
+		print(": ");
 		node.getBody().accept(this);
 
 		return false;
@@ -697,59 +663,48 @@ public class ImplWriter extends TransformWriter {
 			node.getJavadoc().accept(this);
 		}
 
-		printIndent(out);
-
-		if (!node.typeParameters().isEmpty()) {
-			out.print("/*<");
-			visitAllCSV(node.typeParameters(), false);
-			out.print(">*/");
-		}
+		printi(TransformUtil.typeParameters(node.typeParameters()));
 
 		if (!node.isConstructor()) {
 			node.getReturnType2().accept(this);
-			out.print(" ");
-			out.print(TransformUtil.ref(node.getReturnType2()));
+			print(" ", TransformUtil.ref(node.getReturnType2()));
 		}
 
-		out.print(TransformUtil.qualifiedCName(type));
-		out.print("::");
+		print(TransformUtil.qualifiedCName(type), "::");
+
 		node.getName().accept(this);
 
 		visitAllCSV(node.parameters(), true);
 
-		out.print(TransformUtil.throwsDecl(node.thrownExceptions()));
+		print(TransformUtil.throwsDecl(node.thrownExceptions()));
 
 		if (node.isConstructor()) {
 			for (Object o : node.getBody().statements()) {
 				if (o instanceof SuperConstructorInvocation) {
-					out.print(" : ");
+					print(" : ");
 					((SuperConstructorInvocation) o).accept(this);
 				}
 			}
 
-			out.println(" {");
+			println(" {");
 
 			indent++;
 
-			printIndent(out);
-			out.print("_construct(");
+			printi("_construct(");
 
 			printNames(node.parameters());
 
-			out.println(");");
+			println(");");
 
 			indent--;
-			out.println("}");
-			out.println();
+			println("}");
+			println();
 
-			printIndent(out);
-			out.print("void ");
-			out.print(TransformUtil.qualifiedCName(type));
-			out.print("::_construct(");
+			printi("void ", TransformUtil.qualifiedCName(type), "::_construct(");
 
 			visitAllCSV(node.parameters(), false);
 
-			out.println(") {");
+			println(") {");
 			indent++;
 
 			for (Object o : node.getBody().statements()) {
@@ -761,13 +716,12 @@ public class ImplWriter extends TransformWriter {
 			}
 
 			indent--;
-			printIndent(out);
-			out.println("}");
+			printlni("}");
 		} else {
 			node.getBody().accept(this);
 		}
 
-		out.println();
+		println();
 		return false;
 	}
 
@@ -779,7 +733,7 @@ public class ImplWriter extends TransformWriter {
 			v.getName().accept(this);
 
 			if (it.hasNext()) {
-				out.print(",");
+				print(",");
 			}
 		}
 	}
@@ -791,23 +745,23 @@ public class ImplWriter extends TransformWriter {
 
 			IMethodBinding b = node.resolveMethodBinding();
 			if ((b.getModifiers() & Modifier.STATIC) > 0) {
-				out.print("::");
+				print("::");
 			} else {
-				out.print("->");
+				print("->");
 			}
 
 			addDep(node.getExpression().resolveTypeBinding(), hardDeps);
 		}
 
-		out.print(TransformUtil.typeArguments(node.typeArguments()));
+		print(TransformUtil.typeArguments(node.typeArguments()));
 
 		if (type.isNested() && node.getExpression() == null) {
 			IMethodBinding mb = node.resolveMethodBinding();
 			if (mb.getDeclaringClass().getKey()
 					.equals(type.getDeclaringClass().getKey())) {
 				TransformUtil.addDep(mb.getDeclaringClass(), hardDeps);
-				out.print(TransformUtil.name(mb.getDeclaringClass()));
-				out.print("_this->");
+				print(TransformUtil.name(mb.getDeclaringClass()));
+				print("_this->");
 			}
 		}
 
@@ -832,28 +786,26 @@ public class ImplWriter extends TransformWriter {
 	@Override
 	public boolean visit(PostfixExpression node) {
 		node.getOperand().accept(this);
-		out.print(node.getOperator().toString());
+		print(node.getOperator().toString());
 		return false;
 	}
 
 	@Override
 	public boolean visit(PrefixExpression node) {
-		out.print(node.getOperator().toString());
+		print(node.getOperator().toString());
 		node.getOperand().accept(this);
 		return false;
 	}
 
 	@Override
 	public boolean visit(ReturnStatement node) {
-		printIndent(out);
-
-		out.print("return");
+		printi("return");
 		if (node.getExpression() != null) {
-			out.print(" ");
+			print(" ");
 			node.getExpression().accept(this);
 		}
 
-		out.println(";");
+		println(";");
 		return false;
 	}
 
@@ -862,22 +814,22 @@ public class ImplWriter extends TransformWriter {
 		ITypeBinding tb = node.getType().resolveBinding();
 		if (node.getExtraDimensions() > 0) {
 			tb = tb.createArrayType(node.getExtraDimensions());
-			out.print(TransformUtil.name(tb));
+			print(TransformUtil.name(tb));
 		} else {
 			node.getType().accept(this);
 		}
 		if (node.isVarargs()) {
-			out.print("/*...*/");
+			print("/*...*/");
 		}
 
-		out.print(" ");
+		print(" ");
 
-		out.print(TransformUtil.ref(tb));
+		print(TransformUtil.ref(tb));
 
 		node.getName().accept(this);
 
 		if (node.getInitializer() != null) {
-			out.print(" = ");
+			print(" = ");
 			node.getInitializer().accept(this);
 		}
 
@@ -888,12 +840,12 @@ public class ImplWriter extends TransformWriter {
 	public boolean visit(SuperConstructorInvocation node) {
 		if (node.getExpression() != null) {
 			node.getExpression().accept(this);
-			out.print(".");
+			print(".");
 		}
 
-		out.print(TransformUtil.typeArguments(node.typeArguments()));
+		print(TransformUtil.typeArguments(node.typeArguments()));
 
-		out.print("super");
+		print("super");
 
 		visitAllCSV(node.arguments(), true);
 
@@ -904,10 +856,10 @@ public class ImplWriter extends TransformWriter {
 	public boolean visit(SuperFieldAccess node) {
 		if (node.getQualifier() != null) {
 			node.getQualifier().accept(this);
-			out.print(".");
+			print(".");
 		}
 
-		out.print("super::");
+		print("super::");
 		node.getName().accept(this);
 
 		return false;
@@ -917,12 +869,12 @@ public class ImplWriter extends TransformWriter {
 	public boolean visit(SuperMethodInvocation node) {
 		if (node.getQualifier() != null) {
 			node.getQualifier().accept(this);
-			out.print(".");
+			print(".");
 		}
 
-		out.print("super::");
+		print("super::");
 
-		out.print(TransformUtil.typeArguments(node.typeArguments()));
+		print(TransformUtil.typeArguments(node.typeArguments()));
 
 		node.getName().accept(this);
 
@@ -933,14 +885,14 @@ public class ImplWriter extends TransformWriter {
 
 	@Override
 	public boolean visit(SwitchCase node) {
-		printIndent(out);
+		printi();
 
 		if (node.isDefault()) {
-			out.println("default:");
+			println("default:");
 		} else {
-			out.print("case ");
+			print("case ");
 			node.getExpression().accept(this);
-			out.println(":");
+			println(":");
 		}
 
 		return false;
@@ -948,13 +900,9 @@ public class ImplWriter extends TransformWriter {
 
 	@Override
 	public boolean visit(SwitchStatement node) {
-		printIndent(out);
-
-		out.print("switch (");
+		printi("switch (");
 		node.getExpression().accept(this);
-		out.print(") ");
-
-		out.println("{");
+		println(") {");
 
 		indent++;
 
@@ -971,15 +919,14 @@ public class ImplWriter extends TransformWriter {
 				boolean isSingleBlock = isBlock
 						&& (!nextIsCase || lastStatement);
 				if (!isSingleBlock) {
-					out.print("{");
+					print("{");
 					indent++;
 					indented = true;
 				}
 			}
 			if (indented && s instanceof SwitchCase) {
 				indent--;
-				printIndent(out);
-				out.println("}");
+				printlni("}");
 				indented = false;
 			}
 
@@ -988,25 +935,23 @@ public class ImplWriter extends TransformWriter {
 
 		if (indented) {
 			indent--;
-			printIndent(out);
-			out.println("}");
+			printlni("}");
 			indented = false;
 		}
 
 		indent--;
 
-		printIndent(out);
-		out.println("}");
-		out.println();
+		printlni("}");
+		println();
 
 		return false;
 	}
 
 	@Override
 	public boolean visit(SynchronizedStatement node) {
-		out.print("synchronized (");
+		print("synchronized (");
 		node.getExpression().accept(this);
-		out.print(") ");
+		print(") ");
 		node.getBody().accept(this);
 
 		return false;
@@ -1016,51 +961,47 @@ public class ImplWriter extends TransformWriter {
 	public boolean visit(ThisExpression node) {
 		if (node.getQualifier() != null) {
 			node.getQualifier().accept(this);
-			out.print("_");
+			print("_");
 		}
 
-		out.print("this");
+		print("this");
 
 		return false;
 	}
 
 	@Override
 	public boolean visit(ThrowStatement node) {
-		printIndent(out);
-		out.print("throw ");
+		printi("throw ");
 		node.getExpression().accept(this);
-		out.println(";");
+		println(";");
 
 		return false;
 	}
 
 	@Override
 	public boolean visit(TryStatement node) {
-		printIndent(out);
-		out.print("try ");
+		printi("try ");
 		List resources = node.resources();
-		if (node.getAST().apiLevel() >= AST.JLS4) {
-			if (!node.resources().isEmpty()) {
-				out.print('(');
-				for (Iterator it = resources.iterator(); it.hasNext();) {
-					VariableDeclarationExpression variable = (VariableDeclarationExpression) it
-							.next();
-					variable.accept(this);
-					if (it.hasNext()) {
-						out.print(';');
-					}
+		if (!node.resources().isEmpty()) {
+			print('(');
+			for (Iterator it = resources.iterator(); it.hasNext();) {
+				VariableDeclarationExpression variable = (VariableDeclarationExpression) it
+						.next();
+				variable.accept(this);
+				if (it.hasNext()) {
+					print(';');
 				}
-				out.print(')');
 			}
+			print(')');
 		}
 
 		node.getBody().accept(this);
-		out.print(" ");
+		print(" ");
 
 		visitAll(node.catchClauses());
 
 		if (node.getFinally() != null) {
-			out.print(" finally ");
+			print(" finally ");
 			node.getFinally().accept(this);
 		}
 
@@ -1071,7 +1012,7 @@ public class ImplWriter extends TransformWriter {
 	public boolean visit(TypeDeclaration node) {
 		StringWriter oldInitializer = initializer;
 		ITypeBinding oldType = type;
-		PrintWriter oldOut = out;
+		PrintWriter oldOut = getOut();
 		Set<IVariableBinding> oldClosures = closures;
 
 		final ITypeBinding tb = node.resolveBinding();
@@ -1093,54 +1034,52 @@ public class ImplWriter extends TransformWriter {
 
 		initializer = oldInitializer;
 		type = oldType;
-		out = oldOut;
+		setOut(oldOut);
 		closures = oldClosures;
 
 		return false;
 	}
 
 	private StringWriter getBody(Iterable<BodyDeclaration> declarations) {
-		PrintWriter old = out;
+		PrintWriter old = getOut();
 		StringWriter body = new StringWriter();
-		out = new PrintWriter(body);
+		setOut(new PrintWriter(body));
 
 		visitAll(declarations);
 
-		out.close();
-		out = old;
+		getOut().close();
+		setOut(old);
 		return body;
 	}
 
 	private void writeType(StringWriter body, final ITypeBinding tb)
 			throws FileNotFoundException {
-		PrintWriter old = out;
+		PrintWriter old = getOut();
 		try {
-			out = new PrintWriter(new FileOutputStream(root
-					+ TransformUtil.implName(tb)));
+			setOut(new PrintWriter(new FileOutputStream(root
+					+ TransformUtil.implName(tb))));
 
-			out.println(TransformUtil.include(tb));
+			println(TransformUtil.include(tb));
 
 			for (ITypeBinding dep : getHardDeps()) {
-				out.println(TransformUtil.include(dep));
+				println(TransformUtil.include(dep));
 			}
 
-			out.println(TransformUtil.include("java.lang.h"));
+			println(TransformUtil.include("java.lang.h"));
 
 			if (pkg.getJavadoc() != null) {
 				pkg.getJavadoc().accept(this);
 			}
 
-			out.println(TransformUtil.annotations(pkg.annotations()));
+			println(TransformUtil.annotations(pkg.annotations()));
 
-			printIndent(out);
-
-			out.print("using namespace ");
+			print("using namespace ");
 			pkg.getName().accept(this);
-			out.println(";");
+			println(";");
 
-			out.println(getImports());
+			println(getImports());
 
-			out.print(body.toString());
+			print(body.toString());
 
 			if (tb.isLocal()) {
 				// For local classes, synthesize base class constructors
@@ -1152,104 +1091,86 @@ public class ImplWriter extends TransformWriter {
 						continue;
 					}
 
-					out.print(TransformUtil.indent(indent));
-					out.print(qname);
-					out.print("::");
-					out.print(name);
-
-					out.print("(");
+					printi(qname, "::", name, "(");
 
 					String sep = "";
 					if (!Modifier.isStatic(tb.getModifiers())) {
-						out.print(TransformUtil.relativeCName(
+						print(TransformUtil.relativeCName(
 								tb.getDeclaringClass(), tb));
-						out.print(" *"
-								+ TransformUtil.name(tb.getDeclaringClass())
+						print(" *" + TransformUtil.name(tb.getDeclaringClass())
 								+ "_this");
 						sep = ", ";
 					}
 
 					for (IVariableBinding closure : closures) {
-						out.print(sep);
+						print(sep, TransformUtil.relativeCName(
+								closure.getType(), tb), " ",
+								TransformUtil.ref(closure.getType()),
+								closure.getName(), "_");
 						sep = ", ";
-						out.print(TransformUtil.relativeCName(
-								closure.getType(), tb));
-						out.print(" ");
-						out.print(TransformUtil.ref(closure.getType()));
-						out.print(closure.getName());
-						out.print("_");
 					}
 
 					for (int i = 0; i < mb.getParameterTypes().length; ++i) {
-						out.print(sep);
-						sep = ", ";
-
 						ITypeBinding pb = mb.getParameterTypes()[i];
 						TransformUtil.addDep(pb, softDeps);
 
-						out.print(TransformUtil.relativeCName(pb, tb));
-						out.print(" ");
-						out.print(TransformUtil.ref(pb));
-						out.print("a" + i);
+						print(sep, TransformUtil.relativeCName(pb, tb), " ",
+								TransformUtil.ref(pb), "a" + i);
+						sep = ", ";
 					}
 
-					out.println(") : ");
+					println(") : ");
 					indent++;
-					out.print(TransformUtil.indent(indent));
-					out.print(TransformUtil.relativeCName(tb.getSuperclass(),
-							tb));
+					printi(TransformUtil.relativeCName(tb.getSuperclass(), tb),
+							"(");
 
-					out.print("(");
 					sep = "";
 					for (int i = 0; i < mb.getParameterTypes().length; ++i) {
-						out.print(sep);
+						print(sep, "a" + i);
 						sep = ", ";
-						out.print("a" + i);
 					}
 
-					out.print(")");
+					print(")");
 
 					sep = ", ";
 					if (!Modifier.isStatic(tb.getModifiers())) {
-						out.println(", ");
-						out.print(TransformUtil.indent(indent));
+						println(", ");
+						printi();
 						printInit(TransformUtil.name(tb.getDeclaringClass())
 								+ "_this");
 					}
 
 					for (IVariableBinding closure : closures) {
-						out.println(", ");
-						out.print(TransformUtil.indent(indent));
+						println(", ");
+						printi();
 						printInit(closure.getName() + "_");
 					}
 
 					indent--;
-					out.println(" { }");
+					println(" { }");
 
 				}
 			}
 
 			if (closeInitializer()) {
-				out.print(initializer.toString());
+				print(initializer.toString());
 			}
 
-			out.close();
+			getOut().close();
 		} finally {
-			out = old;
+			setOut(old);
 		}
 	}
 
 	private void printInit(String n) {
-		out.print(n);
-		out.print("(");
-		out.print(n);
-		out.print(")");
+		print(n, "(", n, ")");
 	}
 
 	@Override
 	public boolean visit(TypeLiteral node) {
+		addDep(node.getType(), hardDeps);
 		node.getType().accept(this);
-		out.print(".class");
+		print("::class_");
 		return false;
 	}
 
@@ -1257,12 +1178,12 @@ public class ImplWriter extends TransformWriter {
 	public boolean visit(TypeParameter node) {
 		node.getName().accept(this);
 		if (!node.typeBounds().isEmpty()) {
-			out.print(" extends ");
+			print(" extends ");
 			for (Iterator it = node.typeBounds().iterator(); it.hasNext();) {
 				Type t = (Type) it.next();
 				t.accept(this);
 				if (it.hasNext()) {
-					out.print(" & ");
+					print(" & ");
 				}
 			}
 		}
@@ -1275,7 +1196,7 @@ public class ImplWriter extends TransformWriter {
 			Type t = (Type) it.next();
 			t.accept(this);
 			if (it.hasNext()) {
-				out.print('|');
+				print('|');
 			}
 		}
 		return false;
@@ -1283,12 +1204,12 @@ public class ImplWriter extends TransformWriter {
 
 	@Override
 	public boolean visit(VariableDeclarationFragment node) {
-		out.print(TransformUtil.ref(node.resolveBinding().getType()));
+		print(TransformUtil.ref(node.resolveBinding().getType()));
 
 		node.getName().accept(this);
 
 		if (node.getInitializer() != null) {
-			out.print(" = ");
+			print(" = ");
 			node.getInitializer().accept(this);
 		}
 
@@ -1297,10 +1218,9 @@ public class ImplWriter extends TransformWriter {
 
 	@Override
 	public boolean visit(WhileStatement node) {
-		printIndent(out);
-		out.print("while (");
+		printi("while (");
 		node.getExpression().accept(this);
-		out.print(") ");
+		print(") ");
 		node.getBody().accept(this);
 
 		return false;

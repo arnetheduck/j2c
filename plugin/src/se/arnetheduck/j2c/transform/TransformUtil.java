@@ -176,7 +176,7 @@ public final class TransformUtil {
 			return "'" + ch + "'";
 		} else if (cv instanceof Integer) {
 			if ((int) cv == Integer.MIN_VALUE) {
-				// In C++, the part before '-' is parsed first which overflows
+				// In C++, the part after '-' is parsed first which overflows
 				// so we do a trick
 				return "(-0x7fffffff-1)";
 			}
@@ -474,4 +474,26 @@ public final class TransformUtil {
 	public static List<ITypeBinding> getBases(AST ast, ITypeBinding tb) {
 		return getBases(tb, ast.resolveWellKnownType(Object.class.getName()));
 	}
+
+	public static void print(PrintWriter out, Object... objects) {
+		for (Object o : objects) {
+			out.print(o);
+		}
+	}
+
+	public static void println(PrintWriter out, Object... objects) {
+		print(out, objects);
+		out.println();
+	}
+
+	public static void printi(PrintWriter out, int indent, Object... objects) {
+		out.print(indent(indent));
+		print(out, objects);
+	}
+
+	public static void printlni(PrintWriter out, int indent, Object... objects) {
+		printi(out, indent, objects);
+		out.println();
+	}
+
 }

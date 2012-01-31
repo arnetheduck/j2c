@@ -61,7 +61,7 @@ public abstract class TransformWriter extends ASTVisitor {
 
 	protected PackageDeclaration pkg;
 
-	protected PrintWriter out;
+	private PrintWriter out;
 
 	private Set<IPackageBinding> packages = new TreeSet<IPackageBinding>(
 			new Transformer.PackageBindingComparator());
@@ -71,11 +71,6 @@ public abstract class TransformWriter extends ASTVisitor {
 			new Transformer.TypeBindingComparator());
 	protected Set<ITypeBinding> softDeps = new TreeSet<ITypeBinding>(
 			new Transformer.TypeBindingComparator());
-
-	protected void printIndent(PrintWriter out) {
-		for (int i = 0; i < indent; i++)
-			out.print("    ");
-	}
 
 	public Set<IPackageBinding> getPackages() {
 		return packages;
@@ -113,41 +108,19 @@ public abstract class TransformWriter extends ASTVisitor {
 
 	protected void visitAllCSV(Iterable<? extends ASTNode> nodes, boolean parens) {
 		if (parens) {
-			out.print("(");
+			print("(");
 		}
 
 		String s = "";
 		for (ASTNode node : nodes) {
-			out.print(s);
+			print(s);
 			s = ", ";
 			node.accept(this);
 		}
 
 		if (parens) {
-			out.print(")");
+			print(")");
 		}
-	}
-
-	protected boolean printType(PrintWriter out, Type t, boolean fqn) {
-		boolean isRef = false;
-
-		if (t instanceof ArrayType) {
-			ArrayType at = (ArrayType) t;
-			t = at.getElementType();
-			isRef = true;
-		}
-
-		if (t instanceof PrimitiveType) {
-			PrimitiveType pt = (PrimitiveType) t;
-			out.print(TransformUtil.primitive(pt.getPrimitiveTypeCode()));
-
-			return isRef;
-		}
-
-		ITypeBinding tb = t.resolveBinding();
-		printType(out, tb, fqn);
-
-		return true;
 	}
 
 	public boolean hasInitilializer(
@@ -161,72 +134,49 @@ public abstract class TransformWriter extends ASTVisitor {
 		return false;
 	}
 
-	protected void printType(PrintWriter out, ITypeBinding tb, boolean fqn) {
-		if (fqn) {
-			out.print(makeNamespace(tb));
-			out.print("::");
-		}
-
-		out.print(tb.getName());
-	}
-
-	String makeNamespace(ITypeBinding type) {
-		IPackageBinding p = type.getPackage();
-		return p == null ? "" : p.getName().replace(".", "::");
-	}
-
-	protected boolean isRef(Type type) {
-		return !(type instanceof PrimitiveType);
-	}
-
 	@Override
 	public boolean visit(ArrayType node) {
 		if (node.getComponentType().isArrayType()
 				|| node.getComponentType() instanceof QualifiedType) {
 			node.getComponentType().accept(this);
 		} else {
-			out.print(TransformUtil.qualifiedCName(node.getComponentType()
+			print(TransformUtil.qualifiedCName(node.getComponentType()
 					.resolveBinding()));
 		}
 		addDep(node.resolveBinding(), softDeps);
-		out.print("Array");
+		print("Array");
 
 		return false;
 	}
 
 	@Override
 	public boolean visit(AssertStatement node) {
-		printIndent(out);
-		out.print("/* ");
-		out.print("assert ");
+		printi("/* assert");
 		node.getExpression().accept(this);
 		if (node.getMessage() != null) {
-			out.print(" : ");
+			print(" : ");
 			node.getMessage().accept(this);
 		}
-		out.println(";");
-
-		out.print("*/");
+		println("; */");
 
 		return false;
 	}
 
 	@Override
 	public boolean visit(BlockComment node) {
-		printIndent(out);
-		out.print("/* */");
+		printi("/* */");
 		return false;
 	}
 
 	@Override
 	public boolean visit(BooleanLiteral node) {
-		out.print(node.booleanValue() ? "true" : "false");
+		print(node.booleanValue() ? "true" : "false");
 		return false;
 	}
 
 	@Override
 	public boolean visit(CharacterLiteral node) {
-		out.print(node.getEscapedValue());
+		print(node.getEscapedValue());
 		return false;
 	}
 
@@ -244,16 +194,15 @@ public abstract class TransformWriter extends ASTVisitor {
 
 	@Override
 	public boolean visit(EmptyStatement node) {
-		printIndent(out);
-		out.println(";");
+		printlni(";");
 		return false;
 	}
 
 	@Override
 	public boolean visit(ExpressionStatement node) {
-		printIndent(out);
+		printi();
 		node.getExpression().accept(this);
-		out.println(";");
+		println(";");
 		return false;
 	}
 
@@ -271,7 +220,7 @@ public abstract class TransformWriter extends ASTVisitor {
 
 	@Override
 	public boolean visit(LineComment node) {
-		out.println("//");
+		printlni("//");
 		return false;
 	}
 
@@ -280,7 +229,7 @@ public abstract class TransformWriter extends ASTVisitor {
 		if (node.getQualifier() != null) {
 			node.getQualifier().accept(this);
 		}
-		out.print("#");
+		print("#");
 		node.getName().accept(this);
 		return false;
 	}
@@ -290,17 +239,11 @@ public abstract class TransformWriter extends ASTVisitor {
 		if (node.getQualifier() != null) {
 			node.getQualifier().accept(this);
 		}
-		out.print("#");
+
+		print("#");
 		node.getName().accept(this);
-		out.print("(");
-		for (Iterator it = node.parameters().iterator(); it.hasNext();) {
-			MethodRefParameter e = (MethodRefParameter) it.next();
-			e.accept(this);
-			if (it.hasNext()) {
-				out.print(",");
-			}
-		}
-		out.print(")");
+		visitAllCSV(node.parameters(), true);
+
 		return false;
 	}
 
@@ -308,10 +251,10 @@ public abstract class TransformWriter extends ASTVisitor {
 	public boolean visit(MethodRefParameter node) {
 		node.getType().accept(this);
 		if (node.isVarargs()) {
-			out.print("...");
+			print("...");
 		}
 		if (node.getName() != null) {
-			out.print(" ");
+			print(" ");
 			node.getName().accept(this);
 		}
 		return false;
@@ -319,14 +262,14 @@ public abstract class TransformWriter extends ASTVisitor {
 
 	@Override
 	public boolean visit(NullLiteral node) {
-		out.print("nullptr");
+		print("nullptr");
 		return false;
 	}
 
 	@Override
 	public boolean visit(NumberLiteral node) {
-		out.print(TransformUtil.checkConstant(node
-				.resolveConstantExpressionValue()));
+		print(TransformUtil
+				.checkConstant(node.resolveConstantExpressionValue()));
 		return false;
 	}
 
@@ -340,22 +283,22 @@ public abstract class TransformWriter extends ASTVisitor {
 	public boolean visit(ParameterizedType node) {
 		node.getType().accept(this);
 
-		out.print(TransformUtil.typeArguments(node.typeArguments()));
+		print(TransformUtil.typeArguments(node.typeArguments()));
 
 		return false;
 	}
 
 	@Override
 	public boolean visit(ParenthesizedExpression node) {
-		out.print("(");
+		print("(");
 		node.getExpression().accept(this);
-		out.print(")");
+		print(")");
 		return false;
 	}
 
 	@Override
 	public boolean visit(PrimitiveType node) {
-		out.print(TransformUtil.primitive(node.getPrimitiveTypeCode()));
+		print(TransformUtil.primitive(node.getPrimitiveTypeCode()));
 		return false;
 	}
 
@@ -367,14 +310,14 @@ public abstract class TransformWriter extends ASTVisitor {
 
 		IBinding b = qualifier.resolveBinding();
 		if (b instanceof IPackageBinding) {
-			out.print("::");
+			print("::");
 			packages.add((IPackageBinding) b);
 		} else if (b instanceof ITypeBinding) {
 			addDep((ITypeBinding) b, hardDeps);
-			out.print("::");
+			print("::");
 		} else if (b instanceof IVariableBinding) {
 			addDep(((IVariableBinding) b).getType(), hardDeps);
-			out.print("->");
+			print("->");
 		} else {
 			throw new Error("Unknown binding " + b.getClass());
 		}
@@ -387,7 +330,7 @@ public abstract class TransformWriter extends ASTVisitor {
 	@Override
 	public boolean visit(QualifiedType node) {
 		node.getQualifier().accept(this);
-		out.print("::");
+		print("::");
 		node.getName().accept(this);
 
 		return false;
@@ -418,8 +361,8 @@ public abstract class TransformWriter extends ASTVisitor {
 								.getDeclaringClass()) {
 							addDep(x.getDeclaringClass(), hardDeps);
 
-							out.print(TransformUtil.name(x.getDeclaringClass()));
-							out.print("_this->");
+							print(TransformUtil.name(x.getDeclaringClass()));
+							print("_this->");
 						}
 					}
 				} else if (Modifier.isFinal(vb.getModifiers())) {
@@ -432,16 +375,16 @@ public abstract class TransformWriter extends ASTVisitor {
 				}
 			}
 
-			out.print(node.getIdentifier());
-			out.print("_");
+			print(node.getIdentifier());
+			print("_");
 
 		} else if (b instanceof ITypeBinding) {
-			out.print(TransformUtil.name((ITypeBinding) b));
+			print(TransformUtil.name((ITypeBinding) b));
 			TransformUtil.addDep((ITypeBinding) b, softDeps);
 		} else if (b instanceof IMethodBinding) {
-			out.print(TransformUtil.keywords(node.getIdentifier()));
+			print(TransformUtil.keywords(node.getIdentifier()));
 		} else {
-			out.print(node.getIdentifier());
+			print(node.getIdentifier());
 		}
 
 		return false;
@@ -482,21 +425,19 @@ public abstract class TransformWriter extends ASTVisitor {
 
 	@Override
 	public boolean visit(SingleMemberAnnotation node) {
-		out.print("/*");
-		out.print("@");
+		print("/*");
+		print("@");
 		node.getTypeName().accept(this);
-		out.print("(");
+		print("(");
 		node.getValue().accept(this);
-		out.print(")");
-		out.print("*/");
+		print(")");
+		print("*/");
 		return false;
 	}
 
 	@Override
 	public boolean visit(StringLiteral node) {
-		out.print("lit(L");
-		out.print(node.getEscapedValue());
-		out.print(")");
+		print("lit(L", node.getEscapedValue(), ")");
 
 		addDep(node.getAST().resolveWellKnownType("java.lang.String"), hardDeps);
 
@@ -507,14 +448,14 @@ public abstract class TransformWriter extends ASTVisitor {
 	public boolean visit(TagElement node) {
 		if (node.isNested()) {
 			// nested tags are always enclosed in braces
-			out.print("{");
+			print("{");
 		} else {
 			// top-level tags always begin on a new line
-			out.print("\n * ");
+			print("\n * ");
 		}
 		boolean previousRequiresWhiteSpace = false;
 		if (node.getTagName() != null) {
-			out.print(node.getTagName());
+			print(node.getTagName());
 			previousRequiresWhiteSpace = true;
 		}
 		boolean previousRequiresNewLine = false;
@@ -526,26 +467,26 @@ public abstract class TransformWriter extends ASTVisitor {
 			// include white space
 			boolean currentIncludesWhiteSpace = (e instanceof TextElement);
 			if (previousRequiresNewLine && currentIncludesWhiteSpace) {
-				out.print("\n * ");
+				print("\n * ");
 			}
 			previousRequiresNewLine = currentIncludesWhiteSpace;
 			// add space if required to separate
 			if (previousRequiresWhiteSpace && !currentIncludesWhiteSpace) {
-				out.print(" ");
+				print(" ");
 			}
 			e.accept(this);
 			previousRequiresWhiteSpace = !currentIncludesWhiteSpace
 					&& !(e instanceof TagElement);
 		}
 		if (node.isNested()) {
-			out.print("}");
+			print("}");
 		}
 		return false;
 	}
 
 	@Override
 	public boolean visit(TextElement node) {
-		out.print(node.getText());
+		print(node.getText());
 		return false;
 	}
 
@@ -557,10 +498,10 @@ public abstract class TransformWriter extends ASTVisitor {
 
 	@Override
 	public boolean visit(VariableDeclarationExpression node) {
-		out.print(TransformUtil.variableModifiers(node.getModifiers()));
+		print(TransformUtil.variableModifiers(node.getModifiers()));
 		node.getType().accept(this);
 
-		out.print(" ");
+		print(" ");
 
 		visitAllCSV(node.fragments(), false);
 
@@ -569,31 +510,53 @@ public abstract class TransformWriter extends ASTVisitor {
 
 	@Override
 	public boolean visit(VariableDeclarationStatement node) {
-		printIndent(out);
-
-		out.print(TransformUtil.variableModifiers(node.getModifiers()));
+		printi(TransformUtil.variableModifiers(node.getModifiers()));
 
 		node.getType().accept(this);
-		out.print(" ");
+		print(" ");
 
 		visitAllCSV(node.fragments(), false);
 
-		out.println(";");
+		println(";");
 		return false;
 	}
 
 	@Override
 	public boolean visit(WildcardType node) {
-		out.print("?");
+		print("?");
 		Type bound = node.getBound();
 		if (bound != null) {
 			if (node.isUpperBound()) {
-				out.print(" extends ");
+				print(" extends ");
 			} else {
-				out.print(" super ");
+				print(" super ");
 			}
 			bound.accept(this);
 		}
 		return false;
+	}
+
+	protected PrintWriter getOut() {
+		return out;
+	}
+
+	protected void setOut(PrintWriter out) {
+		this.out = out;
+	}
+
+	protected void print(Object... objects) {
+		TransformUtil.print(getOut(), objects);
+	}
+
+	protected void println(Object... objects) {
+		TransformUtil.println(getOut(), objects);
+	}
+
+	protected void printi(Object... objects) {
+		TransformUtil.printi(getOut(), indent, objects);
+	}
+
+	protected void printlni(Object... objects) {
+		TransformUtil.printlni(getOut(), indent, objects);
 	}
 }
