@@ -52,6 +52,8 @@ import org.eclipse.jdt.core.dom.Modifier;
 import org.eclipse.jdt.core.dom.PackageDeclaration;
 import org.eclipse.jdt.core.dom.PostfixExpression;
 import org.eclipse.jdt.core.dom.PrefixExpression;
+import org.eclipse.jdt.core.dom.PrimitiveType;
+import org.eclipse.jdt.core.dom.PrimitiveType.Code;
 import org.eclipse.jdt.core.dom.ReturnStatement;
 import org.eclipse.jdt.core.dom.SingleVariableDeclaration;
 import org.eclipse.jdt.core.dom.Statement;
@@ -1168,9 +1170,49 @@ public class ImplWriter extends TransformWriter {
 
 	@Override
 	public boolean visit(TypeLiteral node) {
-		addDep(node.getType(), hardDeps);
-		node.getType().accept(this);
-		print("::class_");
+		if (node.getType().isPrimitiveType()) {
+			Code code = ((PrimitiveType) node.getType()).getPrimitiveTypeCode();
+			if (code.equals(PrimitiveType.BOOLEAN)) {
+				addDep(node.getAST().resolveWellKnownType("java.lang.Boolean"),
+						hardDeps);
+				print("java::lang::Boolean::TYPE_");
+			} else if (code.equals(PrimitiveType.BYTE)) {
+				addDep(node.getAST().resolveWellKnownType("java.lang.Byte"),
+						hardDeps);
+				print("java::lang::Byte::TYPE_");
+			} else if (code.equals(PrimitiveType.CHAR)) {
+				addDep(node.getAST()
+						.resolveWellKnownType("java.lang.Character"), hardDeps);
+				print("java::lang::Character::TYPE_");
+			} else if (code.equals(PrimitiveType.DOUBLE)) {
+				addDep(node.getAST().resolveWellKnownType("java.lang.Double"),
+						hardDeps);
+				print("java::lang::Double::TYPE_");
+			} else if (code.equals(PrimitiveType.FLOAT)) {
+				addDep(node.getAST().resolveWellKnownType("java.lang.Float"),
+						hardDeps);
+				print("java::lang::Float::TYPE_");
+			} else if (code.equals(PrimitiveType.INT)) {
+				addDep(node.getAST().resolveWellKnownType("java.lang.Integer"),
+						hardDeps);
+				print("java::lang::Integer::TYPE_");
+			} else if (code.equals(PrimitiveType.LONG)) {
+				addDep(node.getAST().resolveWellKnownType("java.lang.Long"),
+						hardDeps);
+				print("java::lang::Long::TYPE_");
+			} else if (code.equals(PrimitiveType.SHORT)) {
+				addDep(node.getAST().resolveWellKnownType("java.lang.Short"),
+						hardDeps);
+				print("java::lang::Short::TYPE_");
+			} else if (code.equals(PrimitiveType.BOOLEAN)) {
+				print("/* " + node.toString()
+						+ ".class */(java::lang::Class*)0");
+			}
+		} else {
+			addDep(node.getType(), hardDeps);
+			node.getType().accept(this);
+			print("::class_");
+		}
 		return false;
 	}
 
