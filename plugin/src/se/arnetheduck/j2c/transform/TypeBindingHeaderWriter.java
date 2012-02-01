@@ -78,7 +78,7 @@ public class TypeBindingHeaderWriter {
 			pw.print(sep);
 			sep = ", public ";
 			pw.print(TransformUtil.inherit(b));
-			pw.print(TransformUtil.qualifiedCName(b));
+			pw.print(TransformUtil.relativeCName(b, tb));
 		}
 
 		if (bases.isEmpty()
@@ -91,7 +91,7 @@ public class TypeBindingHeaderWriter {
 		if (tb.getSuperclass() != null) {
 			pw.print(TransformUtil.indent(1));
 			pw.print("typedef ");
-			pw.print(TransformUtil.qualifiedCName(tb.getSuperclass()));
+			pw.print(TransformUtil.relativeCName(tb.getSuperclass(), tb));
 			pw.println(" super;");
 		}
 
@@ -148,7 +148,8 @@ public class TypeBindingHeaderWriter {
 		pw.print(TransformUtil.fieldModifiers(vb.getModifiers(), true,
 				constant != null));
 
-		pw.print(TransformUtil.qualifiedCName(vb.getType()));
+		pw.print(TransformUtil.relativeCName(vb.getType(),
+				vb.getDeclaringClass()));
 		pw.print(" ");
 
 		pw.print(TransformUtil.ref(vb.getType()));
@@ -183,13 +184,13 @@ public class TypeBindingHeaderWriter {
 			pw.print(TransformUtil.methodModifiers(mb.getModifiers(),
 					tb.getModifiers()));
 
-			pw.print(TransformUtil.qualifiedCName(rt));
+			pw.print(TransformUtil.relativeCName(rt, tb));
 			pw.print(" ");
 			pw.print(TransformUtil.ref(rt));
 		}
 
-		pw.print(mb.isConstructor() ? TransformUtil.name(mb.getDeclaringClass())
-				: TransformUtil.keywords(mb.getMethodDeclaration().getName()));
+		pw.print(mb.isConstructor() ? TransformUtil.name(tb) : TransformUtil
+				.keywords(mb.getMethodDeclaration().getName()));
 
 		pw.print("(");
 		for (int i = 0; i < mb.getParameterTypes().length; ++i) {
@@ -199,7 +200,7 @@ public class TypeBindingHeaderWriter {
 			ITypeBinding pb = mb.getParameterTypes()[i];
 			TransformUtil.addDep(pb, softDeps);
 
-			pw.print(TransformUtil.qualifiedCName(pb));
+			pw.print(TransformUtil.relativeCName(pb, tb));
 			pw.print(" ");
 			pw.print(TransformUtil.ref(pb));
 			pw.print("a" + i);

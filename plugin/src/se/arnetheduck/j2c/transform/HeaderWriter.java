@@ -2,7 +2,6 @@ package se.arnetheduck.j2c.transform;
 
 import java.io.IOException;
 import java.io.PrintWriter;
-import java.io.StringWriter;
 import java.lang.reflect.Modifier;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -21,6 +20,7 @@ import org.eclipse.jdt.core.dom.BodyDeclaration;
 import org.eclipse.jdt.core.dom.EnumConstantDeclaration;
 import org.eclipse.jdt.core.dom.EnumDeclaration;
 import org.eclipse.jdt.core.dom.FieldDeclaration;
+import org.eclipse.jdt.core.dom.IBinding;
 import org.eclipse.jdt.core.dom.IMethodBinding;
 import org.eclipse.jdt.core.dom.ITypeBinding;
 import org.eclipse.jdt.core.dom.IVariableBinding;
@@ -28,6 +28,10 @@ import org.eclipse.jdt.core.dom.ImportDeclaration;
 import org.eclipse.jdt.core.dom.Initializer;
 import org.eclipse.jdt.core.dom.Javadoc;
 import org.eclipse.jdt.core.dom.MethodDeclaration;
+import org.eclipse.jdt.core.dom.QualifiedName;
+import org.eclipse.jdt.core.dom.QualifiedType;
+import org.eclipse.jdt.core.dom.SimpleName;
+import org.eclipse.jdt.core.dom.SimpleType;
 import org.eclipse.jdt.core.dom.SingleVariableDeclaration;
 import org.eclipse.jdt.core.dom.Statement;
 import org.eclipse.jdt.core.dom.Type;
@@ -64,28 +68,6 @@ public class HeaderWriter extends TransformWriter {
 
 	private List<Class<?>> handledBlocks = new ArrayList<Class<?>>(
 			Arrays.asList(TypeDeclaration.class));
-
-	public String getImports(List<ImportDeclaration> declarations) {
-		PrintWriter old = getOut();
-		StringWriter sw = new StringWriter();
-		setOut(new PrintWriter(sw));
-
-		for (ImportDeclaration node : imports) {
-			print("using ");
-			if (node.isOnDemand()) {
-				print("namespace ");
-			}
-
-			node.getName().accept(this);
-			// TODO static imports
-			println(";");
-		}
-
-		getOut().close();
-
-		setOut(old);
-		return sw.toString();
-	}
 
 	@Override
 	public boolean visit(AnonymousClassDeclaration node) {
@@ -313,11 +295,51 @@ public class HeaderWriter extends TransformWriter {
 	}
 
 	@Override
+	public boolean visit(SimpleName node) {
+		IBinding b = node.resolveBinding();
+		if (b instanceof ITypeBinding) {
+			addDep((ITypeBinding) b, softDeps);
+			print(TransformUtil.relativeCName((ITypeBinding) b, state.tb));
+			return false;
+		}
+		return super.visit(node);
+	}
+
+	@Override
+	public boolean visit(SimpleType node) {
+		ITypeBinding b = node.resolveBinding();
+		addDep(b, softDeps);
+		print(TransformUtil.relativeCName(b, state.tb));
+		return false;
+	}
+
+	@Override
+	public boolean visit(QualifiedName node) {
+		IBinding b = node.resolveBinding();
+		if (b instanceof ITypeBinding) {
+			addDep((ITypeBinding) b, softDeps);
+			print(TransformUtil.relativeCName((ITypeBinding) b, state.tb));
+			return false;
+		}
+		return super.visit(node);
+	}
+
+	@Override
+	public boolean visit(QualifiedType node) {
+		ITypeBinding b = node.resolveBinding();
+		addDep(b, softDeps);
+		print(TransformUtil.relativeCName(b, state.tb));
+		return false;
+	}
+
+	@Override
 	public boolean visit(SingleVariableDeclaration node) {
 		ITypeBinding tb = node.getType().resolveBinding();
+
 		if (node.getExtraDimensions() > 0) {
+			addDep(tb, softDeps);
 			tb = tb.createArrayType(node.getExtraDimensions());
-			print(TransformUtil.name(tb));
+			print(TransformUtil.relativeCName(tb, state.tb));
 		} else {
 			node.getType().accept(this);
 		}
@@ -362,8 +384,6 @@ public class HeaderWriter extends TransformWriter {
 
 			println("using namespace java::lang;");
 
-			println(getImports(imports));
-
 			println();
 
 			if (node.getJavadoc() != null) {
@@ -382,7 +402,7 @@ public class HeaderWriter extends TransformWriter {
 
 			for (ITypeBinding base : bases) {
 				print(sep, TransformUtil.inherit(base),
-						TransformUtil.qualifiedCName(base));
+						TransformUtil.relativeCName(base, tb));
 				sep = ", public ";
 			}
 
@@ -451,8 +471,6 @@ public class HeaderWriter extends TransformWriter {
 			println();
 
 			println("using namespace java::lang;");
-
-			println(getImports(imports));
 
 			println();
 
