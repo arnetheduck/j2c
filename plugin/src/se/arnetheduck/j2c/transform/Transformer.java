@@ -1,7 +1,6 @@
 package se.arnetheduck.j2c.transform;
 
 import java.io.File;
-import java.io.IOException;
 import java.util.Comparator;
 import java.util.Iterator;
 import java.util.Set;
@@ -14,9 +13,11 @@ import org.eclipse.jdt.core.IJavaProject;
 import org.eclipse.jdt.core.IType;
 import org.eclipse.jdt.core.dom.AST;
 import org.eclipse.jdt.core.dom.ASTParser;
+import org.eclipse.jdt.core.dom.AbstractTypeDeclaration;
 import org.eclipse.jdt.core.dom.CompilationUnit;
 import org.eclipse.jdt.core.dom.IPackageBinding;
 import org.eclipse.jdt.core.dom.ITypeBinding;
+import org.eclipse.jdt.core.dom.TypeDeclaration;
 
 public class Transformer {
 	private final IJavaProject project;
@@ -101,14 +102,19 @@ public class Transformer {
 		return cu;
 	}
 
-	private void writeHeader(IPath root, CompilationUnit cu) throws IOException {
-		HeaderWriter hw = new HeaderWriter(root);
-		cu.accept(hw);
+	private void writeHeader(IPath root, CompilationUnit cu) throws Exception {
+		for (AbstractTypeDeclaration type : (Iterable<AbstractTypeDeclaration>) cu
+				.types()) {
+			if (type instanceof TypeDeclaration) {
+				HeaderWriter hw = new HeaderWriter(root, type.resolveBinding());
+				hw.write((TypeDeclaration) type);
 
-		packages.addAll(hw.getPackages());
-		headers.addAll(hw.getTypes());
-		hardDeps.addAll(hw.getHardDeps());
-		softDeps.addAll(hw.getSoftDeps());
+				packages.addAll(hw.getPackages());
+				headers.addAll(hw.getTypes());
+				hardDeps.addAll(hw.getHardDeps());
+				softDeps.addAll(hw.getSoftDeps());
+			}
+		}
 	}
 
 	private void writeHeader(IPath root, ITypeBinding tb) throws Exception {
@@ -121,14 +127,21 @@ public class Transformer {
 	}
 
 	private void writeImpl(IPath root, CompilationUnit cu) throws Exception {
-		ImplWriter iw = new ImplWriter(root);
-		cu.accept(iw);
+		for (AbstractTypeDeclaration type : (Iterable<AbstractTypeDeclaration>) cu
+				.types()) {
+			if (type instanceof TypeDeclaration) {
+				ImplWriter iw = new ImplWriter(root, type.resolveBinding(),
+						cu.imports());
 
-		packages.addAll(iw.getPackages());
-		headers.addAll(iw.getTypes());
-		impls.addAll(iw.getTypes());
-		hardDeps.addAll(iw.getHardDeps());
-		softDeps.addAll(iw.getSoftDeps());
+				iw.write((TypeDeclaration) type);
+
+				packages.addAll(iw.getPackages());
+				headers.addAll(iw.getTypes());
+				impls.addAll(iw.getTypes());
+				hardDeps.addAll(iw.getHardDeps());
+				softDeps.addAll(iw.getSoftDeps());
+			}
+		}
 	}
 
 	public void processDeps(IPath root) throws Exception {

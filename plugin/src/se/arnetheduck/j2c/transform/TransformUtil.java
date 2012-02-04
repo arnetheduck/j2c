@@ -361,6 +361,19 @@ public final class TransformUtil {
 		return t.isPrimitiveType() ? "" : "*";
 	}
 
+	public static boolean isInner(ITypeBinding tb) {
+		return tb.isNested() && !Modifier.isStatic(tb.getModifiers());
+	}
+
+	public static String outerThis(ITypeBinding tb) {
+		return TransformUtil.relativeCName(tb.getDeclaringClass(), tb) + " *"
+				+ outerThisName(tb);
+	}
+
+	public static String outerThisName(ITypeBinding tb) {
+		return TransformUtil.name(tb.getDeclaringClass()) + "_this";
+	}
+
 	private static Collection<String> keywords = Arrays.asList("delete",
 			"register", "union");
 
@@ -376,27 +389,28 @@ public final class TransformUtil {
 	public static String methodUsing(IMethodBinding mb) {
 		ITypeBinding tb = mb.getDeclaringClass();
 
-		boolean needsUsing = false;
+		ITypeBinding using = null;
 		for (IMethodBinding b : methods(tb.getSuperclass(), mb.getName())) {
 			if (mb.getParameterTypes().length != b.getParameterTypes().length) {
-				needsUsing = true;
+				using = b.getDeclaringClass();
 				break;
 			}
 
-			for (int i = 0; i < mb.getParameterTypes().length && !needsUsing; ++i) {
+			for (int i = 0; i < mb.getParameterTypes().length && using == null; ++i) {
 				if (!mb.getParameterTypes()[i].getQualifiedName().equals(
 						b.getParameterTypes()[i].getQualifiedName())) {
-					needsUsing = true;
+					using = b.getDeclaringClass();
 				}
 			}
 
-			if (needsUsing) {
+			if (using != null) {
 				break;
 			}
 		}
 
-		if (needsUsing) {
-			return "using super::" + mb.getName() + ";";
+		if (using != null) {
+			return "using " + relativeCName(using, tb) + "::" + mb.getName()
+					+ ";";
 		}
 
 		return null;
@@ -425,7 +439,7 @@ public final class TransformUtil {
 		return ret;
 	}
 
-	public static String inherit(ITypeBinding tb) {
+	public static String virtual(ITypeBinding tb) {
 		if (tb.isInterface()
 				|| tb.getQualifiedName().equals(Object.class.getName())) {
 			return "virtual ";

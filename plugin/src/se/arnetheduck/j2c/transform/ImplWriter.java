@@ -2,7 +2,6 @@ package se.arnetheduck.j2c.transform;
 
 import java.io.FileNotFoundException;
 import java.io.FileOutputStream;
-import java.io.IOException;
 import java.io.PrintWriter;
 import java.io.StringWriter;
 import java.util.ArrayList;
@@ -36,7 +35,9 @@ import org.eclipse.jdt.core.dom.Expression;
 import org.eclipse.jdt.core.dom.FieldAccess;
 import org.eclipse.jdt.core.dom.FieldDeclaration;
 import org.eclipse.jdt.core.dom.ForStatement;
+import org.eclipse.jdt.core.dom.IBinding;
 import org.eclipse.jdt.core.dom.IMethodBinding;
+import org.eclipse.jdt.core.dom.IPackageBinding;
 import org.eclipse.jdt.core.dom.ITypeBinding;
 import org.eclipse.jdt.core.dom.IVariableBinding;
 import org.eclipse.jdt.core.dom.IfStatement;
@@ -49,12 +50,13 @@ import org.eclipse.jdt.core.dom.LabeledStatement;
 import org.eclipse.jdt.core.dom.MethodDeclaration;
 import org.eclipse.jdt.core.dom.MethodInvocation;
 import org.eclipse.jdt.core.dom.Modifier;
-import org.eclipse.jdt.core.dom.PackageDeclaration;
 import org.eclipse.jdt.core.dom.PostfixExpression;
 import org.eclipse.jdt.core.dom.PrefixExpression;
 import org.eclipse.jdt.core.dom.PrimitiveType;
 import org.eclipse.jdt.core.dom.PrimitiveType.Code;
+import org.eclipse.jdt.core.dom.QualifiedName;
 import org.eclipse.jdt.core.dom.ReturnStatement;
+import org.eclipse.jdt.core.dom.SimpleName;
 import org.eclipse.jdt.core.dom.SingleVariableDeclaration;
 import org.eclipse.jdt.core.dom.Statement;
 import org.eclipse.jdt.core.dom.SuperConstructorInvocation;
@@ -77,68 +79,266 @@ import org.eclipse.jdt.core.dom.WhileStatement;
 
 public class ImplWriter extends TransformWriter {
 	private final IPath root;
+	private final Set<IVariableBinding> closures;
 
 	private StringWriter initializer;
+	private List<MethodDeclaration> constructors = new ArrayList<MethodDeclaration>();
+	private final List<ImportDeclaration> imports;
 
-	private ITypeBinding type;
-
-	public ImplWriter(IPath root) {
+	public ImplWriter(IPath root, ITypeBinding type,
+			List<ImportDeclaration> imports) {
+		super(type);
 		this.root = root;
+		this.imports = imports;
+
+		closures = type.isLocal() ? new HashSet<IVariableBinding>() : null;
+
+		for (ImportDeclaration id : imports) {
+			IBinding b = id.resolveBinding();
+			if (b instanceof IPackageBinding) {
+				packages.add((IPackageBinding) b);
+			} else if (b instanceof ITypeBinding) {
+				softDeps.add((ITypeBinding) b);
+			}
+		}
 	}
 
-	public String getImports() {
-		PrintWriter old = getOut();
-		StringWriter sw = new StringWriter();
-		setOut(new PrintWriter(sw));
+	public void write(TypeDeclaration node) throws Exception {
+		StringWriter body = getBody(node.bodyDeclarations());
+		writeType(body);
+	}
 
-		for (ImportDeclaration node : imports) {
-			print("using ");
-			if (node.isOnDemand()) {
-				print("namespace ");
+	public void write(AnonymousClassDeclaration node) throws Exception {
+		StringWriter body = getBody(node.bodyDeclarations());
+		writeType(body);
+	}
+
+	private StringWriter getBody(Iterable<BodyDeclaration> declarations) {
+		StringWriter body = new StringWriter();
+		out = new PrintWriter(body);
+
+		visitAll(declarations);
+
+		out.close();
+		return body;
+	}
+
+	private void writeType(StringWriter body) throws FileNotFoundException {
+		try {
+			out = new PrintWriter(new FileOutputStream(root
+					+ TransformUtil.implName(type)));
+
+			println(TransformUtil.include(type));
+
+			for (ITypeBinding dep : getHardDeps()) {
+				println(TransformUtil.include(dep));
 			}
 
-			node.getName().accept(this);
-			// TODO static imports
-			println(";");
+			println("using namespace java::lang;");
+
+			for (ImportDeclaration node : imports) {
+				print("using ");
+				if (node.isOnDemand()) {
+					print("namespace ");
+				}
+
+				node.getName().accept(this);
+				// TODO static imports
+				println(";");
+			}
+
+			println();
+
+			if (type.isAnonymous()) {
+				makeBaseConstructors();
+			} else {
+				makeConstructors();
+			}
+
+			if (closeInitializer()) {
+				print(initializer.toString());
+			}
+
+			print(body.toString());
+
+			out.close();
+		} finally {
+			out = null;
+		}
+	}
+
+	private void makeConstructors() {
+		String qname = TransformUtil.qualifiedCName(type);
+		String name = TransformUtil.name(type);
+
+		if (constructors.isEmpty() && TransformUtil.isInner(type)
+				|| (closures != null && !closures.isEmpty())) {
+			printi(qname, "::", name, "(");
+			printNestedParams(closures);
+			println(") : ");
+			indent++;
+			String sep = "";
+			if (TransformUtil.isInner(type)) {
+				printi();
+				printInit(TransformUtil.outerThisName(type));
+				sep = ", ";
+			}
+
+			if (closures != null) {
+				for (IVariableBinding closure : closures) {
+					println(sep);
+					printi();
+					printInit(closure.getName() + "_");
+					sep = ", ";
+				}
+			}
+			println();
+			println("{ }");
+			indent--;
 		}
 
-		getOut().close();
+		for (MethodDeclaration md : constructors) {
+			printi(qname, "::", name, "(");
 
-		setOut(old);
-		return sw.toString();
+			String sep = printNestedParams(closures);
+
+			if (!md.parameters().isEmpty()) {
+				print(sep);
+
+				visitAllCSV(md.parameters(), false);
+			}
+
+			println(") ", TransformUtil.throwsDecl(md.thrownExceptions()));
+
+			if (TransformUtil.isInner(type)
+					|| (closures != null && !closures.isEmpty())) {
+				println(" : ");
+				sep = "";
+				if (TransformUtil.isInner(type)) {
+					printInit(TransformUtil.outerThisName(type));
+				}
+
+				if (closures != null) {
+					for (IVariableBinding closure : closures) {
+						println(sep);
+						printInit(closure.getName() + "_");
+						sep = ", ";
+					}
+				}
+			}
+			println(" {");
+			indent++;
+			println("_construct(");
+			printi("_construct(");
+
+			printNames(md.parameters());
+
+			println(");");
+
+			indent--;
+			println("}");
+			println();
+		}
+	}
+
+	private void makeBaseConstructors() {
+		// Synthesize base class constructors
+		String qname = TransformUtil.qualifiedCName(type);
+		String name = TransformUtil.name(type);
+		boolean fake = true;
+		for (IMethodBinding mb : type.getSuperclass().getDeclaredMethods()) {
+			if (!mb.isConstructor()) {
+				continue;
+			}
+
+			fake = false;
+
+			printi(qname, "::", name, "(");
+
+			String sep = printNestedParams(closures);
+
+			for (int i = 0; i < mb.getParameterTypes().length; ++i) {
+				ITypeBinding pb = mb.getParameterTypes()[i];
+				TransformUtil.addDep(pb, softDeps);
+
+				print(sep, TransformUtil.relativeCName(pb, type), " ",
+						TransformUtil.ref(pb), "a" + i);
+				sep = ", ";
+			}
+
+			println(") : ");
+			indent++;
+			printi(TransformUtil.relativeCName(type.getSuperclass(), type), "(");
+
+			sep = "";
+			for (int i = 0; i < mb.getParameterTypes().length; ++i) {
+				print(sep, "a" + i);
+				sep = ", ";
+			}
+
+			print(")");
+
+			if (!Modifier.isStatic(type.getModifiers())) {
+				println(", ");
+				printi();
+				printInit(TransformUtil.outerThisName(type));
+			}
+
+			for (IVariableBinding closure : closures) {
+				println(", ");
+				printi();
+				printInit(closure.getName() + "_");
+			}
+
+			indent--;
+			println();
+			println(" { }");
+			println();
+		}
+	}
+
+	private void printInit(String n) {
+		print(n, "(", n, ")");
 	}
 
 	@Override
 	public boolean visit(AnonymousClassDeclaration node) {
-		HeaderWriter hw = new HeaderWriter(root);
-
-		StringWriter old = initializer;
-		ITypeBinding oldType = type;
-		int oldIndent = indent;
-		indent = 0;
-
 		ITypeBinding tb = node.resolveBinding();
-
-		initializer = null;
-		type = tb;
-
-		addType(tb);
-
+		ImplWriter iw = new ImplWriter(root, tb, imports);
 		try {
-			writeType(getBody(node.bodyDeclarations()), tb);
-		} catch (IOException e) {
+			iw.write(node);
+		} catch (Exception e) {
 			throw new Error(e);
 		}
 
-		hw.writeAnonymousHeader(node.getAST(), tb, imports,
-				node.bodyDeclarations(), closures);
+		if (iw.closures != null && closures != null) {
+			for (IVariableBinding vb : iw.closures) {
+				if (!vb.getDeclaringMethod().getDeclaringClass().getKey()
+						.equals(type.getKey())) {
+					closures.add(vb);
+				}
+			}
+		}
+
+		types.addAll(iw.getTypes());
+		softDeps.addAll(iw.getSoftDeps());
+
+		HeaderWriter hw = new HeaderWriter(root, tb);
+
+		hw.writeType(node.getAST(), node.bodyDeclarations(), iw.closures);
 
 		hardDeps.addAll(hw.getHardDeps());
 		softDeps.addAll(hw.getSoftDeps());
 
-		initializer = old;
-		type = oldType;
-		indent = oldIndent;
+		print("this");
+
+		String sep = ", ";
+
+		for (IVariableBinding closure : iw.closures) {
+			print(sep, closure.getName(), "_");
+			sep = ", ";
+		}
+
 		return false;
 	}
 
@@ -298,39 +498,24 @@ public class ImplWriter extends TransformWriter {
 			print(".");
 		}
 
-		Set<IVariableBinding> oldClosures = closures;
-		closures = new HashSet<IVariableBinding>();
-
 		print("(new ");
+		String sep = "";
 
 		if (node.getAnonymousClassDeclaration() != null) {
 			ITypeBinding atb = node.getAnonymousClassDeclaration()
 					.resolveBinding();
-			print(TransformUtil.name(atb));
+			print(TransformUtil.name(atb), "(");
 			node.getAnonymousClassDeclaration().accept(this);
 			addDep(atb, hardDeps);
+			sep = ", ";
 		} else {
 			print(TransformUtil.typeArguments(node.typeArguments()));
 
 			node.getType().accept(this);
 
 			addDep(node.getType(), hardDeps);
+			print("(");
 		}
-
-		String sep = "";
-
-		print("(");
-		if (node.getAnonymousClassDeclaration() != null) {
-			print("this");
-			sep = ", ";
-
-			for (IVariableBinding closure : closures) {
-				print(sep, closure.getName(), "_");
-				sep = ", ";
-			}
-		}
-
-		closures = oldClosures;
 
 		if (!node.arguments().isEmpty()) {
 			print(sep);
@@ -565,20 +750,20 @@ public class ImplWriter extends TransformWriter {
 	@Override
 	public boolean visit(Initializer node) {
 		if (initializer != null) {
-			PrintWriter oldOut = getOut();
-			setOut(new PrintWriter(initializer));
+			PrintWriter oldOut = out;
+			out = new PrintWriter(initializer);
 
 			node.getBody().accept(this);
 
-			getOut().close();
-			setOut(oldOut);
+			out.close();
+			out = oldOut;
 
 			return false;
 		}
 
 		initializer = new StringWriter();
-		PrintWriter oldOut = getOut();
-		setOut(new PrintWriter(initializer));
+		PrintWriter oldOut = out;
+		out = new PrintWriter(initializer);
 
 		if (node.getJavadoc() != null) {
 			node.getJavadoc().accept(this);
@@ -594,8 +779,8 @@ public class ImplWriter extends TransformWriter {
 
 		indent--;
 
-		getOut().close();
-		setOut(oldOut);
+		out.close();
+		out = oldOut;
 
 		return false;
 	}
@@ -605,9 +790,9 @@ public class ImplWriter extends TransformWriter {
 			return false;
 		}
 
-		PrintWriter oldOut = getOut();
+		PrintWriter oldOut = out;
 
-		setOut(new PrintWriter(initializer));
+		out = new PrintWriter(initializer);
 		printlni("}");
 		println();
 
@@ -615,8 +800,8 @@ public class ImplWriter extends TransformWriter {
 		String cname = TransformUtil.qualifiedCName(type);
 		print(cname, "::", name, "Initializer ", cname, "::staticInitializer;");
 
-		getOut().close();
-		setOut(oldOut);
+		out.close();
+		out = oldOut;
 
 		return true;
 	}
@@ -668,8 +853,9 @@ public class ImplWriter extends TransformWriter {
 		printi(TransformUtil.typeParameters(node.typeParameters()));
 
 		if (!node.isConstructor()) {
-			node.getReturnType2().accept(this);
-			print(" ", TransformUtil.ref(node.getReturnType2()));
+			print(TransformUtil.qualifiedCName(node.getReturnType2()
+					.resolveBinding()), " ", TransformUtil.ref(node
+					.getReturnType2()));
 		}
 
 		print(TransformUtil.qualifiedCName(type), "::");
@@ -780,12 +966,6 @@ public class ImplWriter extends TransformWriter {
 	}
 
 	@Override
-	public boolean visit(PackageDeclaration node) {
-		pkg = node;
-		return false;
-	}
-
-	@Override
 	public boolean visit(PostfixExpression node) {
 		node.getOperand().accept(this);
 		print(node.getOperator().toString());
@@ -809,6 +989,70 @@ public class ImplWriter extends TransformWriter {
 
 		println(";");
 		return false;
+	}
+
+	@Override
+	public boolean visit(SimpleName node) {
+		IBinding b = node.resolveBinding();
+		if (b instanceof IVariableBinding) {
+			IVariableBinding vb = (IVariableBinding) b;
+			addDep(vb.getType(), softDeps);
+
+			ITypeBinding ptb = parentType(node);
+			if (ptb != null && ptb.isNested()
+					&& !Modifier.isStatic(ptb.getModifiers())) {
+				IMethodBinding pmb = parentMethod(node);
+
+				ITypeBinding dc = vb.getDeclaringClass();
+				if (vb.isField() && dc != null && ptb != null
+						&& !dc.getKey().equals(ptb.getKey())) {
+					if (!(node.getParent() instanceof QualifiedName)) {
+
+						for (ITypeBinding x = ptb; x.getDeclaringClass() != null
+								&& !x.getKey().equals(dc.getKey()); x = x
+								.getDeclaringClass()) {
+							addDep(x.getDeclaringClass(), hardDeps);
+
+							print(TransformUtil.name(x.getDeclaringClass()));
+							print("_this->");
+						}
+					}
+				} else if (Modifier.isFinal(vb.getModifiers())) {
+					if (pmb != null
+							&& vb.getDeclaringMethod() != null
+							&& !pmb.getKey().equals(
+									vb.getDeclaringMethod().getKey())) {
+						closures.add(vb);
+					}
+				}
+			}
+		}
+
+		return super.visit(node);
+	}
+
+	private static IMethodBinding parentMethod(ASTNode node) {
+		for (ASTNode n = node; n != null; n = n.getParent()) {
+			if (n instanceof MethodDeclaration) {
+				return ((MethodDeclaration) n).resolveBinding();
+			}
+		}
+
+		return null;
+	}
+
+	private static ITypeBinding parentType(ASTNode node) {
+		for (ASTNode n = node; n != null; n = n.getParent()) {
+			if (n instanceof AnonymousClassDeclaration) {
+				return ((AnonymousClassDeclaration) n).resolveBinding();
+			}
+
+			if (n instanceof TypeDeclaration) {
+				return ((TypeDeclaration) n).resolveBinding();
+			}
+		}
+
+		return null;
 	}
 
 	@Override
@@ -1012,160 +1256,23 @@ public class ImplWriter extends TransformWriter {
 
 	@Override
 	public boolean visit(TypeDeclaration node) {
-		StringWriter oldInitializer = initializer;
-		ITypeBinding oldType = type;
-		PrintWriter oldOut = getOut();
-		Set<IVariableBinding> oldClosures = closures;
-
-		final ITypeBinding tb = node.resolveBinding();
-
-		type = tb;
-		addType(tb);
-
-		if (type.isNested()) {
-			closures = new HashSet<IVariableBinding>();
-		}
-
+		ITypeBinding tb = node.resolveBinding();
+		ImplWriter iw = new ImplWriter(root, tb, imports);
 		try {
-			StringWriter body = getBody(node.bodyDeclarations());
-
-			writeType(body, tb);
-		} catch (IOException e) {
+			iw.write(node);
+		} catch (Exception e) {
 			throw new Error(e);
 		}
+		types.addAll(iw.getTypes());
+		softDeps.addAll(iw.getSoftDeps());
+		HeaderWriter hw = new HeaderWriter(root, tb);
 
-		initializer = oldInitializer;
-		type = oldType;
-		setOut(oldOut);
-		closures = oldClosures;
+		hw.writeType(node.getAST(), node.bodyDeclarations(), iw.closures);
+
+		hardDeps.addAll(hw.getHardDeps());
+		softDeps.addAll(hw.getSoftDeps());
 
 		return false;
-	}
-
-	private StringWriter getBody(Iterable<BodyDeclaration> declarations) {
-		PrintWriter old = getOut();
-		StringWriter body = new StringWriter();
-		setOut(new PrintWriter(body));
-
-		visitAll(declarations);
-
-		getOut().close();
-		setOut(old);
-		return body;
-	}
-
-	private void writeType(StringWriter body, final ITypeBinding tb)
-			throws FileNotFoundException {
-		PrintWriter old = getOut();
-		try {
-			setOut(new PrintWriter(new FileOutputStream(root
-					+ TransformUtil.implName(tb))));
-
-			println(TransformUtil.include(tb));
-
-			for (ITypeBinding dep : getHardDeps()) {
-				println(TransformUtil.include(dep));
-			}
-
-			println(TransformUtil.include("java.lang.h"));
-
-			if (pkg.getJavadoc() != null) {
-				pkg.getJavadoc().accept(this);
-			}
-
-			println(TransformUtil.annotations(pkg.annotations()));
-
-			print("using namespace ");
-			pkg.getName().accept(this);
-			println(";");
-
-			println(getImports());
-
-			print(body.toString());
-
-			if (tb.isLocal()) {
-				// For local classes, synthesize base class constructors
-				String qname = TransformUtil.qualifiedCName(tb);
-				String name = TransformUtil.name(tb);
-				for (IMethodBinding mb : tb.getSuperclass()
-						.getDeclaredMethods()) {
-					if (!mb.isConstructor()) {
-						continue;
-					}
-
-					printi(qname, "::", name, "(");
-
-					String sep = "";
-					if (!Modifier.isStatic(tb.getModifiers())) {
-						print(TransformUtil.relativeCName(
-								tb.getDeclaringClass(), tb));
-						print(" *" + TransformUtil.name(tb.getDeclaringClass())
-								+ "_this");
-						sep = ", ";
-					}
-
-					for (IVariableBinding closure : closures) {
-						print(sep, TransformUtil.relativeCName(
-								closure.getType(), tb), " ",
-								TransformUtil.ref(closure.getType()),
-								closure.getName(), "_");
-						sep = ", ";
-					}
-
-					for (int i = 0; i < mb.getParameterTypes().length; ++i) {
-						ITypeBinding pb = mb.getParameterTypes()[i];
-						TransformUtil.addDep(pb, softDeps);
-
-						print(sep, TransformUtil.relativeCName(pb, tb), " ",
-								TransformUtil.ref(pb), "a" + i);
-						sep = ", ";
-					}
-
-					println(") : ");
-					indent++;
-					printi(TransformUtil.relativeCName(tb.getSuperclass(), tb),
-							"(");
-
-					sep = "";
-					for (int i = 0; i < mb.getParameterTypes().length; ++i) {
-						print(sep, "a" + i);
-						sep = ", ";
-					}
-
-					print(")");
-
-					sep = ", ";
-					if (!Modifier.isStatic(tb.getModifiers())) {
-						println(", ");
-						printi();
-						printInit(TransformUtil.name(tb.getDeclaringClass())
-								+ "_this");
-					}
-
-					for (IVariableBinding closure : closures) {
-						println(", ");
-						printi();
-						printInit(closure.getName() + "_");
-					}
-
-					indent--;
-					println(" { }");
-
-				}
-			}
-
-			if (closeInitializer()) {
-				print(initializer.toString());
-			}
-
-			getOut().close();
-		} finally {
-			setOut(old);
-		}
-	}
-
-	private void printInit(String n) {
-		print(n, "(", n, ")");
 	}
 
 	@Override

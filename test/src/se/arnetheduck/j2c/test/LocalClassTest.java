@@ -77,7 +77,6 @@ public class LocalClassTest {
 		return lpc.run(new int[] { 10 });
 	}
 
-	/*
 	public int testNestedClosure(final int outermost) {
 		ParamConstructor lpc = new ParamConstructor(3) {
 			@Override
@@ -95,5 +94,5 @@ public class LocalClassTest {
 
 		return lpc.run(new int[] { 10 });
 
-	} */
+	}
 }

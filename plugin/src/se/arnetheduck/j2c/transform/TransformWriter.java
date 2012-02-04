@@ -1,17 +1,13 @@
 package se.arnetheduck.j2c.transform;
 
 import java.io.PrintWriter;
-import java.lang.reflect.Modifier;
-import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Iterator;
-import java.util.List;
 import java.util.Set;
 import java.util.TreeSet;
 
 import org.eclipse.jdt.core.dom.ASTNode;
 import org.eclipse.jdt.core.dom.ASTVisitor;
-import org.eclipse.jdt.core.dom.AnonymousClassDeclaration;
 import org.eclipse.jdt.core.dom.ArrayType;
 import org.eclipse.jdt.core.dom.AssertStatement;
 import org.eclipse.jdt.core.dom.BlockComment;
@@ -28,7 +24,6 @@ import org.eclipse.jdt.core.dom.IVariableBinding;
 import org.eclipse.jdt.core.dom.ImportDeclaration;
 import org.eclipse.jdt.core.dom.LineComment;
 import org.eclipse.jdt.core.dom.MemberRef;
-import org.eclipse.jdt.core.dom.MethodDeclaration;
 import org.eclipse.jdt.core.dom.MethodRef;
 import org.eclipse.jdt.core.dom.MethodRefParameter;
 import org.eclipse.jdt.core.dom.Name;
@@ -47,7 +42,6 @@ import org.eclipse.jdt.core.dom.StringLiteral;
 import org.eclipse.jdt.core.dom.TagElement;
 import org.eclipse.jdt.core.dom.TextElement;
 import org.eclipse.jdt.core.dom.Type;
-import org.eclipse.jdt.core.dom.TypeDeclaration;
 import org.eclipse.jdt.core.dom.TypeDeclarationStatement;
 import org.eclipse.jdt.core.dom.VariableDeclarationExpression;
 import org.eclipse.jdt.core.dom.VariableDeclarationFragment;
@@ -55,22 +49,27 @@ import org.eclipse.jdt.core.dom.VariableDeclarationStatement;
 import org.eclipse.jdt.core.dom.WildcardType;
 
 public abstract class TransformWriter extends ASTVisitor {
-	protected List<ImportDeclaration> imports = new ArrayList<ImportDeclaration>();
+	protected final ITypeBinding type;
 
 	protected int indent;
 
-	protected PackageDeclaration pkg;
+	protected PrintWriter out;
 
-	private PrintWriter out;
-
-	private Set<IPackageBinding> packages = new TreeSet<IPackageBinding>(
+	protected Set<IPackageBinding> packages = new TreeSet<IPackageBinding>(
 			new Transformer.PackageBindingComparator());
-	private Set<ITypeBinding> types = new TreeSet<ITypeBinding>(
+	protected Set<ITypeBinding> types = new TreeSet<ITypeBinding>(
 			new Transformer.TypeBindingComparator());
 	protected Set<ITypeBinding> hardDeps = new TreeSet<ITypeBinding>(
 			new Transformer.TypeBindingComparator());
 	protected Set<ITypeBinding> softDeps = new TreeSet<ITypeBinding>(
 			new Transformer.TypeBindingComparator());
+
+	protected TransformWriter(final ITypeBinding type) {
+		this.type = type;
+
+		types.add(type);
+		softDeps.add(type);
+	}
 
 	public Set<IPackageBinding> getPackages() {
 		return packages;
@@ -134,6 +133,42 @@ public abstract class TransformWriter extends ASTVisitor {
 		return false;
 	}
 
+	protected void print(Object... objects) {
+		TransformUtil.print(out, objects);
+	}
+
+	protected void println(Object... objects) {
+		TransformUtil.println(out, objects);
+	}
+
+	protected void printi(Object... objects) {
+		TransformUtil.printi(out, indent, objects);
+	}
+
+	protected void printlni(Object... objects) {
+		TransformUtil.printlni(out, indent, objects);
+	}
+
+	protected String printNestedParams(Collection<IVariableBinding> closures) {
+		String sep = "";
+		if (TransformUtil.isInner(type)) {
+			print(TransformUtil.outerThis(type));
+			sep = ", ";
+		}
+
+		if (closures != null) {
+			for (IVariableBinding closure : closures) {
+				print(sep,
+						TransformUtil.relativeCName(closure.getType(), type),
+						" ", TransformUtil.ref(closure.getType()),
+						closure.getName(), "_");
+				sep = ", ";
+			}
+		}
+
+		return sep;
+	}
+
 	@Override
 	public boolean visit(ArrayType node) {
 		if (node.getComponentType().isArrayType()
@@ -182,14 +217,7 @@ public abstract class TransformWriter extends ASTVisitor {
 
 	@Override
 	public boolean visit(CompilationUnit node) {
-		if (node.getPackage() != null) {
-			node.getPackage().accept(this);
-		}
-
-		visitAll(node.imports());
-		visitAll(node.types());
-
-		return false;
+		throw new UnsupportedOperationException();
 	}
 
 	@Override
@@ -208,14 +236,7 @@ public abstract class TransformWriter extends ASTVisitor {
 
 	@Override
 	public boolean visit(ImportDeclaration node) {
-		imports.add(node);
-
-		IBinding b = node.resolveBinding();
-		if (b instanceof IPackageBinding) {
-			packages.add((IPackageBinding) b);
-		}
-
-		return false;
+		throw new UnsupportedOperationException();
 	}
 
 	@Override
@@ -275,8 +296,7 @@ public abstract class TransformWriter extends ASTVisitor {
 
 	@Override
 	public boolean visit(PackageDeclaration node) {
-		pkg = node;
-		return false;
+		throw new UnsupportedOperationException();
 	}
 
 	@Override
@@ -336,8 +356,6 @@ public abstract class TransformWriter extends ASTVisitor {
 		return false;
 	}
 
-	protected Set<IVariableBinding> closures;
-
 	@Override
 	public boolean visit(SimpleName node) {
 		IBinding b = node.resolveBinding();
@@ -346,38 +364,8 @@ public abstract class TransformWriter extends ASTVisitor {
 			IVariableBinding vb = (IVariableBinding) b;
 			addDep(vb.getType(), softDeps);
 
-			ITypeBinding ptb = parentType(node);
-			if (ptb != null && ptb.isNested()
-					&& !Modifier.isStatic(ptb.getModifiers())) {
-				IMethodBinding pmb = parentMethod(node);
-
-				ITypeBinding dc = vb.getDeclaringClass();
-				if (vb.isField() && dc != null && ptb != null
-						&& !dc.getKey().equals(ptb.getKey())) {
-					if (!(node.getParent() instanceof QualifiedName)) {
-
-						for (ITypeBinding x = ptb; x.getDeclaringClass() != null
-								&& !x.getKey().equals(dc.getKey()); x = x
-								.getDeclaringClass()) {
-							addDep(x.getDeclaringClass(), hardDeps);
-
-							print(TransformUtil.name(x.getDeclaringClass()));
-							print("_this->");
-						}
-					}
-				} else if (Modifier.isFinal(vb.getModifiers())) {
-					if (pmb != null
-							&& vb.getDeclaringMethod() != null
-							&& !pmb.getKey().equals(
-									vb.getDeclaringMethod().getKey())) {
-						closures.add(vb);
-					}
-				}
-			}
-
 			print(node.getIdentifier());
 			print("_");
-
 		} else if (b instanceof ITypeBinding) {
 			print(TransformUtil.name((ITypeBinding) b));
 			TransformUtil.addDep((ITypeBinding) b, softDeps);
@@ -388,30 +376,6 @@ public abstract class TransformWriter extends ASTVisitor {
 		}
 
 		return false;
-	}
-
-	private static IMethodBinding parentMethod(ASTNode node) {
-		for (ASTNode n = node; n != null; n = n.getParent()) {
-			if (n instanceof MethodDeclaration) {
-				return ((MethodDeclaration) n).resolveBinding();
-			}
-		}
-
-		return null;
-	}
-
-	private static ITypeBinding parentType(ASTNode node) {
-		for (ASTNode n = node; n != null; n = n.getParent()) {
-			if (n instanceof AnonymousClassDeclaration) {
-				return ((AnonymousClassDeclaration) n).resolveBinding();
-			}
-
-			if (n instanceof TypeDeclaration) {
-				return ((TypeDeclaration) n).resolveBinding();
-			}
-		}
-
-		return null;
 	}
 
 	@Override
@@ -534,29 +498,5 @@ public abstract class TransformWriter extends ASTVisitor {
 			bound.accept(this);
 		}
 		return false;
-	}
-
-	protected PrintWriter getOut() {
-		return out;
-	}
-
-	protected void setOut(PrintWriter out) {
-		this.out = out;
-	}
-
-	protected void print(Object... objects) {
-		TransformUtil.print(getOut(), objects);
-	}
-
-	protected void println(Object... objects) {
-		TransformUtil.println(getOut(), objects);
-	}
-
-	protected void printi(Object... objects) {
-		TransformUtil.printi(getOut(), indent, objects);
-	}
-
-	protected void printlni(Object... objects) {
-		TransformUtil.printlni(getOut(), indent, objects);
 	}
 }

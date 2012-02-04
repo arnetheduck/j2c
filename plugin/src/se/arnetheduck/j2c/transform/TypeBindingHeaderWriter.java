@@ -77,7 +77,7 @@ public class TypeBindingHeaderWriter {
 
 			pw.print(sep);
 			sep = ", public ";
-			pw.print(TransformUtil.inherit(b));
+			pw.print(TransformUtil.virtual(b));
 			pw.print(TransformUtil.relativeCName(b, tb));
 		}
 
