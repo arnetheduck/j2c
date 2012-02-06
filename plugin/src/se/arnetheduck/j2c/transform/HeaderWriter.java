@@ -46,8 +46,8 @@ public class HeaderWriter extends TransformWriter {
 
 	private Set<String> usings = new HashSet<String>();
 
-	public HeaderWriter(IPath root, ITypeBinding type) {
-		super(type);
+	public HeaderWriter(IPath root, Transformer ctx, ITypeBinding type) {
+		super(ctx, type);
 		this.root = root;
 	}
 
@@ -62,9 +62,8 @@ public class HeaderWriter extends TransformWriter {
 			out = TransformUtil.openHeader(root, type);
 			List<ITypeBinding> bases = TransformUtil.getBases(ast, type);
 
-			hardDeps.addAll(bases);
-
 			for (ITypeBinding base : bases) {
+				hardDep(base);
 				println(TransformUtil.include(base));
 			}
 
@@ -126,7 +125,7 @@ public class HeaderWriter extends TransformWriter {
 
 			out.close();
 
-			addType(type);
+			ctx.headers.add(type);
 		} catch (IOException e) {
 			throw new Error(e);
 		}
@@ -172,7 +171,7 @@ public class HeaderWriter extends TransformWriter {
 
 			for (int i = 0; i < mb.getParameterTypes().length; ++i) {
 				ITypeBinding pb = mb.getParameterTypes()[i];
-				TransformUtil.addDep(pb, softDeps);
+				ctx.softDep(pb);
 
 				print(sep, TransformUtil.relativeCName(pb, type), " ",
 						TransformUtil.ref(pb), "a" + i);
@@ -411,7 +410,7 @@ public class HeaderWriter extends TransformWriter {
 	public boolean visit(SimpleName node) {
 		IBinding b = node.resolveBinding();
 		if (b instanceof ITypeBinding) {
-			addDep((ITypeBinding) b, softDeps);
+			ctx.softDep((ITypeBinding) b);
 			print(TransformUtil.relativeCName((ITypeBinding) b, type));
 			return false;
 		}
@@ -421,7 +420,7 @@ public class HeaderWriter extends TransformWriter {
 	@Override
 	public boolean visit(SimpleType node) {
 		ITypeBinding b = node.resolveBinding();
-		addDep(b, softDeps);
+		ctx.softDep(b);
 		print(TransformUtil.relativeCName(b, type));
 		return false;
 	}
@@ -430,7 +429,7 @@ public class HeaderWriter extends TransformWriter {
 	public boolean visit(QualifiedName node) {
 		IBinding b = node.resolveBinding();
 		if (b instanceof ITypeBinding) {
-			addDep((ITypeBinding) b, softDeps);
+			ctx.softDep((ITypeBinding) b);
 			print(TransformUtil.relativeCName((ITypeBinding) b, type));
 			return false;
 		}
@@ -440,7 +439,7 @@ public class HeaderWriter extends TransformWriter {
 	@Override
 	public boolean visit(QualifiedType node) {
 		ITypeBinding b = node.resolveBinding();
-		addDep(b, softDeps);
+		ctx.softDep(b);
 		print(TransformUtil.relativeCName(b, type));
 		return false;
 	}
@@ -450,7 +449,7 @@ public class HeaderWriter extends TransformWriter {
 		ITypeBinding tb = node.getType().resolveBinding();
 
 		if (node.getExtraDimensions() > 0) {
-			addDep(tb, softDeps);
+			ctx.softDep(tb);
 			tb = tb.createArrayType(node.getExtraDimensions());
 			print(TransformUtil.relativeCName(tb, type));
 		} else {
@@ -475,7 +474,7 @@ public class HeaderWriter extends TransformWriter {
 	@Override
 	public boolean visit(VariableDeclarationFragment node) {
 		ITypeBinding tb = node.resolveBinding().getType();
-		addDep(tb, softDeps);
+		ctx.softDep(tb);
 		print(TransformUtil.ref(tb));
 
 		node.getName().accept(this);

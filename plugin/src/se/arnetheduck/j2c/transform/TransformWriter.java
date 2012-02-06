@@ -50,53 +50,31 @@ import org.eclipse.jdt.core.dom.WildcardType;
 
 public abstract class TransformWriter extends ASTVisitor {
 	protected final ITypeBinding type;
+	protected final Transformer ctx;
 
 	protected int indent;
 
 	protected PrintWriter out;
 
-	protected Set<IPackageBinding> packages = new TreeSet<IPackageBinding>(
-			new Transformer.PackageBindingComparator());
-	protected Set<ITypeBinding> types = new TreeSet<ITypeBinding>(
-			new Transformer.TypeBindingComparator());
 	protected Set<ITypeBinding> hardDeps = new TreeSet<ITypeBinding>(
 			new Transformer.TypeBindingComparator());
-	protected Set<ITypeBinding> softDeps = new TreeSet<ITypeBinding>(
-			new Transformer.TypeBindingComparator());
 
-	protected TransformWriter(final ITypeBinding type) {
+	protected TransformWriter(Transformer ctx, final ITypeBinding type) {
 		this.type = type;
-
-		types.add(type);
-		softDeps.add(type);
-	}
-
-	public Set<IPackageBinding> getPackages() {
-		return packages;
-	}
-
-	public Set<ITypeBinding> getTypes() {
-		return types;
+		this.ctx = ctx;
 	}
 
 	public Set<ITypeBinding> getHardDeps() {
 		return hardDeps;
 	}
 
-	public Set<ITypeBinding> getSoftDeps() {
-		return softDeps;
+	protected void hardDep(ITypeBinding dep) {
+		TransformUtil.addDep(dep, hardDeps);
+		ctx.hardDep(dep);
 	}
 
-	protected void addType(ITypeBinding tb) {
-		types.add(tb);
-	}
-
-	protected void addDep(ITypeBinding dep, Collection<ITypeBinding> deps) {
-		TransformUtil.addDep(dep, deps);
-	}
-
-	protected void addDep(Type type, Collection<ITypeBinding> deps) {
-		addDep(type.resolveBinding(), deps);
+	protected void hardDep(Type type, Collection<ITypeBinding> deps) {
+		hardDep(type.resolveBinding());
 	}
 
 	protected void visitAll(Iterable<? extends ASTNode> nodes) {
@@ -178,7 +156,7 @@ public abstract class TransformWriter extends ASTVisitor {
 			print(TransformUtil.qualifiedCName(node.getComponentType()
 					.resolveBinding()));
 		}
-		addDep(node.resolveBinding(), softDeps);
+		ctx.softDep(node.resolveBinding());
 		print("Array");
 
 		return false;
@@ -331,12 +309,12 @@ public abstract class TransformWriter extends ASTVisitor {
 		IBinding b = qualifier.resolveBinding();
 		if (b instanceof IPackageBinding) {
 			print("::");
-			packages.add((IPackageBinding) b);
+			ctx.packages.add((IPackageBinding) b);
 		} else if (b instanceof ITypeBinding) {
-			addDep((ITypeBinding) b, hardDeps);
+			hardDep((ITypeBinding) b);
 			print("::");
 		} else if (b instanceof IVariableBinding) {
-			addDep(((IVariableBinding) b).getType(), hardDeps);
+			hardDep(((IVariableBinding) b).getType());
 			print("->");
 		} else {
 			throw new Error("Unknown binding " + b.getClass());
@@ -362,13 +340,13 @@ public abstract class TransformWriter extends ASTVisitor {
 
 		if (b instanceof IVariableBinding) {
 			IVariableBinding vb = (IVariableBinding) b;
-			addDep(vb.getType(), softDeps);
+			ctx.softDep(vb.getType());
 
 			print(node.getIdentifier());
 			print("_");
 		} else if (b instanceof ITypeBinding) {
 			print(TransformUtil.name((ITypeBinding) b));
-			TransformUtil.addDep((ITypeBinding) b, softDeps);
+			ctx.softDep((ITypeBinding) b);
 		} else if (b instanceof IMethodBinding) {
 			print(TransformUtil.keywords(node.getIdentifier()));
 		} else {
@@ -380,7 +358,12 @@ public abstract class TransformWriter extends ASTVisitor {
 
 	@Override
 	public boolean visit(SimpleType node) {
-		addDep(node, node.resolveBinding().isNested() ? hardDeps : softDeps);
+		ITypeBinding tb = node.resolveBinding();
+		if (tb.isNested()) {
+			hardDep(tb);
+		} else {
+			ctx.softDep(tb);
+		}
 
 		node.getName().accept(this);
 
@@ -403,7 +386,7 @@ public abstract class TransformWriter extends ASTVisitor {
 	public boolean visit(StringLiteral node) {
 		print("lit(L", node.getEscapedValue(), ")");
 
-		addDep(node.getAST().resolveWellKnownType("java.lang.String"), hardDeps);
+		hardDep(node.getAST().resolveWellKnownType("java.lang.String"));
 
 		return false;
 	}

@@ -85,9 +85,9 @@ public class ImplWriter extends TransformWriter {
 	private List<MethodDeclaration> constructors = new ArrayList<MethodDeclaration>();
 	private final List<ImportDeclaration> imports;
 
-	public ImplWriter(IPath root, ITypeBinding type,
+	public ImplWriter(IPath root, Transformer ctx, ITypeBinding type,
 			List<ImportDeclaration> imports) {
-		super(type);
+		super(ctx, type);
 		this.root = root;
 		this.imports = imports;
 
@@ -96,9 +96,9 @@ public class ImplWriter extends TransformWriter {
 		for (ImportDeclaration id : imports) {
 			IBinding b = id.resolveBinding();
 			if (b instanceof IPackageBinding) {
-				packages.add((IPackageBinding) b);
+				ctx.packages.add((IPackageBinding) b);
 			} else if (b instanceof ITypeBinding) {
-				softDeps.add((ITypeBinding) b);
+				ctx.softDep((ITypeBinding) b);
 			}
 		}
 	}
@@ -162,6 +162,7 @@ public class ImplWriter extends TransformWriter {
 			print(body.toString());
 
 			out.close();
+			ctx.impls.add(type);
 		} finally {
 			out = null;
 		}
@@ -259,7 +260,7 @@ public class ImplWriter extends TransformWriter {
 
 			for (int i = 0; i < mb.getParameterTypes().length; ++i) {
 				ITypeBinding pb = mb.getParameterTypes()[i];
-				TransformUtil.addDep(pb, softDeps);
+				ctx.softDep(pb);
 
 				print(sep, TransformUtil.relativeCName(pb, type), " ",
 						TransformUtil.ref(pb), "a" + i);
@@ -304,7 +305,7 @@ public class ImplWriter extends TransformWriter {
 	@Override
 	public boolean visit(AnonymousClassDeclaration node) {
 		ITypeBinding tb = node.resolveBinding();
-		ImplWriter iw = new ImplWriter(root, tb, imports);
+		ImplWriter iw = new ImplWriter(root, ctx, tb, imports);
 		try {
 			iw.write(node);
 		} catch (Exception e) {
@@ -320,15 +321,9 @@ public class ImplWriter extends TransformWriter {
 			}
 		}
 
-		types.addAll(iw.getTypes());
-		softDeps.addAll(iw.getSoftDeps());
-
-		HeaderWriter hw = new HeaderWriter(root, tb);
+		HeaderWriter hw = new HeaderWriter(root, ctx, tb);
 
 		hw.writeType(node.getAST(), node.bodyDeclarations(), iw.closures);
-
-		hardDeps.addAll(hw.getHardDeps());
-		softDeps.addAll(hw.getSoftDeps());
 
 		print("this");
 
@@ -344,7 +339,7 @@ public class ImplWriter extends TransformWriter {
 
 	@Override
 	public boolean visit(ArrayAccess node) {
-		addDep(node.getArray().resolveTypeBinding(), hardDeps);
+		hardDep(node.getArray().resolveTypeBinding());
 
 		node.getArray().accept(this);
 		print("->operator[](");
@@ -358,7 +353,7 @@ public class ImplWriter extends TransformWriter {
 	public boolean visit(ArrayCreation node) {
 		print("(new ");
 		ArrayType at = node.getType();
-		addDep(at.resolveBinding(), hardDeps);
+		hardDep(at.resolveBinding());
 
 		at.accept(this);
 
@@ -383,7 +378,7 @@ public class ImplWriter extends TransformWriter {
 			print("(new ");
 			ITypeBinding at = node.resolveTypeBinding();
 			print(TransformUtil.qualifiedCName(at));
-			addDep(at, hardDeps);
+			hardDep(at);
 		}
 
 		print("(");
@@ -482,9 +477,9 @@ public class ImplWriter extends TransformWriter {
 
 	@Override
 	public boolean visit(CatchClause node) {
-		print("catch (");
+		printi("catch (");
 		node.getException().accept(this);
-		addDep(node.getException().getType(), hardDeps);
+		hardDep(node.getException().getType().resolveBinding());
 		print(") ");
 		node.getBody().accept(this);
 
@@ -506,14 +501,14 @@ public class ImplWriter extends TransformWriter {
 					.resolveBinding();
 			print(TransformUtil.name(atb), "(");
 			node.getAnonymousClassDeclaration().accept(this);
-			addDep(atb, hardDeps);
+			hardDep(atb);
 			sep = ", ";
 		} else {
 			print(TransformUtil.typeArguments(node.typeArguments()));
 
 			node.getType().accept(this);
 
-			addDep(node.getType(), hardDeps);
+			hardDep(node.getType().resolveBinding());
 			print("(");
 		}
 
@@ -523,7 +518,7 @@ public class ImplWriter extends TransformWriter {
 			visitAllCSV(arguments, false);
 
 			for (Expression e : arguments) {
-				addDep(e.resolveTypeBinding(), hardDeps);
+				hardDep(e.resolveTypeBinding());
 			}
 		}
 
@@ -592,7 +587,7 @@ public class ImplWriter extends TransformWriter {
 	@Override
 	public boolean visit(FieldAccess node) {
 		node.getExpression().accept(this);
-		addDep(node.getExpression().resolveTypeBinding(), hardDeps);
+		hardDep(node.getExpression().resolveTypeBinding());
 		print("->");
 		node.getName().accept(this);
 		return false;
@@ -810,7 +805,7 @@ public class ImplWriter extends TransformWriter {
 	public boolean visit(InstanceofExpression node) {
 		print("dynamic_cast<");
 		node.getRightOperand().accept(this);
-		addDep(node.getRightOperand(), hardDeps);
+		hardDep(node.getRightOperand().resolveBinding());
 		print("*>(");
 		node.getLeftOperand().accept(this);
 		print(")");
@@ -938,7 +933,7 @@ public class ImplWriter extends TransformWriter {
 				print("->");
 			}
 
-			addDep(node.getExpression().resolveTypeBinding(), hardDeps);
+			hardDep(node.getExpression().resolveTypeBinding());
 		}
 
 		print(TransformUtil.typeArguments(node.typeArguments()));
@@ -959,7 +954,7 @@ public class ImplWriter extends TransformWriter {
 		visitAllCSV(arguments, true);
 
 		for (Expression e : arguments) {
-			addDep(e.resolveTypeBinding(), hardDeps);
+			hardDep(e.resolveTypeBinding());
 		}
 
 		return false;
@@ -996,7 +991,7 @@ public class ImplWriter extends TransformWriter {
 		IBinding b = node.resolveBinding();
 		if (b instanceof IVariableBinding) {
 			IVariableBinding vb = (IVariableBinding) b;
-			addDep(vb.getType(), softDeps);
+			ctx.softDep(vb.getType());
 
 			ITypeBinding ptb = parentType(node);
 			if (ptb != null && ptb.isNested()
@@ -1011,7 +1006,7 @@ public class ImplWriter extends TransformWriter {
 						for (ITypeBinding x = ptb; x.getDeclaringClass() != null
 								&& !x.getKey().equals(dc.getKey()); x = x
 								.getDeclaringClass()) {
-							addDep(x.getDeclaringClass(), hardDeps);
+							hardDep(x.getDeclaringClass());
 
 							print(TransformUtil.name(x.getDeclaringClass()));
 							print("_this->");
@@ -1257,20 +1252,16 @@ public class ImplWriter extends TransformWriter {
 	@Override
 	public boolean visit(TypeDeclaration node) {
 		ITypeBinding tb = node.resolveBinding();
-		ImplWriter iw = new ImplWriter(root, tb, imports);
+		ImplWriter iw = new ImplWriter(root, ctx, tb, imports);
 		try {
 			iw.write(node);
 		} catch (Exception e) {
 			throw new Error(e);
 		}
-		types.addAll(iw.getTypes());
-		softDeps.addAll(iw.getSoftDeps());
-		HeaderWriter hw = new HeaderWriter(root, tb);
+
+		HeaderWriter hw = new HeaderWriter(root, ctx, tb);
 
 		hw.writeType(node.getAST(), node.bodyDeclarations(), iw.closures);
-
-		hardDeps.addAll(hw.getHardDeps());
-		softDeps.addAll(hw.getSoftDeps());
 
 		return false;
 	}
@@ -1280,43 +1271,36 @@ public class ImplWriter extends TransformWriter {
 		if (node.getType().isPrimitiveType()) {
 			Code code = ((PrimitiveType) node.getType()).getPrimitiveTypeCode();
 			if (code.equals(PrimitiveType.BOOLEAN)) {
-				addDep(node.getAST().resolveWellKnownType("java.lang.Boolean"),
-						hardDeps);
+				hardDep(node.getAST().resolveWellKnownType("java.lang.Boolean"));
 				print("java::lang::Boolean::TYPE_");
 			} else if (code.equals(PrimitiveType.BYTE)) {
-				addDep(node.getAST().resolveWellKnownType("java.lang.Byte"),
-						hardDeps);
+				hardDep(node.getAST().resolveWellKnownType("java.lang.Byte"));
 				print("java::lang::Byte::TYPE_");
 			} else if (code.equals(PrimitiveType.CHAR)) {
-				addDep(node.getAST()
-						.resolveWellKnownType("java.lang.Character"), hardDeps);
+				hardDep(node.getAST().resolveWellKnownType(
+						"java.lang.Character"));
 				print("java::lang::Character::TYPE_");
 			} else if (code.equals(PrimitiveType.DOUBLE)) {
-				addDep(node.getAST().resolveWellKnownType("java.lang.Double"),
-						hardDeps);
+				hardDep(node.getAST().resolveWellKnownType("java.lang.Double"));
 				print("java::lang::Double::TYPE_");
 			} else if (code.equals(PrimitiveType.FLOAT)) {
-				addDep(node.getAST().resolveWellKnownType("java.lang.Float"),
-						hardDeps);
+				hardDep(node.getAST().resolveWellKnownType("java.lang.Float"));
 				print("java::lang::Float::TYPE_");
 			} else if (code.equals(PrimitiveType.INT)) {
-				addDep(node.getAST().resolveWellKnownType("java.lang.Integer"),
-						hardDeps);
+				hardDep(node.getAST().resolveWellKnownType("java.lang.Integer"));
 				print("java::lang::Integer::TYPE_");
 			} else if (code.equals(PrimitiveType.LONG)) {
-				addDep(node.getAST().resolveWellKnownType("java.lang.Long"),
-						hardDeps);
+				hardDep(node.getAST().resolveWellKnownType("java.lang.Long"));
 				print("java::lang::Long::TYPE_");
 			} else if (code.equals(PrimitiveType.SHORT)) {
-				addDep(node.getAST().resolveWellKnownType("java.lang.Short"),
-						hardDeps);
+				hardDep(node.getAST().resolveWellKnownType("java.lang.Short"));
 				print("java::lang::Short::TYPE_");
 			} else if (code.equals(PrimitiveType.BOOLEAN)) {
 				print("/* " + node.toString()
 						+ ".class */(java::lang::Class*)0");
 			}
 		} else {
-			addDep(node.getType(), hardDeps);
+			hardDep(node.getType().resolveBinding());
 			node.getType().accept(this);
 			print("::class_");
 		}

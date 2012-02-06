@@ -53,11 +53,11 @@ public class Transformer {
 						.findType(Object.class.getName()) }, null)[0];
 	}
 
-	private Set<IPackageBinding> packages = new TreeSet<IPackageBinding>(
+	Set<IPackageBinding> packages = new TreeSet<IPackageBinding>(
 			new PackageBindingComparator());
-	private Set<ITypeBinding> headers = new TreeSet<ITypeBinding>(
+	Set<ITypeBinding> headers = new TreeSet<ITypeBinding>(
 			new TypeBindingComparator());
-	private Set<ITypeBinding> impls = new TreeSet<ITypeBinding>(
+	Set<ITypeBinding> impls = new TreeSet<ITypeBinding>(
 			new TypeBindingComparator());
 	private Set<ITypeBinding> hardDeps = new TreeSet<ITypeBinding>(
 			new TypeBindingComparator());
@@ -106,13 +106,9 @@ public class Transformer {
 		for (AbstractTypeDeclaration type : (Iterable<AbstractTypeDeclaration>) cu
 				.types()) {
 			if (type instanceof TypeDeclaration) {
-				HeaderWriter hw = new HeaderWriter(root, type.resolveBinding());
+				HeaderWriter hw = new HeaderWriter(root, this,
+						type.resolveBinding());
 				hw.write((TypeDeclaration) type);
-
-				packages.addAll(hw.getPackages());
-				headers.addAll(hw.getTypes());
-				hardDeps.addAll(hw.getHardDeps());
-				softDeps.addAll(hw.getSoftDeps());
 			}
 		}
 	}
@@ -130,16 +126,10 @@ public class Transformer {
 		for (AbstractTypeDeclaration type : (Iterable<AbstractTypeDeclaration>) cu
 				.types()) {
 			if (type instanceof TypeDeclaration) {
-				ImplWriter iw = new ImplWriter(root, type.resolveBinding(),
-						cu.imports());
+				ImplWriter iw = new ImplWriter(root, this,
+						type.resolveBinding(), cu.imports());
 
 				iw.write((TypeDeclaration) type);
-
-				packages.addAll(iw.getPackages());
-				headers.addAll(iw.getTypes());
-				impls.addAll(iw.getTypes());
-				hardDeps.addAll(iw.getHardDeps());
-				softDeps.addAll(iw.getSoftDeps());
 			}
 		}
 	}
@@ -175,5 +165,13 @@ public class Transformer {
 		}
 
 		writeHeader(root, parse(type.getCompilationUnit()));
+	}
+
+	void hardDep(ITypeBinding dep) {
+		TransformUtil.addDep(dep, hardDeps);
+	}
+
+	void softDep(ITypeBinding dep) {
+		TransformUtil.addDep(dep, softDeps);
 	}
 }
