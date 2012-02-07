@@ -86,6 +86,7 @@ public class ImplWriter extends TransformWriter {
 	private final List<ImportDeclaration> imports;
 
 	private boolean needsFinally;
+	private boolean needsSynchronized;
 
 	public ImplWriter(IPath root, Transformer ctx, ITypeBinding type,
 			List<ImportDeclaration> imports) {
@@ -155,6 +156,10 @@ public class ImplWriter extends TransformWriter {
 				makeFinally();
 			}
 
+			if (needsSynchronized) {
+				makeSynchronized();
+			}
+
 			if (type.isAnonymous()) {
 				makeBaseConstructors();
 			} else {
@@ -187,7 +192,24 @@ public class ImplWriter extends TransformWriter {
 		printlni("bool moved;");
 		indent--;
 		printlni("};");
-		printlni("template<typename F> finally_<F> finally<F>(F f) { return finally_<F>(f); }");
+		printlni("template<typename F> finally_<F> finally(F f) { return finally_<F>(f); }");
+		indent--;
+		printlni("}");
+	}
+
+	private void makeSynchronized() {
+		println("extern void lock(java::lang::Object *);");
+		println("extern void unlock(java::lang::Object *);");
+		println("namespace {");
+		indent++;
+		printlni("struct synchronized {");
+		indent++;
+		printlni("synchronized(java::lang::Object *o) : o(o) { ::lock(o); }");
+		printlni("~synchronized() { ::unlock(o); }");
+		printlni("private: synchronized(const synchronized&); synchronized& operator=(const synchronized&); ");
+		printlni("java::lang::Object *o;");
+		indent--;
+		printlni("};");
 		indent--;
 		printlni("}");
 	}
@@ -1248,13 +1270,24 @@ public class ImplWriter extends TransformWriter {
 		return false;
 	}
 
+	private int sc;
+
 	@Override
 	public boolean visit(SynchronizedStatement node) {
-		print("synchronized (");
+		printlni("{");
+		indent++;
+		printi("synchronized synchronized_", sc, "(");
 		node.getExpression().accept(this);
-		print(") ");
+		println(");");
+		printi();
 		node.getBody().accept(this);
+		println();
+		indent--;
 
+		printlni("}");
+
+		needsSynchronized = true;
+		sc++;
 		return false;
 	}
 
