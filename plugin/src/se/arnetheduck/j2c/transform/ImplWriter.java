@@ -85,6 +85,8 @@ public class ImplWriter extends TransformWriter {
 	private List<MethodDeclaration> constructors = new ArrayList<MethodDeclaration>();
 	private final List<ImportDeclaration> imports;
 
+	private boolean needsFinally;
+
 	public ImplWriter(IPath root, Transformer ctx, ITypeBinding type,
 			List<ImportDeclaration> imports) {
 		super(ctx, type);
@@ -113,7 +115,7 @@ public class ImplWriter extends TransformWriter {
 		writeType(body);
 	}
 
-	private StringWriter getBody(Iterable<BodyDeclaration> declarations) {
+	private StringWriter getBody(List<BodyDeclaration> declarations) {
 		StringWriter body = new StringWriter();
 		out = new PrintWriter(body);
 
@@ -149,6 +151,10 @@ public class ImplWriter extends TransformWriter {
 
 			println();
 
+			if (needsFinally) {
+				makeFinally();
+			}
+
 			if (type.isAnonymous()) {
 				makeBaseConstructors();
 			} else {
@@ -166,6 +172,24 @@ public class ImplWriter extends TransformWriter {
 		} finally {
 			out = null;
 		}
+	}
+
+	private void makeFinally() {
+		println("namespace {");
+		indent++;
+		printlni("template<typename F> struct finally_ {");
+		indent++;
+		printlni("finally_(F f) : f(f), moved(false) { }");
+		printlni("finally_(finally_ &&x) : f(x.f), moved(false) { x.moved = true; }");
+		printlni("~finally_() { if(!moved) f(); }");
+		printlni("private: finally_(const finally_&); finally_& operator=(const finally_&); ");
+		printlni("F f;");
+		printlni("bool moved;");
+		indent--;
+		printlni("};");
+		printlni("template<typename F> finally_<F> finally<F>(F f) { return finally_<F>(f); }");
+		indent--;
+		printlni("}");
 	}
 
 	private void makeConstructors() {
@@ -438,8 +462,7 @@ public class ImplWriter extends TransformWriter {
 			visitAll(node.statements());
 
 			indent--;
-			printlni("}");
-			println();
+			printi("}");
 		} else {
 			System.out.println("Skipped " + node.getParent().getClass()
 					+ " block");
@@ -477,7 +500,7 @@ public class ImplWriter extends TransformWriter {
 
 	@Override
 	public boolean visit(CatchClause node) {
-		printi("catch (");
+		print(" catch (");
 		node.getException().accept(this);
 		hardDep(node.getException().getType().resolveBinding());
 		print(") ");
@@ -671,14 +694,23 @@ public class ImplWriter extends TransformWriter {
 		return false;
 	}
 
+	private boolean skipIndent = false;
+
 	@Override
 	public boolean visit(IfStatement node) {
-		printi("if(");
+		if (!skipIndent) {
+			printi();
+		}
+
+		print("if(");
+		skipIndent = false;
+
 		node.getExpression().accept(this);
+
 		print(")");
 
-		boolean isBlock = node.getThenStatement() instanceof Block;
-		if (isBlock) {
+		boolean thenBlock = node.getThenStatement() instanceof Block;
+		if (thenBlock) {
 			print(" ");
 		} else {
 			println();
@@ -687,12 +719,38 @@ public class ImplWriter extends TransformWriter {
 
 		node.getThenStatement().accept(this);
 
-		if (!isBlock) {
+		if (!thenBlock) {
 			indent--;
 		}
+
 		if (node.getElseStatement() != null) {
-			print(" else ");
+			boolean elseif = skipIndent = node.getElseStatement() instanceof IfStatement;
+			if (thenBlock) {
+				print(" ");
+			} else {
+				printi();
+			}
+			print("else");
+			boolean elseBlock = skipIndent
+					|| node.getElseStatement() instanceof Block;
+			if (elseBlock) {
+				print(" ");
+			} else {
+				println();
+				indent++;
+			}
+
 			node.getElseStatement().accept(this);
+
+			if (!elseBlock) {
+				indent--;
+			}
+
+			if (!elseif && elseBlock) {
+				println();
+			}
+		} else {
+			println();
 		}
 
 		return false;
@@ -901,7 +959,9 @@ public class ImplWriter extends TransformWriter {
 			indent--;
 			printlni("}");
 		} else {
+			print(" ");
 			node.getBody().accept(this);
+			println();
 		}
 
 		println();
@@ -1219,9 +1279,27 @@ public class ImplWriter extends TransformWriter {
 		return false;
 	}
 
+	private int fc;
+
 	@Override
 	public boolean visit(TryStatement node) {
-		printi("try ");
+		if (node.getFinally() != null) {
+			needsFinally = true;
+			printlni("{");
+			indent++;
+
+			printi("auto finally", fc, " = finally([&] ");
+			node.getFinally().accept(this);
+			println(");");
+			fc++;
+		}
+
+		if (!node.catchClauses().isEmpty()) {
+			printi("try ");
+		} else {
+			printi();
+		}
+
 		List resources = node.resources();
 		if (!node.resources().isEmpty()) {
 			print('(');
@@ -1237,14 +1315,18 @@ public class ImplWriter extends TransformWriter {
 		}
 
 		node.getBody().accept(this);
-		print(" ");
 
 		visitAll(node.catchClauses());
 
 		if (node.getFinally() != null) {
-			print(" finally ");
-			node.getFinally().accept(this);
+			indent--;
+			println();
+			printi("}");
+			if (node.catchClauses().isEmpty()) {
+				println();
+			}
 		}
+		println();
 
 		return false;
 	}

@@ -3,6 +3,7 @@ package se.arnetheduck.j2c.transform;
 import java.io.PrintWriter;
 import java.util.Collection;
 import java.util.Iterator;
+import java.util.List;
 import java.util.Set;
 import java.util.TreeSet;
 
@@ -10,8 +11,10 @@ import org.eclipse.jdt.core.dom.ASTNode;
 import org.eclipse.jdt.core.dom.ASTVisitor;
 import org.eclipse.jdt.core.dom.ArrayType;
 import org.eclipse.jdt.core.dom.AssertStatement;
+import org.eclipse.jdt.core.dom.Block;
 import org.eclipse.jdt.core.dom.BlockComment;
 import org.eclipse.jdt.core.dom.BooleanLiteral;
+import org.eclipse.jdt.core.dom.CatchClause;
 import org.eclipse.jdt.core.dom.CharacterLiteral;
 import org.eclipse.jdt.core.dom.CompilationUnit;
 import org.eclipse.jdt.core.dom.EmptyStatement;
@@ -77,9 +80,21 @@ public abstract class TransformWriter extends ASTVisitor {
 		hardDep(type.resolveBinding());
 	}
 
-	protected void visitAll(Iterable<? extends ASTNode> nodes) {
-		for (ASTNode node : nodes) {
+	protected void visitAll(List<? extends ASTNode> nodes) {
+		for (int i = 0; i < nodes.size(); ++i) {
+			ASTNode node = nodes.get(i);
 			node.accept(this);
+			if (node instanceof Block) {
+				if (i + 1 < nodes.size()) {
+					ASTNode next = nodes.get(i + 1);
+					if (!(next instanceof CatchClause)) {
+						println();
+						println();
+					}
+				} else {
+					println();
+				}
+			}
 		}
 	}
 
