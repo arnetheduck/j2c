@@ -28,7 +28,7 @@ import org.eclipse.jdt.core.dom.VariableDeclarationFragment;
 
 public final class TransformUtil {
 	private static final String PUBLIC = "public:";
-	private static final String PROTECTED = "protected:";
+	private static final String PROTECTED = "public: /* protected */";
 	private static final String PACKAGE = "public: /* package */";
 	private static final String PRIVATE = "private:";
 
