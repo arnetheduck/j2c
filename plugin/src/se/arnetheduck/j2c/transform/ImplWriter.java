@@ -812,10 +812,22 @@ public class ImplWriter extends TransformWriter {
 			return false;
 		}
 
-		node.getLeftOperand().accept(this);
-		print(' '); // for cases like x= i - -1; or x= i++ + ++i;
+		if (node.getOperator().equals(
+				InfixExpression.Operator.RIGHT_SHIFT_UNSIGNED)) {
+			ITypeBinding b = node.getLeftOperand().resolveTypeBinding();
+			if (b.getName().equals("long")) {
+				print("static_cast<uint64_t>(");
+			} else {
+				print("static_cast<uint32_t>(");
+			}
+			node.getLeftOperand().accept(this);
+			print(") >>");
+		} else {
+			node.getLeftOperand().accept(this);
+			print(' '); // for cases like x= i - -1; or x= i++ + ++i;
 
-		print(node.getOperator().toString());
+			print(node.getOperator().toString());
+		}
 
 		print(' ');
 
