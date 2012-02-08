@@ -54,6 +54,11 @@ public class LocalClassTest {
 				LocalClassTest same = lct;
 				return same.testClosure(4);
 			}
+
+			public int param2() {
+				LocalClassTest same = lct.lct;
+				return same.testClosure(4);
+			}
 		};
 
 		return lpc.run(null);
@@ -93,6 +98,25 @@ public class LocalClassTest {
 		};
 
 		return lpc.run(new int[] { 10 });
+	}
 
+	public static int testStatic(final int x) {
+		ParamConstructor lpc = new ParamConstructor(3) {
+			@Override
+			public int getV() {
+				return 5;
+			}
+		};
+
+		return lpc.getV();
+	}
+
+	static {
+		ParamConstructor lpc = new ParamConstructor(3) {
+			@Override
+			public int getV() {
+				return 90;
+			}
+		};
 	}
 }

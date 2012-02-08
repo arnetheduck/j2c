@@ -261,7 +261,8 @@ public class ImplWriter extends TransformWriter {
 					|| (closures != null && !closures.isEmpty())) {
 				println(" : ");
 				sep = "";
-				if (TransformUtil.isInner(type)) {
+				if (TransformUtil.isInner(type)
+						&& !TransformUtil.outerStatic(type)) {
 					printInit(TransformUtil.outerThisName(type));
 				}
 
@@ -325,7 +326,7 @@ public class ImplWriter extends TransformWriter {
 
 			print(")");
 
-			if (!Modifier.isStatic(type.getModifiers())) {
+			if (TransformUtil.isInner(type) && !TransformUtil.outerStatic(type)) {
 				println(", ");
 				printi();
 				printInit(TransformUtil.outerThisName(type));
@@ -371,15 +372,21 @@ public class ImplWriter extends TransformWriter {
 
 		hw.writeType(node.getAST(), node.bodyDeclarations(), iw.closures);
 
-		print("this");
+		String sep = "";
 
-		String sep = ", ";
+		if (!TransformUtil.outerStatic(tb)) {
+			print("this");
+			sep = ", ";
+		}
 
 		for (IVariableBinding closure : iw.closures) {
 			print(sep, closure.getName(), "_");
 			sep = ", ";
 		}
 
+		if (!((ClassInstanceCreation) node.getParent()).arguments().isEmpty()) {
+			print(sep);
+		}
 		return false;
 	}
 
@@ -539,7 +546,6 @@ public class ImplWriter extends TransformWriter {
 		}
 
 		print("(new ");
-		String sep = "";
 
 		if (node.getAnonymousClassDeclaration() != null) {
 			ITypeBinding atb = node.getAnonymousClassDeclaration()
@@ -547,7 +553,6 @@ public class ImplWriter extends TransformWriter {
 			print(TransformUtil.name(atb), "(");
 			node.getAnonymousClassDeclaration().accept(this);
 			hardDep(atb);
-			sep = ", ";
 		} else {
 			print(TransformUtil.typeArguments(node.typeArguments()));
 
@@ -557,6 +562,7 @@ public class ImplWriter extends TransformWriter {
 			print("(");
 		}
 
+		String sep = "";
 		if (!node.arguments().isEmpty()) {
 			print(sep);
 			Iterable<Expression> arguments = node.arguments();
@@ -1025,8 +1031,11 @@ public class ImplWriter extends TransformWriter {
 			if (mb.getDeclaringClass().getKey()
 					.equals(type.getDeclaringClass().getKey())) {
 				TransformUtil.addDep(mb.getDeclaringClass(), hardDeps);
-				print(TransformUtil.name(mb.getDeclaringClass()));
-				print("_this->");
+				if (Modifier.isStatic(mb.getModifiers())) {
+					print(TransformUtil.name(mb.getDeclaringClass()), "::");
+				} else {
+					print(TransformUtil.thisName(mb.getDeclaringClass()), "->");
+				}
 			}
 		}
 
@@ -1083,15 +1092,22 @@ public class ImplWriter extends TransformWriter {
 				ITypeBinding dc = vb.getDeclaringClass();
 				if (vb.isField() && dc != null && ptb != null
 						&& !dc.getKey().equals(ptb.getKey())) {
-					if (!(node.getParent() instanceof QualifiedName)) {
+					boolean pq = node.getParent() instanceof QualifiedName;
 
+					if (!pq
+							|| !((QualifiedName) node.getParent()).getName()
+									.equals(node)) {
 						for (ITypeBinding x = ptb; x.getDeclaringClass() != null
 								&& !x.getKey().equals(dc.getKey()); x = x
 								.getDeclaringClass()) {
 							hardDep(x.getDeclaringClass());
 
-							print(TransformUtil.name(x.getDeclaringClass()));
-							print("_this->");
+							if (Modifier.isStatic(vb.getModifiers())) {
+								print(TransformUtil.name(x.getDeclaringClass()),
+										"::");
+							} else {
+								print(TransformUtil.outerThisName(x), "->");
+							}
 						}
 					}
 				} else if (Modifier.isFinal(vb.getModifiers())) {

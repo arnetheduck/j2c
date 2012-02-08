@@ -371,7 +371,18 @@ public final class TransformUtil {
 	}
 
 	public static String outerThisName(ITypeBinding tb) {
-		return TransformUtil.name(tb.getDeclaringClass()) + "_this";
+		return thisName(tb.getDeclaringClass());
+	}
+
+	public static String thisName(ITypeBinding tb) {
+		return TransformUtil.name(tb) + "_this";
+
+	}
+
+	public static boolean outerStatic(ITypeBinding tb) {
+		return tb.isLocal() ? tb.getDeclaringMethod() == null
+				|| Modifier.isStatic(tb.getDeclaringMethod().getModifiers())
+				: Modifier.isStatic(tb.getDeclaringClass().getModifiers());
 	}
 
 	private static Collection<String> keywords = Arrays.asList("delete",
@@ -509,5 +520,4 @@ public final class TransformUtil {
 		printi(out, indent, objects);
 		out.println();
 	}
-
 }
