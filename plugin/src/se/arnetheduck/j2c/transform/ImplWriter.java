@@ -651,7 +651,7 @@ public class ImplWriter extends TransformWriter {
 
 	@Override
 	public boolean visit(FieldDeclaration node) {
-		if ((node.getModifiers() & Modifier.STATIC) == 0) {
+		if (!Modifier.isStatic(node.getModifiers())) {
 			return false;
 		}
 
@@ -675,7 +675,7 @@ public class ImplWriter extends TransformWriter {
 		printi(TransformUtil.fieldModifiers(node.getModifiers(), false,
 				hasInitilializer(fragments)));
 
-		node.getType().accept(this);
+		print(TransformUtil.qualifiedCName(node.getType().resolveBinding()));
 
 		print(" ");
 		for (Iterator<VariableDeclarationFragment> it = fragments.iterator(); it
