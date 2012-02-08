@@ -50,6 +50,7 @@ import org.eclipse.jdt.core.dom.LabeledStatement;
 import org.eclipse.jdt.core.dom.MethodDeclaration;
 import org.eclipse.jdt.core.dom.MethodInvocation;
 import org.eclipse.jdt.core.dom.Modifier;
+import org.eclipse.jdt.core.dom.NullLiteral;
 import org.eclipse.jdt.core.dom.PostfixExpression;
 import org.eclipse.jdt.core.dom.PrefixExpression;
 import org.eclipse.jdt.core.dom.PrimitiveType;
@@ -513,7 +514,11 @@ public class ImplWriter extends TransformWriter {
 
 	@Override
 	public boolean visit(CastExpression node) {
-		print(node.getType().isPrimitiveType() ? "static_cast<"
+		hardDep(node.getType().resolveBinding());
+		hardDep(node.getExpression().resolveTypeBinding());
+
+		print(node.getType().isPrimitiveType()
+				|| node.getExpression() instanceof NullLiteral ? "static_cast<"
 				: "dynamic_cast<");
 
 		node.getType().accept(this);
