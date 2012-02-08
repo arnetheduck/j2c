@@ -592,11 +592,16 @@ public class ImplWriter extends TransformWriter {
 	public boolean visit(ConstructorInvocation node) {
 		printi(TransformUtil.typeArguments(node.typeArguments()));
 
-		print("_construct(");
+		print("_construct");
 
-		visitAllCSV(node.arguments(), false);
+		Iterable<Expression> arguments = node.arguments();
+		visitAllCSV(arguments, true);
 
-		println(");");
+		for (Expression e : arguments) {
+			hardDep(e.resolveTypeBinding());
+		}
+
+		println(";");
 		return false;
 	}
 
@@ -1186,7 +1191,12 @@ public class ImplWriter extends TransformWriter {
 
 		print("super");
 
-		visitAllCSV(node.arguments(), true);
+		Iterable<Expression> arguments = node.arguments();
+		visitAllCSV(arguments, true);
+
+		for (Expression e : arguments) {
+			hardDep(e.resolveTypeBinding());
+		}
 
 		return false;
 	}
@@ -1217,7 +1227,12 @@ public class ImplWriter extends TransformWriter {
 
 		node.getName().accept(this);
 
-		visitAllCSV(node.arguments(), true);
+		Iterable<Expression> arguments = node.arguments();
+		visitAllCSV(arguments, true);
+
+		for (Expression e : arguments) {
+			hardDep(e.resolveTypeBinding());
+		}
 
 		return false;
 	}
