@@ -829,9 +829,13 @@ public class ImplWriter extends TransformWriter {
 			print(node.getOperator().toString());
 		}
 
+		hardDep(node.getLeftOperand().resolveTypeBinding());
+
 		print(' ');
 
 		node.getRightOperand().accept(this);
+
+		hardDep(node.getRightOperand().resolveTypeBinding());
 
 		if (!extendedOperands.isEmpty()) {
 			print(' ');
@@ -839,6 +843,7 @@ public class ImplWriter extends TransformWriter {
 			for (Expression e : extendedOperands) {
 				print(node.getOperator().toString(), " ");
 				e.accept(this);
+				hardDep(e.resolveTypeBinding());
 			}
 		}
 
