@@ -85,6 +85,7 @@ public class ImplWriter extends TransformWriter {
 	private StringWriter initializer;
 	private List<MethodDeclaration> constructors = new ArrayList<MethodDeclaration>();
 	private final List<ImportDeclaration> imports;
+	public final Set<ITypeBinding> nestedTypes = new HashSet<ITypeBinding>();
 
 	private boolean needsFinally;
 	private boolean needsSynchronized;
@@ -360,6 +361,9 @@ public class ImplWriter extends TransformWriter {
 			throw new Error(e);
 		}
 
+		nestedTypes.add(tb);
+		nestedTypes.addAll(iw.nestedTypes);
+
 		if (iw.closures != null && closures != null) {
 			for (IVariableBinding vb : iw.closures) {
 				if (!vb.getDeclaringMethod().getDeclaringClass().getKey()
@@ -371,7 +375,8 @@ public class ImplWriter extends TransformWriter {
 
 		HeaderWriter hw = new HeaderWriter(root, ctx, tb);
 
-		hw.writeType(node.getAST(), node.bodyDeclarations(), iw.closures);
+		hw.writeType(node.getAST(), node.bodyDeclarations(), iw.closures,
+				iw.nestedTypes);
 
 		String sep = "";
 
@@ -1427,9 +1432,13 @@ public class ImplWriter extends TransformWriter {
 			throw new Error(e);
 		}
 
+		nestedTypes.add(tb);
+		nestedTypes.addAll(iw.nestedTypes);
+
 		HeaderWriter hw = new HeaderWriter(root, ctx, tb);
 
-		hw.writeType(node.getAST(), node.bodyDeclarations(), iw.closures);
+		hw.writeType(node.getAST(), node.bodyDeclarations(), iw.closures,
+				iw.nestedTypes);
 
 		return false;
 	}

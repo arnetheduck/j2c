@@ -51,13 +51,15 @@ public class HeaderWriter extends TransformWriter {
 		this.root = root;
 	}
 
-	public void write(TypeDeclaration node) throws Exception {
+	public void write(TypeDeclaration node, Collection<ITypeBinding> nested)
+			throws Exception {
 		writeType(node.getAST(), node.bodyDeclarations(),
-				new ArrayList<IVariableBinding>());
+				new ArrayList<IVariableBinding>(), nested);
 	}
 
 	public void writeType(AST ast, List<BodyDeclaration> declarations,
-			Collection<IVariableBinding> closures) {
+			Collection<IVariableBinding> closures,
+			Collection<ITypeBinding> nested) {
 		try {
 			out = TransformUtil.openHeader(root, type);
 			List<ITypeBinding> bases = TransformUtil.getBases(ast, type);
@@ -94,6 +96,10 @@ public class HeaderWriter extends TransformWriter {
 				}
 
 				println(" super;");
+			}
+
+			for (ITypeBinding nb : nested) {
+				printlni("friend class ", TransformUtil.name(nb), ";");
 			}
 
 			visitAll(declarations); // This will gather constructors

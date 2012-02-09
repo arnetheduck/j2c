@@ -2,6 +2,7 @@ package se.arnetheduck.j2c.transform;
 
 import java.io.File;
 import java.util.Comparator;
+import java.util.HashSet;
 import java.util.Iterator;
 import java.util.Set;
 import java.util.TreeSet;
@@ -76,7 +77,6 @@ public class Transformer {
 
 		for (ICompilationUnit unit : units) {
 			CompilationUnit cu = parse(unit);
-			writeHeader(root, cu);
 			writeImpl(root, cu);
 		}
 
@@ -108,7 +108,7 @@ public class Transformer {
 			if (type instanceof TypeDeclaration) {
 				HeaderWriter hw = new HeaderWriter(root, this,
 						type.resolveBinding());
-				hw.write((TypeDeclaration) type);
+				hw.write((TypeDeclaration) type, new HashSet<ITypeBinding>());
 			}
 		}
 	}
@@ -130,6 +130,10 @@ public class Transformer {
 						type.resolveBinding(), cu.imports());
 
 				iw.write((TypeDeclaration) type);
+				HeaderWriter hw = new HeaderWriter(root, this,
+						type.resolveBinding());
+				hw.write((TypeDeclaration) type, iw.nestedTypes);
+
 			}
 		}
 	}
