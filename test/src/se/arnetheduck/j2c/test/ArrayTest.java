@@ -6,6 +6,8 @@ public class ArrayTest {
 
 	Empty[] h;
 
+	Sub[] h2;
+
 	int[] c() {
 		return null;
 	}
@@ -16,4 +18,8 @@ public class ArrayTest {
 	void f(int g[]) {
 	}
 
+	Object[] x() {
+		Empty[] ee = h2;
+		return ee;
+	}
 }

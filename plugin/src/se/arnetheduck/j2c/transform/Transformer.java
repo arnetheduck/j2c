@@ -12,6 +12,7 @@ import org.eclipse.jdt.core.ICompilationUnit;
 import org.eclipse.jdt.core.IJavaElement;
 import org.eclipse.jdt.core.IJavaProject;
 import org.eclipse.jdt.core.IType;
+import org.eclipse.jdt.core.JavaModelException;
 import org.eclipse.jdt.core.dom.AST;
 import org.eclipse.jdt.core.dom.ASTParser;
 import org.eclipse.jdt.core.dom.AbstractTypeDeclaration;
@@ -24,8 +25,6 @@ public class Transformer {
 	private final IJavaProject project;
 
 	private final ASTParser parser = ASTParser.newParser(AST.JLS4);
-
-	private ITypeBinding object;
 
 	public final static class PackageBindingComparator implements
 			Comparator<IPackageBinding> {
@@ -49,9 +48,6 @@ public class Transformer {
 		parser.setProject(project);
 		parser.setKind(ASTParser.K_COMPILATION_UNIT);
 		parser.setResolveBindings(true);
-		object = (ITypeBinding) parser
-				.createBindings(new IJavaElement[] { project
-						.findType(Object.class.getName()) }, null)[0];
 	}
 
 	Set<IPackageBinding> packages = new TreeSet<IPackageBinding>(
@@ -114,8 +110,8 @@ public class Transformer {
 	}
 
 	private void writeHeader(IPath root, ITypeBinding tb) throws Exception {
-		TypeBindingHeaderWriter hw = new TypeBindingHeaderWriter(object, root);
-		hw.write(tb);
+		TypeBindingHeaderWriter hw = new TypeBindingHeaderWriter(root, this, tb);
+		hw.write();
 
 		headers.addAll(hw.getTypes());
 		hardDeps.addAll(hw.getHardDeps());
@@ -157,8 +153,11 @@ public class Transformer {
 		}
 
 		if (tb.isArray()) {
-			ArrayWriter aw = new ArrayWriter(root);
-			aw.write(tb);
+			ArrayWriter aw = new ArrayWriter(root, this, tb);
+			aw.write();
+			headers.add(tb);
+			hardDep(aw.getSuperType());
+
 			return;
 		}
 
@@ -177,5 +176,18 @@ public class Transformer {
 
 	void softDep(ITypeBinding dep) {
 		TransformUtil.addDep(dep, softDeps);
+	}
+
+	ITypeBinding resolve(Class<?> clazz) {
+		try {
+			parser.setProject(project);
+			parser.setKind(ASTParser.K_COMPILATION_UNIT);
+			parser.setResolveBindings(true);
+			return (ITypeBinding) parser.createBindings(
+					new IJavaElement[] { project.findType(clazz.getName()) },
+					null)[0];
+		} catch (JavaModelException e) {
+			throw new Error(e);
+		}
 	}
 }

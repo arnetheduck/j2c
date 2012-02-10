@@ -23,11 +23,14 @@ public class TypeBindingHeaderWriter {
 	private Set<ITypeBinding> hardDeps = new HashSet<ITypeBinding>();
 	private Set<ITypeBinding> softDeps = new HashSet<ITypeBinding>();
 	private final IPath root;
-	private final ITypeBinding object;
+	private final ITypeBinding type;
+	private final Transformer ctx;
 
-	public TypeBindingHeaderWriter(ITypeBinding object, IPath root) {
-		this.object = object;
+	public TypeBindingHeaderWriter(IPath root, Transformer ctx,
+			ITypeBinding type) {
 		this.root = root;
+		this.ctx = ctx;
+		this.type = type;
 	}
 
 	public Set<ITypeBinding> getTypes() {
@@ -42,12 +45,8 @@ public class TypeBindingHeaderWriter {
 		return softDeps;
 	}
 
-	public void write(ITypeBinding tb) throws Exception {
-		if (tb.isArray()) {
-			return;
-		}
-
-		printClass(tb);
+	public void write() throws Exception {
+		printClass(type);
 	}
 
 	private void printClass(ITypeBinding tb) throws Exception {
@@ -63,7 +62,8 @@ public class TypeBindingHeaderWriter {
 
 		PrintWriter pw = TransformUtil.openHeader(root, tb);
 
-		List<ITypeBinding> bases = TransformUtil.getBases(tb, object);
+		List<ITypeBinding> bases = TransformUtil.getBases(tb,
+				ctx.resolve(Object.class));
 		for (ITypeBinding b : bases) {
 			pw.println(TransformUtil.include(b));
 		}

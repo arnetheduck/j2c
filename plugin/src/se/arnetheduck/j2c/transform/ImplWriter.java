@@ -1101,6 +1101,7 @@ public class ImplWriter extends TransformWriter {
 	public boolean visit(ReturnStatement node) {
 		printi("return");
 		if (node.getExpression() != null) {
+			hardDep(node.getExpression().resolveTypeBinding());
 			print(" ");
 			node.getExpression().accept(this);
 		}
@@ -1519,6 +1520,7 @@ public class ImplWriter extends TransformWriter {
 		node.getName().accept(this);
 
 		if (node.getInitializer() != null) {
+			hardDep(node.getInitializer().resolveTypeBinding());
 			print(" = ");
 			node.getInitializer().accept(this);
 		}
