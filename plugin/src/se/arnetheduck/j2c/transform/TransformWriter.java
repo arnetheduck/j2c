@@ -170,8 +170,8 @@ public abstract class TransformWriter extends ASTVisitor {
 				|| node.getComponentType() instanceof QualifiedType) {
 			node.getComponentType().accept(this);
 		} else {
-			print(TransformUtil.qualifiedCName(node.getComponentType()
-					.resolveBinding()));
+			print(TransformUtil.relativeCName(node.getComponentType()
+					.resolveBinding(), type));
 		}
 		ctx.softDep(node.resolveBinding());
 		print("Array");

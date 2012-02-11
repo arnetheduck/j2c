@@ -71,17 +71,18 @@ public class HeaderWriter extends TransformWriter {
 
 			println();
 
-			print("class ", TransformUtil.qualifiedCName(type));
+			println("class ", TransformUtil.qualifiedCName(type));
 
-			String sep = " : public ";
+			String sep = ": public ";
 
+			indent++;
 			for (ITypeBinding base : bases) {
-				print(sep, TransformUtil.virtual(base),
+				printlni(sep, TransformUtil.virtual(base),
 						TransformUtil.relativeCName(base, type));
 				sep = ", public ";
 			}
+			indent--;
 
-			println();
 			println("{");
 
 			indent++;
@@ -289,7 +290,7 @@ public class HeaderWriter extends TransformWriter {
 				ITypeBinding at = node.getType().resolveBinding()
 						.createArrayType(f.getExtraDimensions());
 
-				print(TransformUtil.qualifiedCName(at), " ");
+				print(TransformUtil.relativeCName(at, type), " ");
 
 				f.accept(this);
 

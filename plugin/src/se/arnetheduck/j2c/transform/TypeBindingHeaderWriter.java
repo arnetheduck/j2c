@@ -19,9 +19,6 @@ import org.eclipse.jdt.core.dom.ITypeBinding;
 import org.eclipse.jdt.core.dom.IVariableBinding;
 
 public class TypeBindingHeaderWriter {
-	private Set<ITypeBinding> types = new HashSet<ITypeBinding>();
-	private Set<ITypeBinding> hardDeps = new HashSet<ITypeBinding>();
-	private Set<ITypeBinding> softDeps = new HashSet<ITypeBinding>();
 	private final IPath root;
 	private final ITypeBinding type;
 	private final Transformer ctx;
@@ -33,28 +30,12 @@ public class TypeBindingHeaderWriter {
 		this.type = type;
 	}
 
-	public Set<ITypeBinding> getTypes() {
-		return types;
-	}
-
-	public Set<ITypeBinding> getHardDeps() {
-		return hardDeps;
-	}
-
-	public Set<ITypeBinding> getSoftDeps() {
-		return softDeps;
-	}
-
 	public void write() throws Exception {
 		printClass(type);
 	}
 
 	private void printClass(ITypeBinding tb) throws Exception {
-		if (types.contains(tb)) {
-			return;
-		}
-
-		types.add(tb);
+		ctx.headers.add(tb);
 
 		for (ITypeBinding nb : tb.getDeclaredTypes()) {
 			printClass(nb);
@@ -64,29 +45,28 @@ public class TypeBindingHeaderWriter {
 
 		List<ITypeBinding> bases = TransformUtil.getBases(tb,
 				ctx.resolve(Object.class));
+
 		for (ITypeBinding b : bases) {
 			pw.println(TransformUtil.include(b));
 		}
 
+		pw.println();
+
 		pw.print("class ");
-		pw.print(TransformUtil.qualifiedCName(tb));
+		pw.println(TransformUtil.qualifiedCName(tb));
 
-		String sep = " : public ";
+		String sep = ": public ";
 		for (ITypeBinding b : bases) {
-			TransformUtil.addDep(b, hardDeps);
+			ctx.hardDep(b);
 
+			pw.print(TransformUtil.indent(1));
 			pw.print(sep);
 			sep = ", public ";
 			pw.print(TransformUtil.virtual(b));
-			pw.print(TransformUtil.relativeCName(b, tb));
+			pw.println(TransformUtil.relativeCName(b, tb));
 		}
 
-		if (bases.isEmpty()
-				&& !tb.getQualifiedName().equals(Object.class.getName())) {
-			pw.print(" : public virtual java::lang::Object");
-		}
-
-		pw.println(" {");
+		pw.println("{");
 
 		if (tb.getSuperclass() != null) {
 			pw.print(TransformUtil.indent(1));
@@ -140,7 +120,7 @@ public class TypeBindingHeaderWriter {
 	}
 
 	private void printField(PrintWriter pw, IVariableBinding vb) {
-		TransformUtil.addDep(vb.getType(), softDeps);
+		ctx.softDep(vb.getType());
 
 		pw.print(TransformUtil.indent(1));
 
@@ -179,7 +159,7 @@ public class TypeBindingHeaderWriter {
 
 		if (!mb.isConstructor()) {
 			ITypeBinding rt = mb.getReturnType();
-			TransformUtil.addDep(rt, softDeps);
+			ctx.softDep(rt);
 
 			pw.print(TransformUtil.methodModifiers(mb.getModifiers(),
 					tb.getModifiers()));
@@ -198,7 +178,7 @@ public class TypeBindingHeaderWriter {
 				pw.print(", ");
 
 			ITypeBinding pb = mb.getParameterTypes()[i];
-			TransformUtil.addDep(pb, softDeps);
+			ctx.softDep(pb);
 
 			pw.print(TransformUtil.relativeCName(pb, tb));
 			pw.print(" ");

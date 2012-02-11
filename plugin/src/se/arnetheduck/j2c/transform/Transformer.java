@@ -112,10 +112,6 @@ public class Transformer {
 	private void writeHeader(IPath root, ITypeBinding tb) throws Exception {
 		TypeBindingHeaderWriter hw = new TypeBindingHeaderWriter(root, this, tb);
 		hw.write();
-
-		headers.addAll(hw.getTypes());
-		hardDeps.addAll(hw.getHardDeps());
-		softDeps.addAll(hw.getSoftDeps());
 	}
 
 	private void writeImpl(IPath root, CompilationUnit cu) throws Exception {
