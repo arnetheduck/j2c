@@ -44,7 +44,6 @@ import org.eclipse.jdt.core.dom.ImportDeclaration;
 import org.eclipse.jdt.core.dom.InfixExpression;
 import org.eclipse.jdt.core.dom.Initializer;
 import org.eclipse.jdt.core.dom.InstanceofExpression;
-import org.eclipse.jdt.core.dom.Javadoc;
 import org.eclipse.jdt.core.dom.LabeledStatement;
 import org.eclipse.jdt.core.dom.MethodDeclaration;
 import org.eclipse.jdt.core.dom.MethodInvocation;
@@ -221,24 +220,23 @@ public class ImplWriter extends TransformWriter {
 				|| (closures != null && !closures.isEmpty())) {
 			printi(qname, "::", name, "(");
 			printNestedParams(closures);
-			println(") : ");
+			println(")");
 			indent++;
-			String sep = "";
+			String sep = ": ";
 			if (TransformUtil.isInner(type)) {
-				printi();
+				printi(sep);
 				printInit(TransformUtil.outerThisName(type));
 				sep = ", ";
 			}
 
 			if (closures != null) {
 				for (IVariableBinding closure : closures) {
-					println(sep);
-					printi();
+					printi(sep);
 					printInit(closure.getName() + "_");
 					sep = ", ";
 				}
 			}
-			println();
+
 			println("{ }");
 			indent--;
 		}
@@ -258,8 +256,7 @@ public class ImplWriter extends TransformWriter {
 
 			if (TransformUtil.isInner(type)
 					|| (closures != null && !closures.isEmpty())) {
-				println(" : ");
-				sep = "";
+				sep = ": ";
 				if (TransformUtil.isInner(type)
 						&& !TransformUtil.outerStatic(type)) {
 					printInit(TransformUtil.outerThisName(type));
@@ -267,13 +264,13 @@ public class ImplWriter extends TransformWriter {
 
 				if (closures != null) {
 					for (IVariableBinding closure : closures) {
-						println(sep);
+						printlni(sep);
 						printInit(closure.getName() + "_");
 						sep = ", ";
 					}
 				}
 			}
-			println(" {");
+			println("{");
 			indent++;
 			println("_construct(");
 			printi("_construct(");
@@ -313,9 +310,10 @@ public class ImplWriter extends TransformWriter {
 				sep = ", ";
 			}
 
-			println(") : ");
+			println(")");
 			indent++;
-			printi(TransformUtil.relativeCName(type.getSuperclass(), type), "(");
+			printi(": ");
+			print(TransformUtil.relativeCName(type.getSuperclass(), type), "(");
 
 			sep = "";
 			for (int i = 0; i < mb.getParameterTypes().length; ++i) {
@@ -323,29 +321,27 @@ public class ImplWriter extends TransformWriter {
 				sep = ", ";
 			}
 
-			print(")");
+			println(")");
 
 			if (TransformUtil.isInner(type) && !TransformUtil.outerStatic(type)) {
-				println(", ");
-				printi();
+				printi(", ");
 				printInit(TransformUtil.outerThisName(type));
 			}
 
 			for (IVariableBinding closure : closures) {
-				println(", ");
-				printi();
+				printi(", ");
 				printInit(closure.getName() + "_");
 			}
 
 			indent--;
-			println();
-			println(" { }");
+			println("{");
+			println("}");
 			println();
 		}
 	}
 
 	private void printInit(String n) {
-		print(n, "(", n, ")");
+		println(n, "(", n, ")");
 	}
 
 	@Override
@@ -363,8 +359,8 @@ public class ImplWriter extends TransformWriter {
 
 		if (iw.closures != null && closures != null) {
 			for (IVariableBinding vb : iw.closures) {
-				if (!vb.getDeclaringMethod().getDeclaringClass().getKey()
-						.equals(type.getKey())) {
+				if (!vb.getDeclaringMethod().getDeclaringClass()
+						.isEqualTo(type)) {
 					closures.add(vb);
 				}
 			}
@@ -928,19 +924,6 @@ public class ImplWriter extends TransformWriter {
 	}
 
 	@Override
-	public boolean visit(Javadoc node) {
-		if (true)
-			return false;
-		printi("/** ");
-		for (Iterator it = node.tags().iterator(); it.hasNext();) {
-			ASTNode e = (ASTNode) it.next();
-			e.accept(this);
-		}
-		println("\n */");
-		return false;
-	}
-
-	@Override
 	public boolean visit(LabeledStatement node) {
 		printi();
 		node.getLabel().accept(this);
@@ -974,17 +957,19 @@ public class ImplWriter extends TransformWriter {
 
 		visitAllCSV(node.parameters(), true);
 
-		print(TransformUtil.throwsDecl(node.thrownExceptions()));
+		println(TransformUtil.throwsDecl(node.thrownExceptions()));
 
 		if (node.isConstructor()) {
+			indent++;
 			for (Object o : node.getBody().statements()) {
 				if (o instanceof SuperConstructorInvocation) {
-					print(" : ");
+					printi(": ");
 					((SuperConstructorInvocation) o).accept(this);
 				}
 			}
+			indent--;
 
-			println(" {");
+			println("{");
 
 			indent++;
 
@@ -1002,7 +987,8 @@ public class ImplWriter extends TransformWriter {
 
 			visitAllCSV(node.parameters(), false);
 
-			println(") {");
+			println(")");
+			println("{");
 			indent++;
 
 			for (Object o : node.getBody().statements()) {
@@ -1016,7 +1002,6 @@ public class ImplWriter extends TransformWriter {
 			indent--;
 			printlni("}");
 		} else {
-			print(" ");
 			node.getBody().accept(this);
 			println();
 		}
@@ -1055,15 +1040,19 @@ public class ImplWriter extends TransformWriter {
 
 		print(TransformUtil.typeArguments(node.typeArguments()));
 
-		if (type.isNested() && node.getExpression() == null) {
+		if (TransformUtil.isInner(type) && node.getExpression() == null) {
 			IMethodBinding mb = node.resolveMethodBinding();
-			if (mb.getDeclaringClass().getKey()
-					.equals(type.getDeclaringClass().getKey())) {
-				TransformUtil.addDep(mb.getDeclaringClass(), hardDeps);
-				if (Modifier.isStatic(mb.getModifiers())) {
-					print(TransformUtil.name(mb.getDeclaringClass()), "::");
-				} else {
-					print(TransformUtil.thisName(mb.getDeclaringClass()), "->");
+			ITypeBinding dc = mb.getDeclaringClass();
+			if (dc != null && !dc.isEqualTo(type)) {
+				for (ITypeBinding x = type; x.getDeclaringClass() != null
+						&& !x.isEqualTo(dc); x = x.getDeclaringClass()) {
+					hardDep(x.getDeclaringClass());
+
+					if (Modifier.isStatic(mb.getModifiers())) {
+						print(TransformUtil.name(x.getDeclaringClass()), "::");
+					} else {
+						print(TransformUtil.outerThisName(x), "->");
+					}
 				}
 			}
 		}
@@ -1114,22 +1103,16 @@ public class ImplWriter extends TransformWriter {
 			IVariableBinding vb = (IVariableBinding) b;
 			ctx.softDep(vb.getType());
 
-			ITypeBinding ptb = parentType(node);
-			if (ptb != null && ptb.isNested()
-					&& !Modifier.isStatic(ptb.getModifiers())) {
-				IMethodBinding pmb = parentMethod(node);
-
+			if (TransformUtil.isInner(type)) {
 				ITypeBinding dc = vb.getDeclaringClass();
-				if (vb.isField() && dc != null && ptb != null
-						&& !dc.getKey().equals(ptb.getKey())) {
+				if (vb.isField() && dc != null && !dc.isEqualTo(type)) {
 					boolean pq = node.getParent() instanceof QualifiedName;
 
 					if (!pq
 							|| !((QualifiedName) node.getParent()).getName()
 									.equals(node)) {
-						for (ITypeBinding x = ptb; x.getDeclaringClass() != null
-								&& !x.getKey().equals(dc.getKey()); x = x
-								.getDeclaringClass()) {
+						for (ITypeBinding x = type; x.getDeclaringClass() != null
+								&& !x.isEqualTo(dc); x = x.getDeclaringClass()) {
 							hardDep(x.getDeclaringClass());
 
 							if (Modifier.isStatic(vb.getModifiers())) {
@@ -1141,10 +1124,10 @@ public class ImplWriter extends TransformWriter {
 						}
 					}
 				} else if (Modifier.isFinal(vb.getModifiers())) {
-					if (pmb != null
-							&& vb.getDeclaringMethod() != null
-							&& !pmb.getKey().equals(
-									vb.getDeclaringMethod().getKey())) {
+					IMethodBinding pmb = parentMethod(node);
+
+					if (pmb != null && vb.getDeclaringMethod() != null
+							&& !pmb.isEqualTo(vb.getDeclaringMethod())) {
 						closures.add(vb);
 					}
 				}
@@ -1158,20 +1141,6 @@ public class ImplWriter extends TransformWriter {
 		for (ASTNode n = node; n != null; n = n.getParent()) {
 			if (n instanceof MethodDeclaration) {
 				return ((MethodDeclaration) n).resolveBinding();
-			}
-		}
-
-		return null;
-	}
-
-	private static ITypeBinding parentType(ASTNode node) {
-		for (ASTNode n = node; n != null; n = n.getParent()) {
-			if (n instanceof AnonymousClassDeclaration) {
-				return ((AnonymousClassDeclaration) n).resolveBinding();
-			}
-
-			if (n instanceof TypeDeclaration) {
-				return ((TypeDeclaration) n).resolveBinding();
 			}
 		}
 
