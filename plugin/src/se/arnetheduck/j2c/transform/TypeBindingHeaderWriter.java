@@ -81,6 +81,11 @@ public class TypeBindingHeaderWriter {
 		}
 
 		String lastAccess = null;
+		lastAccess = TransformUtil.printAccess(pw, Modifier.PUBLIC, lastAccess);
+
+		pw.print(TransformUtil.indent(1));
+		pw.println("static java::lang::Class *class_;");
+
 		for (IVariableBinding vb : tb.getDeclaredFields()) {
 			lastAccess = TransformUtil.printAccess(pw, vb.getModifiers(),
 					lastAccess);

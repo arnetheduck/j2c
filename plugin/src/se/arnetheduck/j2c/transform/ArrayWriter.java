@@ -85,6 +85,8 @@ public class ArrayWriter {
 
 		pw.println("{");
 		pw.println("public:");
+		pw.print(TransformUtil.indent(1));
+		pw.println("static java::lang::Class *class_;");
 
 		pw.println("    template<typename... T>");
 		if (sb == null) {

@@ -1505,7 +1505,7 @@ public class ImplWriter extends TransformWriter {
 			} else if (code.equals(PrimitiveType.SHORT)) {
 				hardDep(node.getAST().resolveWellKnownType("java.lang.Short"));
 				print("java::lang::Short::TYPE_");
-			} else if (code.equals(PrimitiveType.BOOLEAN)) {
+			} else if (code.equals(PrimitiveType.VOID)) {
 				print("/* " + node.toString()
 						+ ".class */(java::lang::Class*)0");
 			}

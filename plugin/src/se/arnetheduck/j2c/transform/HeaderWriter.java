@@ -103,6 +103,11 @@ public class HeaderWriter extends TransformWriter {
 				printlni("friend class ", TransformUtil.name(nb), ";");
 			}
 
+			lastAccess = TransformUtil.printAccess(out, Modifier.PUBLIC,
+					lastAccess);
+
+			printlni("static java::lang::Class *class_;");
+
 			visitAll(declarations); // This will gather constructors
 
 			lastAccess = TransformUtil.printAccess(out, Modifier.PUBLIC,
