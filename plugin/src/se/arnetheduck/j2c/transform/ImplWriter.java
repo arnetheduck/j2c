@@ -75,6 +75,7 @@ import org.eclipse.jdt.core.dom.TypeParameter;
 import org.eclipse.jdt.core.dom.UnionType;
 import org.eclipse.jdt.core.dom.VariableDeclarationExpression;
 import org.eclipse.jdt.core.dom.VariableDeclarationFragment;
+import org.eclipse.jdt.core.dom.VariableDeclarationStatement;
 import org.eclipse.jdt.core.dom.WhileStatement;
 
 public class ImplWriter extends TransformWriter {
@@ -1266,11 +1267,11 @@ public class ImplWriter extends TransformWriter {
 		printi();
 
 		if (node.isDefault()) {
-			println("default:");
+			print("default:");
 		} else {
 			print("case ");
 			node.getExpression().accept(this);
-			println(":");
+			print(":");
 		}
 
 		return false;
@@ -1278,51 +1279,109 @@ public class ImplWriter extends TransformWriter {
 
 	@Override
 	public boolean visit(SwitchStatement node) {
+		List<Statement> statements = node.statements();
+		List<VariableDeclarationStatement> vdss = declarations(statements);
+
+		if (!vdss.isEmpty()) {
+			printlni("{");
+			indent++;
+
+			for (VariableDeclarationStatement vds : vdss) {
+				for (VariableDeclarationFragment fragment : (Iterable<VariableDeclarationFragment>) vds
+						.fragments()) {
+					ITypeBinding vdb = vds.getType().resolveBinding();
+					ITypeBinding fb = fragment.getExtraDimensions() == 0 ? vdb
+							: vdb.createArrayType(fragment.getExtraDimensions());
+					hardDep(fb);
+
+					printi(TransformUtil.variableModifiers(vds.getModifiers()));
+					print(TransformUtil.relativeCName(fb, type), " ");
+					print(TransformUtil.ref(fb));
+					fragment.getName().accept(this);
+					println(";");
+				}
+			}
+		}
+
 		printi("switch (");
 		node.getExpression().accept(this);
 		println(") {");
 
-		indent++;
-
 		boolean indented = false;
-		List<Statement> statements = node.statements();
+		boolean wasCase = false;
 		for (int i = 0; i < statements.size(); ++i) {
 			Statement s = statements.get(i);
 
-			if (!indented && !(s instanceof SwitchCase)) {
-				boolean isBlock = s instanceof Block;
-				boolean lastStatement = i + 1 == statements.size();
-				boolean nextIsCase = lastStatement
-						|| statements.get(i + 1) instanceof SwitchCase;
-				boolean isSingleBlock = isBlock
-						&& (!nextIsCase || lastStatement);
-				if (!isSingleBlock) {
-					print("{");
-					indent++;
-					indented = true;
+			if (s instanceof VariableDeclarationStatement) {
+				if (wasCase) {
+					println();
 				}
-			}
-			if (indented && s instanceof SwitchCase) {
-				indent--;
-				printlni("}");
-				indented = false;
+				VariableDeclarationStatement vds = (VariableDeclarationStatement) s;
+
+				for (VariableDeclarationFragment fragment : (Iterable<VariableDeclarationFragment>) vds
+						.fragments()) {
+					if (fragment.getInitializer() != null) {
+						printi();
+						fragment.getName().accept(this);
+						print(" = ");
+						fragment.getInitializer().accept(this);
+						println(";");
+					}
+				}
+			} else if (s instanceof SwitchCase) {
+				if (wasCase) {
+					println();
+				}
+
+				if (indented) {
+					indent--;
+				}
+
+				s.accept(this);
+				indent++;
+				indented = true;
+			} else if (s instanceof Block) {
+				if (wasCase) {
+					print(" ");
+				}
+				s.accept(this);
+				println();
+			} else {
+				if (wasCase) {
+					println();
+				}
+
+				s.accept(this);
 			}
 
-			s.accept(this);
+			wasCase = s instanceof SwitchCase;
 		}
 
 		if (indented) {
 			indent--;
-			printlni("}");
 			indented = false;
 		}
 
-		indent--;
-
 		printlni("}");
+
+		if (!vdss.isEmpty()) {
+			indent--;
+			printlni("}");
+		}
 		println();
 
 		return false;
+	}
+
+	private List<VariableDeclarationStatement> declarations(
+			List<Statement> statements) {
+		List<VariableDeclarationStatement> ret = new ArrayList<VariableDeclarationStatement>();
+		for (Statement s : statements) {
+			if (s instanceof VariableDeclarationStatement) {
+				ret.add((VariableDeclarationStatement) s);
+			}
+		}
+		return ret;
 	}
 
 	private int sc;

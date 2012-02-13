@@ -486,7 +486,7 @@ public abstract class TransformWriter extends ASTVisitor {
 				ITypeBinding fb = node.getType().resolveBinding()
 						.createArrayType(fragment.getExtraDimensions());
 				hardDep(fb);
-				print(TransformUtil.qualifiedCName(fb), " ");
+				print(TransformUtil.relativeCName(fb, type), " ");
 				fragment.accept(this);
 				println(";");
 			}
