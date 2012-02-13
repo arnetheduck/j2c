@@ -111,6 +111,17 @@ public class LocalClassTest {
 		return lpc.getV();
 	}
 
+	public int testThisMethod(final int x) {
+		ParamConstructor lpc = new ParamConstructor(3) {
+			@Override
+			public int getV() {
+				return LocalClassTest.this.testArrayAccess();
+			}
+		};
+
+		return lpc.getV();
+	}
+
 	static {
 		ParamConstructor lpc = new ParamConstructor(3) {
 			@Override

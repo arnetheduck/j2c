@@ -18,4 +18,15 @@ public class ExtendsTest extends LocalClassTest {
 			}
 		}.getV();
 	}
+
+	public int testThis(final int x) {
+		ParamConstructor lpc = new ParamConstructor(3) {
+			@Override
+			public int getV() {
+				return ExtendsTest.this.testArrayAccess();
+			}
+		};
+
+		return lpc.getV();
+	}
 }

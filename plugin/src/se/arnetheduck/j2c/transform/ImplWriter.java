@@ -1107,10 +1107,18 @@ public class ImplWriter extends TransformWriter {
 				ITypeBinding dc = vb.getDeclaringClass();
 				if (vb.isField() && dc != null && !dc.isEqualTo(type)) {
 					boolean pq = node.getParent() instanceof QualifiedName;
+					boolean hasThis = pq
+							&& ((QualifiedName) node.getParent()).getName()
+									.equals(node);
 
-					if (!pq
-							|| !((QualifiedName) node.getParent()).getName()
-									.equals(node)) {
+					if (!hasThis && node.getParent() instanceof FieldAccess) {
+						FieldAccess fa = (FieldAccess) node.getParent();
+						hasThis = fa.getExpression() instanceof ThisExpression
+								&& ((ThisExpression) fa.getExpression())
+										.getQualifier() != null;
+					}
+
+					if (!hasThis) {
 						for (ITypeBinding x = type; x.getDeclaringClass() != null
 								&& !x.isEqualTo(dc); x = x.getDeclaringClass()) {
 							hardDep(x.getDeclaringClass());
