@@ -32,6 +32,11 @@ public class TypeBindingHeaderWriter {
 
 	public void write() throws Exception {
 		printClass(type);
+
+		if (!type.isInterface()) {
+			StubWriter sw = new StubWriter(root, ctx, type);
+			sw.write();
+		}
 	}
 
 	private void printClass(ITypeBinding tb) throws Exception {

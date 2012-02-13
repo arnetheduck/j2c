@@ -1,7 +1,6 @@
 package se.arnetheduck.j2c.transform;
 
-import java.io.FileNotFoundException;
-import java.io.FileOutputStream;
+import java.io.IOException;
 import java.io.PrintWriter;
 import java.io.StringWriter;
 import java.util.ArrayList;
@@ -128,12 +127,9 @@ public class ImplWriter extends TransformWriter {
 		return body;
 	}
 
-	private void writeType(StringWriter body) throws FileNotFoundException {
+	private void writeType(StringWriter body) throws IOException {
 		try {
-			out = new PrintWriter(new FileOutputStream(root
-					+ TransformUtil.implName(type)));
-
-			println(TransformUtil.include(type));
+			out = TransformUtil.openImpl(root, type);
 
 			for (ITypeBinding dep : getHardDeps()) {
 				println(TransformUtil.include(dep));

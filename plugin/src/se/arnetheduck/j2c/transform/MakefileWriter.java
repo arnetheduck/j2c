@@ -15,7 +15,8 @@ public class MakefileWriter {
 
 	}
 
-	public void write(Iterable<ITypeBinding> types) throws IOException {
+	public void write(Iterable<ITypeBinding> types, Iterable<ITypeBinding> stubs)
+			throws IOException {
 		FileOutputStream fos = new FileOutputStream(root.append("Makefile")
 				.toFile());
 		PrintWriter pw = new PrintWriter(fos);
@@ -34,10 +35,24 @@ public class MakefileWriter {
 		}
 
 		pw.println();
+		pw.println("STUB_SRCS = \\");
+
+		for (ITypeBinding tb : stubs) {
+			if (tb.isNullType()) {
+				continue;
+			}
+
+			pw.print("    ");
+			pw.print(TransformUtil.implName(tb));
+			pw.println(" \\");
+		}
+
+		pw.println();
 
 		pw.println("OBJS = $(SRCS:.cpp=.o)");
+		pw.println("STUB_OBJS = $(STUB_SRCS:.cpp=.o)");
 
-		pw.println("all: $(OBJS)");
+		pw.println("all: $(OBJS) $(STUB_OBJS)");
 		pw.println("    ");
 		pw.println();
 		pw.println(".PHONY: all");

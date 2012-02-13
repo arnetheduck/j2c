@@ -478,6 +478,22 @@ public final class TransformUtil {
 		return pw;
 	}
 
+	public static PrintWriter openImpl(IPath root, ITypeBinding tb)
+			throws IOException {
+
+		FileOutputStream fos = new FileOutputStream(root.append(
+				TransformUtil.implName(tb)).toFile());
+
+		PrintWriter pw = new PrintWriter(fos);
+
+		pw.println("// Generated from " + tb.getJavaElement().getPath());
+
+		pw.println(TransformUtil.include(tb));
+		pw.println();
+
+		return pw;
+	}
+
 	public static List<ITypeBinding> getBases(ITypeBinding tb,
 			ITypeBinding object) {
 		List<ITypeBinding> ret = new ArrayList<ITypeBinding>();
