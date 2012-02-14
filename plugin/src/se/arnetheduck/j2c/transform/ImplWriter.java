@@ -475,10 +475,11 @@ public class ImplWriter extends TransformWriter {
 	}
 
 	private List<Class> handledBlocks = new ArrayList<Class>(Arrays.asList(
-			CatchClause.class, DoStatement.class, EnhancedForStatement.class,
-			ForStatement.class, IfStatement.class, Initializer.class,
-			MethodDeclaration.class, SynchronizedStatement.class,
-			SwitchStatement.class, TryStatement.class, WhileStatement.class));
+			Block.class, CatchClause.class, DoStatement.class,
+			EnhancedForStatement.class, ForStatement.class, IfStatement.class,
+			Initializer.class, MethodDeclaration.class,
+			SynchronizedStatement.class, SwitchStatement.class,
+			TryStatement.class, WhileStatement.class));
 
 	@Override
 	public boolean visit(Block node) {
@@ -1113,9 +1114,7 @@ public class ImplWriter extends TransformWriter {
 
 					if (!hasThis && node.getParent() instanceof FieldAccess) {
 						FieldAccess fa = (FieldAccess) node.getParent();
-						hasThis = fa.getExpression() instanceof ThisExpression
-								&& ((ThisExpression) fa.getExpression())
-										.getQualifier() != null;
+						hasThis = fa.getExpression() != null;
 					}
 
 					if (!hasThis) {
