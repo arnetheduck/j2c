@@ -437,6 +437,8 @@ public class ImplWriter extends TransformWriter {
 
 	@Override
 	public boolean visit(Assignment node) {
+		hardDep(node.getRightHandSide().resolveTypeBinding());
+
 		ITypeBinding tb = node.getLeftHandSide().resolveTypeBinding();
 		if (tb.getQualifiedName().equals("java.lang.String")
 				&& node.getOperator() == Operator.PLUS_ASSIGN) {
@@ -1051,7 +1053,11 @@ public class ImplWriter extends TransformWriter {
 			IVariableBinding vb = (IVariableBinding) b;
 			ctx.softDep(vb.getType());
 
-			if (TransformUtil.isInner(type)) {
+			if (type.isNested() && Modifier.isStatic(vb.getModifiers())
+					&& !type.isEqualTo(vb.getDeclaringClass())) {
+				print(TransformUtil.name(vb.getDeclaringClass()), "::");
+				hardDep(vb.getDeclaringClass());
+			} else if (TransformUtil.isInner(type)) {
 				ITypeBinding dc = vb.getDeclaringClass();
 				if (vb.isField() && dc != null && !dc.isEqualTo(type)) {
 					boolean pq = node.getParent() instanceof QualifiedName;
