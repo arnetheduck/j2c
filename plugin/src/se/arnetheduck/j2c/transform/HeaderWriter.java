@@ -146,13 +146,7 @@ public class HeaderWriter extends TransformWriter {
 	private void makeConstructors(Collection<IVariableBinding> closures) {
 		String name = TransformUtil.name(type);
 
-		if (constructors.isEmpty() && TransformUtil.isInner(type)
-				|| (closures != null && !closures.isEmpty())) {
-			printi(name, "(");
-			printNestedParams(closures);
-			println(");");
-		}
-
+		boolean hasEmpty = false;
 		for (MethodDeclaration md : constructors) {
 			printi(name, "(");
 
@@ -163,7 +157,21 @@ public class HeaderWriter extends TransformWriter {
 				visitAllCSV(md.parameters(), false);
 			}
 
-			println(") ", TransformUtil.throwsDecl(md.thrownExceptions()), ";");
+			hasEmpty |= md.parameters().isEmpty();
+			println(")", TransformUtil.throwsDecl(md.thrownExceptions()), ";");
+		}
+
+		if (!hasEmpty) {
+			if (!constructors.isEmpty() && !"protected:".equals(lastAccess)) {
+				lastAccess = "protected:";
+				println(lastAccess);
+			}
+
+			printi(name, "(");
+
+			String sep = printNestedParams(closures);
+
+			println(");");
 		}
 	}
 
@@ -378,8 +386,10 @@ public class HeaderWriter extends TransformWriter {
 		if (node.isConstructor()) {
 			constructors.add(node);
 
-			lastAccess = TransformUtil.printAccess(out, Modifier.PRIVATE,
-					lastAccess);
+			if (!"protected:".equals(lastAccess)) {
+				lastAccess = "protected:";
+				println(lastAccess);
+			}
 
 			printi("void _construct");
 		} else {

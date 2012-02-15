@@ -17,5 +17,9 @@ public class NestedTest {
 		Object o = new Object() {
 			// Anonymous
 		};
+
+		new Static();
+		new Inner();
+		new Local();
 	}
 }

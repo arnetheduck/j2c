@@ -90,29 +90,18 @@ public class StubWriter {
 			pw.print(TransformUtil.qualifiedCName(rt));
 			pw.print(" ");
 			pw.print(TransformUtil.ref(rt));
+		} else {
+			pw.print("void ");
 		}
 
 		pw.print(TransformUtil.qualifiedCName(tb));
 		pw.print("::");
 
-		pw.print(mb.isConstructor() ? TransformUtil.name(tb) : TransformUtil
-				.keywords(mb.getMethodDeclaration().getName()));
+		pw.print(mb.isConstructor() ? "_construct" : TransformUtil.keywords(mb
+				.getMethodDeclaration().getName()));
 
-		pw.print("(");
-		for (int i = 0; i < mb.getParameterTypes().length; ++i) {
-			if (i > 0)
-				pw.print(", ");
-
-			ITypeBinding pb = mb.getParameterTypes()[i];
-			ctx.softDep(pb);
-
-			pw.print(TransformUtil.relativeCName(pb, tb));
-			pw.print(" ");
-			pw.print(TransformUtil.ref(pb));
-			pw.print("a" + i);
-		}
-
-		pw.println(")");
+		TransformUtil.printParams(pw, tb, mb, ctx);
+		pw.println();
 		pw.println("{");
 		if (mb.getReturnType() != null
 				&& !mb.getReturnType().getName().equals("void")) {

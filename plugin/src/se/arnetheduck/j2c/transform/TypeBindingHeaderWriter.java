@@ -96,10 +96,16 @@ public class TypeBindingHeaderWriter {
 
 		Set<String> usings = new HashSet<String>();
 
+		boolean hasEmptyConstructor = false;
+		boolean hasConstructor = false;
 		for (IMethodBinding mb : tb.getDeclaredMethods()) {
 			lastAccess = TransformUtil.printAccess(pw, mb.getModifiers(),
 					lastAccess);
 			printMethod(pw, tb, mb, usings);
+
+			hasConstructor |= mb.isConstructor();
+			hasEmptyConstructor |= mb.isConstructor()
+					&& mb.getParameterTypes().length == 0;
 		}
 
 		if (tb.getQualifiedName().equals("java.lang.Object")) {
@@ -109,6 +115,15 @@ public class TypeBindingHeaderWriter {
 		}
 
 		printBridgeMethods(pw, tb);
+
+		if (!hasEmptyConstructor) {
+			if (hasConstructor) {
+				pw.println("protected:");
+			}
+			pw.print(TransformUtil.indent(1));
+			pw.print(TransformUtil.name(tb));
+			pw.print("() { }");
+		}
 
 		pw.println("};");
 
@@ -167,7 +182,9 @@ public class TypeBindingHeaderWriter {
 
 		pw.print(TransformUtil.indent(1));
 
-		if (!mb.isConstructor()) {
+		if (mb.isConstructor()) {
+			pw.print(TransformUtil.name(tb));
+		} else {
 			ITypeBinding rt = mb.getReturnType();
 			ctx.softDep(rt);
 
@@ -177,30 +194,29 @@ public class TypeBindingHeaderWriter {
 			pw.print(TransformUtil.relativeCName(rt, tb));
 			pw.print(" ");
 			pw.print(TransformUtil.ref(rt));
+
+			pw.print(TransformUtil
+					.keywords(mb.getMethodDeclaration().getName()));
 		}
 
-		pw.print(mb.isConstructor() ? TransformUtil.name(tb) : TransformUtil
-				.keywords(mb.getMethodDeclaration().getName()));
+		TransformUtil.printParams(pw, tb, mb, ctx);
 
-		pw.print("(");
-		for (int i = 0; i < mb.getParameterTypes().length; ++i) {
-			if (i > 0)
-				pw.print(", ");
-
-			ITypeBinding pb = mb.getParameterTypes()[i];
-			ctx.softDep(pb);
-
-			pw.print(TransformUtil.relativeCName(pb, tb));
-			pw.print(" ");
-			pw.print(TransformUtil.ref(pb));
-			pw.print("a" + i);
-		}
-
-		pw.print(")");
 		if (Modifier.isAbstract(mb.getModifiers())) {
 			pw.print(" = 0");
 		}
 
+		if (mb.isConstructor()) {
+			pw.print(" { _construct(");
+			for (int i = 0; i < mb.getParameterTypes().length; ++i) {
+				if (i > 0)
+					pw.print(", ");
+				pw.print("a" + i);
+			}
+			pw.println("); }");
+			pw.print(TransformUtil.indent(1));
+			pw.print("void _construct");
+			TransformUtil.printParams(pw, tb, mb, ctx);
+		}
 		pw.println(";");
 
 		String using = TransformUtil.methodUsing(mb);

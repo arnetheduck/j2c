@@ -536,4 +536,23 @@ public final class TransformUtil {
 		printi(out, indent, objects);
 		out.println();
 	}
+
+	public static void printParams(PrintWriter pw, ITypeBinding tb,
+			IMethodBinding mb, Transformer ctx) {
+		pw.print("(");
+		for (int i = 0; i < mb.getParameterTypes().length; ++i) {
+			if (i > 0)
+				pw.print(", ");
+
+			ITypeBinding pb = mb.getParameterTypes()[i];
+			ctx.softDep(pb);
+
+			pw.print(relativeCName(pb, tb));
+			pw.print(" ");
+			pw.print(ref(pb));
+			pw.print("a" + i);
+		}
+
+		pw.print(")");
+	}
 }
