@@ -300,8 +300,10 @@ public class HeaderWriter extends TransformWriter {
 				printi(TransformUtil.fieldModifiers(node.getModifiers(), true,
 						hasInitilializer(fragments)));
 
-				ITypeBinding at = node.getType().resolveBinding()
-						.createArrayType(f.getExtraDimensions());
+				ITypeBinding at = f.getExtraDimensions() > 0 ? node.getType()
+						.resolveBinding()
+						.createArrayType(f.getExtraDimensions()) : node
+						.getType().resolveBinding();
 
 				print(TransformUtil.relativeCName(at, type), " ");
 

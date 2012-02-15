@@ -173,6 +173,10 @@ public final class TransformUtil {
 				return (int) ch;
 			}
 
+			if (ch == '\'') {
+				return "'\\''";
+			}
+
 			return "'" + ch + "'";
 		} else if (cv instanceof Integer) {
 			if ((int) cv == Integer.MIN_VALUE) {

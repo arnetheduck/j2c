@@ -652,35 +652,24 @@ public class ImplWriter extends TransformWriter {
 			return false;
 		}
 
-		boolean skip = true;
-
 		Iterable<VariableDeclarationFragment> fragments = node.fragments();
-		for (VariableDeclarationFragment f : fragments) {
-			if (TransformUtil.constantValue(f) == null) {
-				skip = false;
-			}
-		}
-
-		if (skip) {
-			return false;
-		}
-
-		if (node.getJavadoc() != null) {
-			node.getJavadoc().accept(this);
-		}
-
-		printi(TransformUtil.fieldModifiers(node.getModifiers(), false,
-				hasInitilializer(fragments)));
-
-		print(TransformUtil.qualifiedCName(node.getType().resolveBinding()));
-
-		print(" ");
 		for (Iterator<VariableDeclarationFragment> it = fragments.iterator(); it
 				.hasNext();) {
 			VariableDeclarationFragment f = it.next();
+
 			if (TransformUtil.constantValue(f) != null) {
 				continue;
 			}
+
+			printi(TransformUtil.fieldModifiers(node.getModifiers(), false,
+					hasInitilializer(fragments)));
+
+			ITypeBinding tb = node.getType().resolveBinding();
+			tb = f.getExtraDimensions() > 0 ? tb.createArrayType(f
+					.getExtraDimensions()) : tb;
+			print(TransformUtil.qualifiedCName(tb));
+
+			print(" ");
 
 			print(TransformUtil.ref(node.getType()));
 
@@ -693,12 +682,9 @@ public class ImplWriter extends TransformWriter {
 				f.getInitializer().accept(this);
 			}
 
-			if (it.hasNext()) {
-				print(", ");
-			}
+			println(";");
 		}
 
-		println(";");
 		return false;
 	}
 
