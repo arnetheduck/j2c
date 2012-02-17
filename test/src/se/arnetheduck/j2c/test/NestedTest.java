@@ -9,9 +9,21 @@ public class NestedTest {
 		}
 	}
 
+	public static class SubStatic extends Static {
+		int x() {
+			return m();
+		}
+	}
+
 	public class Inner {
 		int m() {
 			return x;
+		}
+	}
+
+	public class SubInner extends Inner {
+		int x() {
+			return m();
 		}
 	}
 

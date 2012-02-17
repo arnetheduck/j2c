@@ -119,7 +119,11 @@ public class HeaderWriter extends TransformWriter {
 				makeConstructors(closures);
 			}
 
-			if (TransformUtil.isInner(type) && !TransformUtil.outerStatic(type)) {
+			ITypeBinding sb = type.getSuperclass();
+			boolean superInner = sb != null && TransformUtil.isInner(sb)
+					&& !TransformUtil.outerStatic(sb);
+			if (!superInner && TransformUtil.isInner(type)
+					&& !TransformUtil.outerStatic(type)) {
 				printlni(TransformUtil.outerThis(type), ";");
 			}
 

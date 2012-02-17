@@ -265,7 +265,15 @@ public class ImplWriter extends TransformWriter {
 	private void printFieldInit(String sep) {
 		indent++;
 
-		if (TransformUtil.isInner(type) && !TransformUtil.outerStatic(type)) {
+		ITypeBinding sb = type.getSuperclass();
+		if (sb != null && TransformUtil.isInner(sb)
+				&& !TransformUtil.outerStatic(sb)) {
+			printi(sep);
+			print("super(");
+			print(TransformUtil.outerThisName(sb));
+			println(")");
+		} else if (TransformUtil.isInner(type)
+				&& !TransformUtil.outerStatic(type)) {
 			printi(sep);
 			printInit(TransformUtil.outerThisName(type));
 			sep = ", ";
@@ -979,9 +987,10 @@ public class ImplWriter extends TransformWriter {
 		if (TransformUtil.isInner(type) && node.getExpression() == null) {
 			IMethodBinding mb = node.resolveMethodBinding();
 			ITypeBinding dc = mb.getDeclaringClass();
-			if (dc != null && !dc.isEqualTo(type)) {
+			if (dc != null && !type.isSubTypeCompatible(dc)) {
 				for (ITypeBinding x = type; x.getDeclaringClass() != null
-						&& !x.isEqualTo(dc); x = x.getDeclaringClass()) {
+						&& !x.isSubTypeCompatible(dc); x = x
+						.getDeclaringClass()) {
 					hardDep(x.getDeclaringClass());
 
 					if (Modifier.isStatic(mb.getModifiers())) {
@@ -1323,7 +1332,8 @@ public class ImplWriter extends TransformWriter {
 
 	@Override
 	public boolean visit(ThisExpression node) {
-		if (node.getQualifier() != null) {
+		if (node.getQualifier() != null
+				&& !node.getQualifier().resolveBinding().isEqualTo(type)) {
 			node.getQualifier().accept(this);
 			print("_");
 		}
