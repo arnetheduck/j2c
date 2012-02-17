@@ -3,6 +3,10 @@ package se.arnetheduck.j2c.test;
 public class NestedTest {
 	private static int x;
 
+	private static int a() {
+		return 5;
+	}
+
 	public static class Static {
 		int m() {
 			return x;
@@ -11,7 +15,7 @@ public class NestedTest {
 
 	public static class SubStatic extends Static {
 		int x() {
-			return m();
+			return m() + a();
 		}
 	}
 
@@ -23,20 +27,20 @@ public class NestedTest {
 
 	public class SubInner extends Inner {
 		int x() {
-			return m();
+			return m() + a();
 		}
 	}
 
 	public void m() {
 		class Local {
 			int m2() {
-				return x;
+				return x + a();
 			}
 		}
 
 		Object o = new Object() {
 			int m3() {
-				return x;
+				return x + a();
 			}
 		};
 

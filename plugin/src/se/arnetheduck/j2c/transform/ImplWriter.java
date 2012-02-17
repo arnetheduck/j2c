@@ -1021,16 +1021,20 @@ public class ImplWriter extends TransformWriter {
 
 		print(TransformUtil.typeArguments(node.typeArguments()));
 
-		if (TransformUtil.isInner(type) && node.getExpression() == null) {
-			IMethodBinding mb = node.resolveMethodBinding();
-			ITypeBinding dc = mb.getDeclaringClass();
+		ITypeBinding dc = b.getDeclaringClass();
+
+		if (type.isNested() && Modifier.isStatic(b.getModifiers())
+				&& !type.isSubTypeCompatible(dc)) {
+			print(TransformUtil.name(dc), "::");
+			hardDep(dc);
+		} else if (TransformUtil.isInner(type) && node.getExpression() == null) {
 			if (dc != null && !type.isSubTypeCompatible(dc)) {
 				for (ITypeBinding x = type; x.getDeclaringClass() != null
 						&& !x.isSubTypeCompatible(dc); x = x
 						.getDeclaringClass()) {
 					hardDep(x.getDeclaringClass());
 
-					if (Modifier.isStatic(mb.getModifiers())) {
+					if (Modifier.isStatic(b.getModifiers())) {
 						print(TransformUtil.name(x.getDeclaringClass()), "::");
 					} else {
 						print(TransformUtil.outerThisName(x), "->");
@@ -1106,13 +1110,13 @@ public class ImplWriter extends TransformWriter {
 			IVariableBinding vb = (IVariableBinding) b;
 			ctx.softDep(vb.getType());
 
+			ITypeBinding dc = vb.getDeclaringClass();
 			if (type.isNested() && Modifier.isStatic(vb.getModifiers())
-					&& !type.isEqualTo(vb.getDeclaringClass())) {
-				print(TransformUtil.name(vb.getDeclaringClass()), "::");
-				hardDep(vb.getDeclaringClass());
+					&& !type.isSubTypeCompatible(dc)) {
+				print(TransformUtil.name(dc), "::");
+				hardDep(dc);
 			} else if (TransformUtil.isInner(type)) {
-				ITypeBinding dc = vb.getDeclaringClass();
-				if (vb.isField() && dc != null && !dc.isEqualTo(type)) {
+				if (vb.isField() && dc != null && !dc.isSubTypeCompatible(type)) {
 					boolean pq = node.getParent() instanceof QualifiedName;
 					boolean hasThis = pq
 							&& ((QualifiedName) node.getParent()).getName()
@@ -1125,7 +1129,8 @@ public class ImplWriter extends TransformWriter {
 
 					if (!hasThis) {
 						for (ITypeBinding x = type; x.getDeclaringClass() != null
-								&& !x.isEqualTo(dc); x = x.getDeclaringClass()) {
+								&& !x.isSubTypeCompatible(dc); x = x
+								.getDeclaringClass()) {
 							hardDep(x.getDeclaringClass());
 
 							if (Modifier.isStatic(vb.getModifiers())) {
