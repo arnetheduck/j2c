@@ -135,6 +135,10 @@ public class ImplWriter extends TransformWriter {
 				println(TransformUtil.include(dep));
 			}
 
+			if (fmod) {
+				println("#include <cmath>");
+			}
+
 			println("using namespace java::lang;");
 
 			for (ImportDeclaration node : imports) {
@@ -232,7 +236,9 @@ public class ImplWriter extends TransformWriter {
 
 			println(") ", TransformUtil.throwsDecl(md.thrownExceptions()));
 
+			indent++;
 			printFieldInit(": ");
+			indent--;
 
 			println("{");
 			indent++;
@@ -254,8 +260,9 @@ public class ImplWriter extends TransformWriter {
 
 			println(")");
 
+			indent++;
 			printFieldInit(": ");
-
+			indent--;
 			println("{");
 			println("}");
 			println();
@@ -263,8 +270,6 @@ public class ImplWriter extends TransformWriter {
 	}
 
 	private void printFieldInit(String sep) {
-		indent++;
-
 		ITypeBinding sb = type.getSuperclass();
 		if (sb != null && TransformUtil.isInner(sb)
 				&& !TransformUtil.outerStatic(sb)) {
@@ -286,7 +291,6 @@ public class ImplWriter extends TransformWriter {
 				sep = ", ";
 			}
 		}
-		indent--;
 	}
 
 	private void makeBaseConstructors() {
@@ -402,9 +406,10 @@ public class ImplWriter extends TransformWriter {
 
 		at.accept(this);
 
-		for (Iterator it = node.dimensions().iterator(); it.hasNext();) {
+		for (Iterator<Expression> it = node.dimensions().iterator(); it
+				.hasNext();) {
 			print("(");
-			Expression e = (Expression) it.next();
+			Expression e = it.next();
 			e.accept(this);
 			print(")");
 			break;
@@ -719,6 +724,7 @@ public class ImplWriter extends TransformWriter {
 	}
 
 	private boolean skipIndent = false;
+	private boolean fmod;
 
 	@Override
 	public boolean visit(IfStatement node) {
@@ -800,7 +806,21 @@ public class ImplWriter extends TransformWriter {
 				e.accept(this);
 				print(")");
 			}
+
 			return false;
+		}
+
+		if (node.getOperator().equals(InfixExpression.Operator.REMAINDER)) {
+			if (tb.getName().equals("float") || tb.getName().equals("double")) {
+				fmod = true;
+				print("std::fmod(");
+				cast(node.getLeftOperand(), tb);
+				print(", ");
+				cast(node.getRightOperand(), tb);
+				print(")");
+
+				return false;
+			}
 		}
 
 		if (node.getOperator().equals(
@@ -969,10 +989,10 @@ public class ImplWriter extends TransformWriter {
 
 	@Override
 	public boolean visit(MethodInvocation node) {
+		IMethodBinding b = node.resolveMethodBinding();
 		if (node.getExpression() != null) {
 			node.getExpression().accept(this);
 
-			IMethodBinding b = node.resolveMethodBinding();
 			if ((b.getModifiers() & Modifier.STATIC) > 0) {
 				print("::");
 			} else {
@@ -1004,14 +1024,35 @@ public class ImplWriter extends TransformWriter {
 
 		node.getName().accept(this);
 
-		Iterable<Expression> arguments = node.arguments();
-		visitAllCSV(arguments, true);
+		List<Expression> arguments = node.arguments();
+		print("(");
 
-		for (Expression e : arguments) {
-			hardDep(e.resolveTypeBinding());
+		String s = "";
+		for (int i = 0; i < arguments.size(); ++i) {
+			Expression argument = arguments.get(i);
+			print(s);
+			s = ", ";
+			ITypeBinding pb = b.getParameterTypes()[i];
+			cast(argument, pb);
 		}
 
+		print(")");
+
 		return false;
+	}
+
+	private void cast(Expression argument, ITypeBinding pb) {
+		ITypeBinding tb = argument.resolveTypeBinding();
+		if (!tb.isEqualTo(pb)) {
+			// Java has different implicit cast rules
+			hardDep(tb);
+			print("static_cast<", TransformUtil.relativeCName(pb, type),
+					TransformUtil.ref(pb), ">(");
+			argument.accept(this);
+			print(")");
+		} else {
+			argument.accept(this);
+		}
 	}
 
 	@Override

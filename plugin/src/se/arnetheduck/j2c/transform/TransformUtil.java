@@ -194,6 +194,8 @@ public final class TransformUtil {
 			}
 
 			return cv + "ll";
+		} else if (cv instanceof Float) {
+			return cv + "f";
 		}
 
 		return cv;
