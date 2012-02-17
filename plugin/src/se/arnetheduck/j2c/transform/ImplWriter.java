@@ -8,7 +8,10 @@ import java.util.Arrays;
 import java.util.HashSet;
 import java.util.Iterator;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
+import java.util.TreeMap;
+import java.util.TreeSet;
 
 import org.eclipse.core.runtime.IPath;
 import org.eclipse.jdt.core.dom.ASTNode;
@@ -77,6 +80,8 @@ import org.eclipse.jdt.core.dom.VariableDeclarationFragment;
 import org.eclipse.jdt.core.dom.VariableDeclarationStatement;
 import org.eclipse.jdt.core.dom.WhileStatement;
 
+import se.arnetheduck.j2c.transform.Transformer.TypeBindingComparator;
+
 public class ImplWriter extends TransformWriter {
 	private final IPath root;
 	private final Set<IVariableBinding> closures;
@@ -84,7 +89,10 @@ public class ImplWriter extends TransformWriter {
 	private StringWriter initializer;
 	private List<MethodDeclaration> constructors = new ArrayList<MethodDeclaration>();
 	private final List<ImportDeclaration> imports;
-	public final Set<ITypeBinding> nestedTypes = new HashSet<ITypeBinding>();
+	public final Set<ITypeBinding> nestedTypes = new TreeSet<ITypeBinding>(
+			new Transformer.TypeBindingComparator());
+	public final Map<ITypeBinding, ImplWriter> localTypes = new TreeMap<ITypeBinding, ImplWriter>(
+			new TypeBindingComparator());
 
 	private boolean needsFinally;
 	private boolean needsSynchronized;
@@ -354,6 +362,8 @@ public class ImplWriter extends TransformWriter {
 		nestedTypes.add(tb);
 		nestedTypes.addAll(iw.nestedTypes);
 
+		localTypes.put(tb, iw);
+
 		if (iw.closures != null && closures != null) {
 			for (IVariableBinding vb : iw.closures) {
 				if (!vb.getDeclaringMethod().getDeclaringClass()
@@ -367,22 +377,6 @@ public class ImplWriter extends TransformWriter {
 
 		hw.writeType(node.getAST(), node.bodyDeclarations(), iw.closures,
 				iw.nestedTypes);
-
-		String sep = "";
-
-		if (!TransformUtil.outerStatic(tb)) {
-			print("this");
-			sep = ", ";
-		}
-
-		for (IVariableBinding closure : iw.closures) {
-			print(sep, closure.getName(), "_");
-			sep = ", ";
-		}
-
-		if (!((ClassInstanceCreation) node.getParent()).arguments().isEmpty()) {
-			print(sep);
-		}
 		return false;
 	}
 
@@ -567,26 +561,33 @@ public class ImplWriter extends TransformWriter {
 
 		print("(new ");
 
+		ITypeBinding tb = node.getType().resolveBinding();
+
 		if (node.getAnonymousClassDeclaration() != null) {
-			ITypeBinding atb = node.getAnonymousClassDeclaration()
-					.resolveBinding();
-			print(TransformUtil.name(atb), "(");
+			tb = node.getAnonymousClassDeclaration().resolveBinding();
+			print(TransformUtil.name(tb));
 			node.getAnonymousClassDeclaration().accept(this);
-			hardDep(atb);
 		} else {
 			print(TransformUtil.typeArguments(node.typeArguments()));
 
 			node.getType().accept(this);
-
-			hardDep(node.getType().resolveBinding());
-			print("(");
 		}
+		hardDep(tb);
+
+		print("(");
 
 		String sep = "";
-		if (node.getAnonymousClassDeclaration() == null
-				&& TransformUtil.isInner(node.resolveTypeBinding())) {
+		if (TransformUtil.isInner(tb) && !TransformUtil.outerStatic(tb)) {
 			print("this");
 			sep = ", ";
+		}
+
+		if (localTypes.containsKey(tb)) {
+			ImplWriter iw = localTypes.get(tb);
+			for (IVariableBinding closure : iw.closures) {
+				print(sep, closure.getName(), "_");
+				sep = ", ";
+			}
 		}
 
 		if (!node.arguments().isEmpty()) {
@@ -1478,6 +1479,10 @@ public class ImplWriter extends TransformWriter {
 
 		hw.writeType(node.getAST(), node.bodyDeclarations(), iw.closures,
 				iw.nestedTypes);
+
+		if (tb.isLocal()) {
+			localTypes.put(tb, iw);
+		}
 
 		return false;
 	}

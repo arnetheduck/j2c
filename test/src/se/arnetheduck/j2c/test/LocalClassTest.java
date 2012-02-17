@@ -130,4 +130,17 @@ public class LocalClassTest {
 			}
 		};
 	}
+
+	public int localVar() {
+		final Object o = new Object();
+
+		class C {
+			public int m() {
+				return o.hashCode();
+			}
+		}
+
+		C c = new C();
+		return c.m();
+	}
 }
