@@ -607,11 +607,12 @@ public class ImplWriter extends TransformWriter {
 
 	@Override
 	public boolean visit(ConditionalExpression node) {
+		ITypeBinding tb = node.resolveTypeBinding();
 		node.getExpression().accept(this);
 		print(" ? ");
-		node.getThenExpression().accept(this);
+		cast(node.getThenExpression(), tb);
 		print(" : ");
-		node.getElseExpression().accept(this);
+		cast(node.getElseExpression(), tb);
 		return false;
 	}
 
@@ -701,7 +702,7 @@ public class ImplWriter extends TransformWriter {
 
 			print(" ");
 
-			print(TransformUtil.ref(node.getType()));
+			print(TransformUtil.ref(tb));
 
 			print(TransformUtil.qualifiedCName(type), "::");
 
