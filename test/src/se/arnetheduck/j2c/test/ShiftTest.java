@@ -12,4 +12,10 @@ public class ShiftTest {
 	public int rightUnsigned() {
 		return -1 >>> 5;
 	}
+
+	public int rightUnsignedAssign() {
+		int i = -5;
+		i >>>= 1;
+		return i;
+	}
 }

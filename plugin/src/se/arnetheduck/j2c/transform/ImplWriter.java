@@ -465,6 +465,22 @@ public class ImplWriter extends TransformWriter {
 			return false;
 		}
 
+		if (node.getOperator() == Operator.RIGHT_SHIFT_UNSIGNED_ASSIGN) {
+			ITypeBinding b = node.getLeftHandSide().resolveTypeBinding();
+			node.getLeftHandSide().accept(this);
+			print(" = ");
+			if (b.getName().equals("long")) {
+				print("static_cast<uint64_t>(");
+			} else {
+				print("static_cast<uint32_t>(");
+			}
+			node.getLeftHandSide().accept(this);
+			print(") >> ");
+			node.getRightHandSide().accept(this);
+
+			return false;
+		}
+
 		node.getLeftHandSide().accept(this);
 
 		print(" ", node.getOperator(), " ");
