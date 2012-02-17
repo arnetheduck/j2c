@@ -1380,6 +1380,7 @@ public class ImplWriter extends TransformWriter {
 		printlni("{");
 		indent++;
 		printi("synchronized synchronized_", sc, "(");
+		hardDep(node.getExpression().resolveTypeBinding());
 		node.getExpression().accept(this);
 		println(");");
 		printi();
