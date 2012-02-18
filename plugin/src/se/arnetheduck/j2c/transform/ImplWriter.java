@@ -1433,13 +1433,20 @@ public class ImplWriter extends TransformWriter {
 	@Override
 	public boolean visit(ThisExpression node) {
 		if (node.getQualifier() != null
-				&& !node.getQualifier().resolveBinding().isEqualTo(type)) {
-			node.getQualifier().accept(this);
-			print("_");
+				&& !type.isSubTypeCompatible(node.getQualifier()
+						.resolveTypeBinding())) {
+			String sep = "";
+			ITypeBinding dc = node.getQualifier().resolveTypeBinding();
+			for (ITypeBinding x = type; x.getDeclaringClass() != null
+					&& !x.isSubTypeCompatible(dc); x = x.getDeclaringClass()) {
+				hardDep(x.getDeclaringClass());
+
+				print(sep, TransformUtil.outerThisName(x));
+				sep = "->";
+			}
+		} else {
+			print("this");
 		}
-
-		print("this");
-
 		return false;
 	}
 

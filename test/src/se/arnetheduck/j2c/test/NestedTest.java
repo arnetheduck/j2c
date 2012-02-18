@@ -44,6 +44,7 @@ public class NestedTest {
 			}
 
 			int m4() {
+				int y = NestedTest.this.hashCode();
 				Object o3 = new Object() {
 					public int m4() {
 						return x;
