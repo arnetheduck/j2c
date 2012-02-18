@@ -138,6 +138,9 @@ public class ImplWriter extends TransformWriter {
 
 	private void writeType(StringWriter body) throws IOException {
 		try {
+			String cons = type.isAnonymous() ? makeBaseConstructors()
+					: makeConstructors();
+
 			out = TransformUtil.openImpl(root, type);
 
 			for (ITypeBinding dep : getHardDeps()) {
@@ -171,17 +174,13 @@ public class ImplWriter extends TransformWriter {
 				makeSynchronized();
 			}
 
-			if (type.isAnonymous()) {
-				makeBaseConstructors();
-			} else {
-				makeConstructors();
-			}
-
 			if (closeInitializer()) {
 				print(initializer.toString());
 			}
 
 			print(body.toString());
+
+			println(cons);
 
 			out.close();
 			ctx.impls.add(type);
@@ -225,7 +224,10 @@ public class ImplWriter extends TransformWriter {
 		printlni("}");
 	}
 
-	private void makeConstructors() {
+	private String makeConstructors() {
+		PrintWriter old = out;
+		StringWriter sw = new StringWriter();
+		out = new PrintWriter(sw);
 		String qname = TransformUtil.qualifiedCName(type);
 		String name = TransformUtil.name(type);
 
@@ -276,6 +278,9 @@ public class ImplWriter extends TransformWriter {
 			println("}");
 			println();
 		}
+		out.close();
+		out = old;
+		return sw.toString();
 	}
 
 	private void printFieldInit(String sep) {
@@ -317,7 +322,10 @@ public class ImplWriter extends TransformWriter {
 		}
 	}
 
-	private void makeBaseConstructors() {
+	private String makeBaseConstructors() {
+		PrintWriter old = out;
+		StringWriter sw = new StringWriter();
+		out = new PrintWriter(sw);
 		// Synthesize base class constructors
 		String qname = TransformUtil.qualifiedCName(type);
 		String name = TransformUtil.name(type);
@@ -359,6 +367,9 @@ public class ImplWriter extends TransformWriter {
 			println("}");
 			println();
 		}
+		out.close();
+		out = old;
+		return sw.toString();
 	}
 
 	private void printInit(String n) {
