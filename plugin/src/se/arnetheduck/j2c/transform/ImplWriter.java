@@ -286,6 +286,7 @@ public class ImplWriter extends TransformWriter {
 			print("super(");
 			print(TransformUtil.outerThisName(sb));
 			println(")");
+			sep = ", ";
 		} else if (TransformUtil.isInner(type)
 				&& !TransformUtil.outerStatic(type)) {
 			printi(sep);
@@ -399,10 +400,11 @@ public class ImplWriter extends TransformWriter {
 	public boolean visit(ArrayAccess node) {
 		hardDep(node.getArray().resolveTypeBinding());
 
+		print("(*");
 		node.getArray().accept(this);
-		print("->operator[](");
+		print(")[");
 		node.getIndex().accept(this);
-		print(")");
+		print("]");
 
 		return false;
 	}
@@ -694,16 +696,20 @@ public class ImplWriter extends TransformWriter {
 
 	@Override
 	public boolean visit(FieldDeclaration node) {
+		Iterable<VariableDeclarationFragment> fragments = node.fragments();
+
 		if (!Modifier.isStatic(node.getModifiers())) {
 			fields.add(node);
+			for (VariableDeclarationFragment f : fragments) {
+				if (f.getInitializer() != null) {
+					hardDep(f.getInitializer().resolveTypeBinding());
+				}
+			}
+
 			return false;
 		}
 
-		Iterable<VariableDeclarationFragment> fragments = node.fragments();
-		for (Iterator<VariableDeclarationFragment> it = fragments.iterator(); it
-				.hasNext();) {
-			VariableDeclarationFragment f = it.next();
-
+		for (VariableDeclarationFragment f : fragments) {
 			if (TransformUtil.constantValue(f) != null) {
 				continue;
 			}
@@ -753,7 +759,7 @@ public class ImplWriter extends TransformWriter {
 
 		print(") ");
 		node.getBody().accept(this);
-
+		println();
 		return false;
 	}
 
@@ -977,7 +983,7 @@ public class ImplWriter extends TransformWriter {
 
 	@Override
 	public boolean visit(MethodDeclaration node) {
-		if (node.getBody() == null) {
+		if (node.getBody() == null && !Modifier.isNative(node.getModifiers())) {
 			return false;
 		}
 
@@ -1001,7 +1007,20 @@ public class ImplWriter extends TransformWriter {
 
 		println(TransformUtil.throwsDecl(node.thrownExceptions()));
 
-		node.getBody().accept(this);
+		if (node.getBody() != null) {
+			node.getBody().accept(this);
+		} else {
+			println("{");
+			indent++;
+			if (node.getReturnType2() != null
+					&& !node.getReturnType2().resolveBinding().getName()
+							.equals("void")) {
+				printlni("return 0;");
+			}
+			indent--;
+			print("}");
+		}
+
 		println();
 
 		println();
