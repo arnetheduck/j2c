@@ -14,6 +14,9 @@ import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 import org.eclipse.core.runtime.IPath;
+import org.eclipse.jdt.core.Flags;
+import org.eclipse.jdt.core.IJavaElement;
+import org.eclipse.jdt.core.JavaModelException;
 import org.eclipse.jdt.core.dom.AST;
 import org.eclipse.jdt.core.dom.Expression;
 import org.eclipse.jdt.core.dom.IMethodBinding;
@@ -25,6 +28,7 @@ import org.eclipse.jdt.core.dom.PrimitiveType;
 import org.eclipse.jdt.core.dom.Type;
 import org.eclipse.jdt.core.dom.TypeParameter;
 import org.eclipse.jdt.core.dom.VariableDeclarationFragment;
+import org.eclipse.jdt.internal.core.Initializer;
 
 public final class TransformUtil {
 	private static final String PUBLIC = "public:";
@@ -382,12 +386,26 @@ public final class TransformUtil {
 
 	public static String thisName(ITypeBinding tb) {
 		return TransformUtil.name(tb) + "_this";
-
 	}
 
 	public static boolean outerStatic(ITypeBinding tb) {
-		return tb.isLocal() ? tb.getDeclaringMethod() == null
-				|| Modifier.isStatic(tb.getDeclaringMethod().getModifiers())
+		if (tb.isLocal() && tb.getDeclaringMethod() == null) {
+			IJavaElement je = tb.getJavaElement();
+			while (je != null && !(je instanceof Initializer)) {
+				je = je.getParent();
+			}
+
+			if (je instanceof Initializer) {
+				try {
+					return Flags.isStatic(((Initializer) je).getFlags());
+				} catch (JavaModelException e) {
+					throw new Error(e);
+				}
+			}
+		}
+
+		return tb.isLocal() ? tb.getDeclaringMethod() != null
+				&& Modifier.isStatic(tb.getDeclaringMethod().getModifiers())
 				: Modifier.isStatic(tb.getDeclaringClass().getModifiers());
 	}
 

@@ -1,6 +1,13 @@
 package se.arnetheduck.j2c.test;
 
 public class LocalClassTest {
+	ParamConstructor field = new ParamConstructor(3) {
+		@Override
+		public int getV() {
+			return lct.localVar();
+		}
+	};
+
 	LocalClassTest lct;
 
 	public int testLocalParamConstructor() {

@@ -42,6 +42,16 @@ public class NestedTest {
 			int m3() {
 				return x + a();
 			}
+
+			int m4() {
+				Object o3 = new Object() {
+					public int m4() {
+						return x;
+					}
+				};
+
+				return o3.hashCode();
+			}
 		};
 
 		new Static();
