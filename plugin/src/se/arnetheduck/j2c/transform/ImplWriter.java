@@ -88,6 +88,7 @@ public class ImplWriter extends TransformWriter {
 
 	private StringWriter initializer;
 	private List<MethodDeclaration> constructors = new ArrayList<MethodDeclaration>();
+	private List<FieldDeclaration> fields = new ArrayList<FieldDeclaration>();
 	private final List<ImportDeclaration> imports;
 	public final Set<ITypeBinding> nestedTypes = new TreeSet<ITypeBinding>(
 			new Transformer.TypeBindingComparator());
@@ -290,6 +291,20 @@ public class ImplWriter extends TransformWriter {
 			printi(sep);
 			printInit(TransformUtil.outerThisName(type));
 			sep = ", ";
+		}
+
+		for (FieldDeclaration fd : fields) {
+			for (VariableDeclarationFragment vd : (List<VariableDeclarationFragment>) fd
+					.fragments()) {
+				printi(sep);
+				vd.getName().accept(this);
+				print("(");
+				if (vd.getInitializer() != null) {
+					vd.getInitializer().accept(this);
+				}
+				println(")");
+				sep = ", ";
+			}
 		}
 
 		if (closures != null) {
@@ -680,6 +695,7 @@ public class ImplWriter extends TransformWriter {
 	@Override
 	public boolean visit(FieldDeclaration node) {
 		if (!Modifier.isStatic(node.getModifiers())) {
+			fields.add(node);
 			return false;
 		}
 
