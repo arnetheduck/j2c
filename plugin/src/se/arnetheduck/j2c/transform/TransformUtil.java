@@ -15,6 +15,7 @@ import java.util.regex.Pattern;
 
 import org.eclipse.core.runtime.IPath;
 import org.eclipse.jdt.core.Flags;
+import org.eclipse.jdt.core.IInitializer;
 import org.eclipse.jdt.core.IJavaElement;
 import org.eclipse.jdt.core.JavaModelException;
 import org.eclipse.jdt.core.dom.AST;
@@ -28,13 +29,12 @@ import org.eclipse.jdt.core.dom.PrimitiveType;
 import org.eclipse.jdt.core.dom.Type;
 import org.eclipse.jdt.core.dom.TypeParameter;
 import org.eclipse.jdt.core.dom.VariableDeclarationFragment;
-import org.eclipse.jdt.internal.core.Initializer;
 
 public final class TransformUtil {
-	private static final String PUBLIC = "public:";
-	private static final String PROTECTED = "public: /* protected */";
-	private static final String PACKAGE = "public: /* package */";
-	private static final String PRIVATE = "private:";
+	public static final String PUBLIC = "public:";
+	public static final String PROTECTED = "public: /* protected */";
+	public static final String PACKAGE = "public: /* package */";
+	public static final String PRIVATE = "private:";
 
 	public static String cname(String jname) {
 		return jname.replace(".", "::");
@@ -389,24 +389,29 @@ public final class TransformUtil {
 	}
 
 	public static boolean outerStatic(ITypeBinding tb) {
-		if (tb.isLocal() && tb.getDeclaringMethod() == null) {
-			IJavaElement je = tb.getJavaElement();
-			while (je != null && !(je instanceof Initializer)) {
-				je = je.getParent();
+		if (tb.isLocal()) {
+			if (tb.getDeclaringMethod() == null) {
+				IJavaElement je = tb.getJavaElement();
+				while (je != null && !(je instanceof IInitializer)) {
+					je = je.getParent();
+				}
+
+				if (je instanceof IInitializer) {
+					try {
+						return Flags.isStatic(((IInitializer) je).getFlags());
+					} catch (JavaModelException e) {
+						throw new Error(e);
+					}
+				}
+
+				return false;
 			}
 
-			if (je instanceof Initializer) {
-				try {
-					return Flags.isStatic(((Initializer) je).getFlags());
-				} catch (JavaModelException e) {
-					throw new Error(e);
-				}
-			}
+			return Modifier.isStatic(tb.getDeclaringMethod().getModifiers());
+
 		}
 
-		return tb.isLocal() ? tb.getDeclaringMethod() != null
-				&& Modifier.isStatic(tb.getDeclaringMethod().getModifiers())
-				: Modifier.isStatic(tb.getDeclaringClass().getModifiers());
+		return Modifier.isStatic(tb.getDeclaringClass().getModifiers());
 	}
 
 	private static Collection<String> keywords = Arrays.asList("delete",
@@ -579,4 +584,145 @@ public final class TransformUtil {
 
 		pw.print(")");
 	}
+
+	public static IMethodBinding getSuperMethod(IMethodBinding mb) {
+		for (ITypeBinding tb : mb.getDeclaringClass().getInterfaces()) {
+			for (IMethodBinding mb2 : tb.getDeclaredMethods()) {
+				if (mb.overrides(mb2)) {
+					return mb2;
+				}
+			}
+		}
+
+		return null;
+	}
+
+	public static void declareBridge(PrintWriter pw, ITypeBinding tb,
+			IMethodBinding mb, Transformer ctx) {
+		if (!mb.isConstructor()) {
+			IMethodBinding mb2 = getSuperMethod(mb);
+			if (needsBridge(mb, mb2)) {
+				mb2 = mb2.getMethodDeclaration();
+
+				pw.print(TransformUtil.indent(1));
+
+				TransformUtil.printSignature(pw, tb, mb2, ctx, false);
+
+				pw.println(";");
+			}
+		}
+	}
+
+	public static void defineBridge(PrintWriter pw, ITypeBinding tb,
+			IMethodBinding mb, Transformer ctx) {
+		if (!mb.isConstructor()) {
+			IMethodBinding mb2 = getSuperMethod(mb);
+			if (needsBridge(mb, mb2)) {
+				mb2 = mb2.getMethodDeclaration();
+
+				printSignature(pw, tb, mb2, ctx, true);
+
+				pw.println();
+				pw.println("{ ");
+				pw.print(indent(1));
+				if (mb.getReturnType() != null
+						&& !mb.getReturnType().getName().equals("void")) {
+					pw.print("return ");
+				}
+
+				pw.print(keywords(mb2.getMethodDeclaration().getName()));
+				pw.print("(");
+				for (int i = 0; i < mb2.getParameterTypes().length; ++i) {
+					if (i > 0)
+						pw.print(", ");
+					ITypeBinding pb = mb.getParameterTypes()[i];
+					ITypeBinding pb2 = mb2.getParameterTypes()[i];
+
+					if (!pb.isEqualTo(pb2)) {
+						ctx.hardDep(tb);
+						pw.print("dynamic_cast<");
+						pw.print(relativeCName(pb, tb));
+						pw.print(ref(pb));
+						pw.print(">(");
+						pw.print("a" + i);
+						pw.print(")");
+					} else {
+						pw.print("a" + i);
+					}
+				}
+
+				pw.println(");");
+				pw.println("}");
+				pw.println("");
+			}
+		}
+	}
+
+	public static boolean needsBridge(IMethodBinding mb, IMethodBinding mb2) {
+		return mb2 != null && !sameSignature(mb, mb2.getMethodDeclaration())
+				&& !returnCovariant(mb, mb2.getMethodDeclaration());
+	}
+
+	public static boolean sameSignature(IMethodBinding mb, IMethodBinding mb2) {
+		if (!mb.getName().equals(mb2.getName())) {
+			return false;
+		}
+
+		return sameReturn(mb, mb2) && sameParameters(mb, mb2);
+	}
+
+	private static boolean sameReturn(IMethodBinding mb, IMethodBinding mb2) {
+		return mb.getReturnType().getErasure()
+				.isEqualTo(mb2.getReturnType().getErasure());
+
+	}
+
+	private static boolean sameParameters(IMethodBinding mb, IMethodBinding mb2) {
+		if (mb.getParameterTypes().length != mb2.getParameterTypes().length) {
+			return false;
+		}
+
+		for (int i = 0; i < mb.getParameterTypes().length; ++i) {
+			if (!mb.getParameterTypes()[i].getErasure().isEqualTo(
+					mb2.getParameterTypes()[i].getErasure())) {
+				return false;
+			}
+		}
+
+		return true;
+	}
+
+	public static boolean returnCovariant(IMethodBinding mb, IMethodBinding mb2) {
+		return !sameReturn(mb, mb2) && sameParameters(mb, mb2);
+	}
+
+	public static void printSignature(PrintWriter pw, ITypeBinding tb,
+			IMethodBinding mb, Transformer ctx, boolean qualified) {
+		if (mb.isConstructor()) {
+			pw.print(name(tb));
+		} else {
+			ITypeBinding rt = mb.getReturnType();
+			ctx.softDep(rt);
+
+			if (!qualified) {
+				pw.print(methodModifiers(mb.getModifiers(), tb.getModifiers()));
+				pw.print(relativeCName(rt, tb));
+			} else {
+				pw.print(qualifiedCName(rt));
+			}
+
+			pw.print(" ");
+			pw.print(ref(rt));
+
+			if (qualified) {
+				pw.print(qualifiedCName(tb));
+				pw.print("::");
+			}
+
+			pw.print(keywords(mb.getMethodDeclaration().getName()));
+		}
+
+		printParams(pw, tb, mb, ctx);
+	}
+
 }

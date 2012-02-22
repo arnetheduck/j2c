@@ -75,7 +75,11 @@ public class Transformer {
 
 		for (ICompilationUnit unit : units) {
 			CompilationUnit cu = parse(unit);
-			writeImpl(root, cu);
+			try {
+				writeImpl(root, cu);
+			} catch (Throwable e) {
+				e.printStackTrace();
+			}
 		}
 
 		processDeps(root);
@@ -136,7 +140,7 @@ public class Transformer {
 		}
 	}
 
-	public void processDeps(IPath root) throws Exception {
+	public void processDeps(IPath root) {
 		while (!hardDeps.isEmpty()) {
 			Iterator<ITypeBinding> it = hardDeps.iterator();
 			ITypeBinding tb = it.next();
@@ -149,27 +153,31 @@ public class Transformer {
 		}
 	}
 
-	private void writeDep(IPath root, ITypeBinding tb) throws Exception {
-		if (headers.contains(tb)) {
-			return;
+	private void writeDep(IPath root, ITypeBinding tb) {
+		try {
+			if (headers.contains(tb)) {
+				return;
+			}
+
+			if (tb.isArray()) {
+				ArrayWriter aw = new ArrayWriter(root, this, tb);
+				aw.write();
+				headers.add(tb);
+				hardDep(aw.getSuperType());
+
+				return;
+			}
+
+			IType type = project.findType(tb.getQualifiedName());
+			if (type == null || type.getCompilationUnit() == null) {
+				writeHeader(root, tb);
+				return;
+			}
+
+			writeHeader(root, parse(type.getCompilationUnit()));
+		} catch (Exception e) {
+			e.printStackTrace();
 		}
-
-		if (tb.isArray()) {
-			ArrayWriter aw = new ArrayWriter(root, this, tb);
-			aw.write();
-			headers.add(tb);
-			hardDep(aw.getSuperType());
-
-			return;
-		}
-
-		IType type = project.findType(tb.getQualifiedName());
-		if (type == null || type.getCompilationUnit() == null) {
-			writeHeader(root, tb);
-			return;
-		}
-
-		writeHeader(root, parse(type.getCompilationUnit()));
 	}
 
 	void hardDep(ITypeBinding dep) {

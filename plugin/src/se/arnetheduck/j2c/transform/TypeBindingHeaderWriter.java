@@ -2,18 +2,11 @@ package se.arnetheduck.j2c.transform;
 
 import java.io.PrintWriter;
 import java.lang.reflect.Modifier;
-import java.util.Arrays;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
 
 import org.eclipse.core.runtime.IPath;
-import org.eclipse.jdt.core.Flags;
-import org.eclipse.jdt.core.ILocalVariable;
-import org.eclipse.jdt.core.IMethod;
-import org.eclipse.jdt.core.IType;
-import org.eclipse.jdt.core.JavaModelException;
-import org.eclipse.jdt.core.Signature;
 import org.eclipse.jdt.core.dom.IMethodBinding;
 import org.eclipse.jdt.core.dom.ITypeBinding;
 import org.eclipse.jdt.core.dom.IVariableBinding;
@@ -57,7 +50,16 @@ public class TypeBindingHeaderWriter {
 
 		pw.println();
 
-		pw.print("class ");
+		String lastAccess;
+
+		if (type.isInterface()) {
+			lastAccess = TransformUtil.PUBLIC;
+			pw.print("struct ");
+		} else {
+			lastAccess = TransformUtil.PRIVATE;
+			pw.print("class ");
+		}
+
 		pw.println(TransformUtil.qualifiedCName(tb));
 
 		String sep = ": public ";
@@ -80,7 +82,6 @@ public class TypeBindingHeaderWriter {
 			pw.println(" super;");
 		}
 
-		String lastAccess = null;
 		lastAccess = TransformUtil.printAccess(pw, Modifier.PUBLIC, lastAccess);
 
 		pw.print(TransformUtil.indent(1));
@@ -113,8 +114,6 @@ public class TypeBindingHeaderWriter {
 			pw.print(TransformUtil.indent(1));
 			pw.println("virtual ~Object() { }");
 		}
-
-		printBridgeMethods(pw, tb);
 
 		if (!hasEmptyConstructor) {
 			if (hasConstructor) {
@@ -182,24 +181,7 @@ public class TypeBindingHeaderWriter {
 
 		pw.print(TransformUtil.indent(1));
 
-		if (mb.isConstructor()) {
-			pw.print(TransformUtil.name(tb));
-		} else {
-			ITypeBinding rt = mb.getReturnType();
-			ctx.softDep(rt);
-
-			pw.print(TransformUtil.methodModifiers(mb.getModifiers(),
-					tb.getModifiers()));
-
-			pw.print(TransformUtil.relativeCName(rt, tb));
-			pw.print(" ");
-			pw.print(TransformUtil.ref(rt));
-
-			pw.print(TransformUtil
-					.keywords(mb.getMethodDeclaration().getName()));
-		}
-
-		TransformUtil.printParams(pw, tb, mb, ctx);
+		TransformUtil.printSignature(pw, tb, mb, ctx, false);
 
 		if (Modifier.isAbstract(mb.getModifiers())) {
 			pw.print(" = 0");
@@ -219,6 +201,8 @@ public class TypeBindingHeaderWriter {
 		}
 		pw.println(";");
 
+		TransformUtil.declareBridge(pw, tb, mb, ctx);
+
 		String using = TransformUtil.methodUsing(mb);
 		if (using != null) {
 			if (usings.add(using)) {
@@ -226,73 +210,6 @@ public class TypeBindingHeaderWriter {
 				pw.println(using);
 			}
 		}
-	}
-
-	void printBridgeMethods(PrintWriter pw, ITypeBinding tb) throws Exception {
-		// ITypeBinding doesn't support synthetic methods but it seems IType
-		// does, see:
-		// https://bugs.eclipse.org/bugs/show_bug.cgi?id=369848
-		IType t = (IType) tb.getJavaElement();
-
-		for (IMethod m : t.getMethods()) {
-			if (Flags.isBridge(m.getFlags())
-					&& !isReturnCovariant(m, t.getMethods())) {
-				pw.print(TransformUtil.indent(1));
-				pw.print(TransformUtil.cname(Signature.toString(m
-						.getReturnType())));
-
-				pw.print(" ");
-				pw.print(ref(m.getReturnType()));
-				pw.print(m.getElementName());
-				pw.print("(");
-				String sep = "";
-				for (ILocalVariable p : m.getParameters()) {
-					pw.print(sep);
-					sep = ", ";
-					pw.print(TransformUtil.cname(Signature.toString(p
-							.getTypeSignature())));
-					pw.print(" ");
-					pw.print(ref(p.getTypeSignature()));
-					pw.print(p.getElementName());
-
-				}
-
-				pw.println(");");
-			}
-		}
-	}
-
-	private String ref(String typeSignature) {
-		switch (typeSignature) {
-		case Signature.SIG_BOOLEAN:
-		case Signature.SIG_BYTE:
-		case Signature.SIG_CHAR:
-		case Signature.SIG_DOUBLE:
-		case Signature.SIG_FLOAT:
-		case Signature.SIG_INT:
-		case Signature.SIG_LONG:
-		case Signature.SIG_SHORT:
-		case Signature.SIG_VOID:
-			return "";
-		}
-
-		return "*";
-	}
-
-	/**
-	 * Return true if the method is a covariant return type bridge.
-	 */
-	private boolean isReturnCovariant(IMethod m, IMethod[] methods)
-			throws JavaModelException {
-		for (IMethod x : methods) {
-			if (x.getElementName().equals(m.getElementName())
-					&& Arrays.equals(m.getParameterTypes(),
-							x.getParameterTypes())
-					&& !m.getReturnType().equals(x.getReturnType())) {
-				return true;
-			}
-		}
-		return false;
 	}
 
 	/** Check if super-interface has the same method already */

@@ -117,6 +117,10 @@ public class ImplWriter extends TransformWriter {
 	}
 
 	public void write(TypeDeclaration node) throws Exception {
+		if (node.isInterface()) {
+			return;
+		}
+
 		StringWriter body = getBody(node.bodyDeclarations());
 		writeType(body);
 	}
@@ -1033,8 +1037,10 @@ public class ImplWriter extends TransformWriter {
 		}
 
 		println();
-
 		println();
+
+		TransformUtil.defineBridge(out, type, node.resolveBinding(), ctx);
+
 		return false;
 	}
 

@@ -110,6 +110,8 @@ public class StubWriter {
 		}
 		pw.println("}");
 		pw.println();
+
+		TransformUtil.defineBridge(pw, tb, mb, ctx);
 	}
 
 	private void printBridgeMethods(PrintWriter pw, ITypeBinding tb)

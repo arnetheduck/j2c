@@ -71,7 +71,15 @@ public class HeaderWriter extends TransformWriter {
 
 			println();
 
-			println("class ", TransformUtil.qualifiedCName(type));
+			if (type.isInterface()) {
+				lastAccess = TransformUtil.PUBLIC;
+				print("struct ");
+			} else {
+				lastAccess = TransformUtil.PRIVATE;
+				print("class ");
+			}
+
+			println(TransformUtil.qualifiedCName(type));
 
 			String sep = ": public ";
 
@@ -113,25 +121,28 @@ public class HeaderWriter extends TransformWriter {
 			lastAccess = TransformUtil.printAccess(out, Modifier.PUBLIC,
 					lastAccess);
 
-			if (type.isAnonymous()) {
-				makeBaseConstructors(closures);
-			} else {
-				makeConstructors(closures);
-			}
+			if (!type.isInterface()) {
+				if (type.isAnonymous()) {
+					makeBaseConstructors(closures);
+				} else {
+					makeConstructors(closures);
+				}
 
-			ITypeBinding sb = type.getSuperclass();
-			boolean superInner = sb != null && TransformUtil.isInner(sb)
-					&& !TransformUtil.outerStatic(sb);
-			if (!superInner && TransformUtil.isInner(type)
-					&& !TransformUtil.outerStatic(type)) {
-				printlni(TransformUtil.outerThis(type), ";");
-			}
+				ITypeBinding sb = type.getSuperclass();
+				boolean superInner = sb != null && TransformUtil.isInner(sb)
+						&& !TransformUtil.outerStatic(sb);
+				if (!superInner && TransformUtil.isInner(type)
+						&& !TransformUtil.outerStatic(type)) {
+					printlni(TransformUtil.outerThis(type), ";");
+				}
 
-			if (closures != null) {
-				for (IVariableBinding closure : closures) {
-					printlni(TransformUtil.relativeCName(closure.getType(),
-							type), " ", TransformUtil.ref(closure.getType()),
-							closure.getName(), "_;");
+				if (closures != null) {
+					for (IVariableBinding closure : closures) {
+						printlni(TransformUtil.relativeCName(closure.getType(),
+								type), " ",
+								TransformUtil.ref(closure.getType()),
+								closure.getName(), "_;");
+					}
 				}
 			}
 
@@ -421,8 +432,8 @@ public class HeaderWriter extends TransformWriter {
 
 		println(";");
 
+		IMethodBinding mb = node.resolveBinding();
 		if (!node.isConstructor()) {
-			IMethodBinding mb = node.resolveBinding();
 			String using = TransformUtil.methodUsing(mb);
 			if (using != null) {
 				if (usings.add(using)) {
@@ -431,6 +442,7 @@ public class HeaderWriter extends TransformWriter {
 			}
 		}
 
+		TransformUtil.declareBridge(out, type, mb, ctx);
 		return false;
 	}
 

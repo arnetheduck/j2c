@@ -90,7 +90,7 @@ public class ForwardWriter {
 		setNs(pw, pkg);
 
 		printIndent(pw);
-		pw.print("class ");
+		pw.print(tb.isInterface() ? "struct " : "class ");
 		pw.print(name);
 		pw.println(";");
 	}
