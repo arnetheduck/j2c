@@ -63,6 +63,9 @@ public class Transformer {
 	private Set<ITypeBinding> softDeps = new TreeSet<ITypeBinding>(
 			new TypeBindingComparator());
 
+	Set<ITypeBinding> mains = new TreeSet<ITypeBinding>(
+			new TypeBindingComparator());
+
 	public void process(IPath root, ICompilationUnit... units) throws Exception {
 		File[] files = root.toFile().listFiles();
 
@@ -90,7 +93,7 @@ public class Transformer {
 		fw.writePackageHeaders(headers);
 
 		MakefileWriter mw = new MakefileWriter(root);
-		mw.write(impls, stubs);
+		mw.write(impls, stubs, mains);
 		System.out.println("Done.");
 	}
 

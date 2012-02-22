@@ -143,6 +143,10 @@ public final class TransformUtil {
 		return qualifiedName(tb) + ".cpp";
 	}
 
+	public static String objName(ITypeBinding tb) {
+		return qualifiedName(tb) + ".o";
+	}
+
 	public static Object constantValue(VariableDeclarationFragment node) {
 		IVariableBinding vb = node.resolveBinding();
 		ITypeBinding tb = vb.getType();
@@ -723,6 +727,28 @@ public final class TransformUtil {
 		}
 
 		printParams(pw, tb, mb, ctx);
+	}
+
+	public static void printMain(PrintWriter pw, IMethodBinding mb,
+			Transformer ctx) {
+		if (mb.getReturnType() != null
+				&& mb.getReturnType().getName().equals("void")
+				&& mb.getName().equals("main")
+				&& mb.getParameterTypes().length == 1
+				&& mb.getParameterTypes()[0].isArray()
+				&& mb.getParameterTypes()[0].getComponentType()
+						.getQualifiedName().equals("java.lang.String")) {
+			ctx.mains.add(mb.getDeclaringClass());
+			pw.println("int main(int, char**)");
+			pw.println("{");
+			pw.print(indent(1));
+			pw.print(qualifiedCName(mb.getDeclaringClass()));
+			pw.println("::main(0);");
+			pw.print(indent(1));
+			pw.println("return 0;");
+			pw.print("}");
+			pw.println();
+		}
 	}
 
 }

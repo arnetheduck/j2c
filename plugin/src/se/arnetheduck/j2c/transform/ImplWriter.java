@@ -1041,6 +1041,8 @@ public class ImplWriter extends TransformWriter {
 
 		TransformUtil.defineBridge(out, type, node.resolveBinding(), ctx);
 
+		IMethodBinding mb = node.resolveBinding();
+		TransformUtil.printMain(out, mb, ctx);
 		return false;
 	}
 

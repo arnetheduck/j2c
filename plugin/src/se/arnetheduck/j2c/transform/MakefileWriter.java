@@ -3,6 +3,7 @@ package se.arnetheduck.j2c.transform;
 import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.PrintWriter;
+import java.util.Collection;
 
 import org.eclipse.core.runtime.IPath;
 import org.eclipse.jdt.core.dom.ITypeBinding;
@@ -15,7 +16,8 @@ public class MakefileWriter {
 
 	}
 
-	public void write(Iterable<ITypeBinding> types, Iterable<ITypeBinding> stubs)
+	public void write(Iterable<ITypeBinding> types,
+			Iterable<ITypeBinding> stubs, Collection<ITypeBinding> mains)
 			throws IOException {
 		FileOutputStream fos = new FileOutputStream(root.append("Makefile")
 				.toFile());
@@ -25,7 +27,7 @@ public class MakefileWriter {
 		pw.println("SRCS = \\");
 
 		for (ITypeBinding tb : types) {
-			if (tb.isNullType()) {
+			if (tb.isNullType() || mains.contains(tb)) {
 				continue;
 			}
 
@@ -38,7 +40,7 @@ public class MakefileWriter {
 		pw.println("STUB_SRCS = \\");
 
 		for (ITypeBinding tb : stubs) {
-			if (tb.isNullType()) {
+			if (tb.isNullType() || mains.contains(tb)) {
 				continue;
 			}
 
@@ -52,8 +54,28 @@ public class MakefileWriter {
 		pw.println("OBJS = $(SRCS:.cpp=.o)");
 		pw.println("STUB_OBJS = $(STUB_SRCS:.cpp=.o)");
 
-		pw.println("all: $(OBJS) $(STUB_OBJS)");
-		pw.println("    ");
+		pw.println();
+
+		if (mains.isEmpty()) {
+			pw.println("all: $(OBJS) $(STUB_OBJS)");
+			pw.println();
+		} else {
+			for (ITypeBinding main : mains) {
+				pw.print(TransformUtil.qualifiedName(main));
+				pw.print(": $(OBJS) $(STUB_OBJS) ");
+				pw.println(TransformUtil.objName(main));
+				pw.println("	g++ -o $@ $^ $(CFLAGS) $(LIBS)");
+				pw.println();
+			}
+
+			pw.print("all: ");
+			for (ITypeBinding main : mains) {
+				pw.print(TransformUtil.qualifiedName(main));
+				pw.print(" ");
+			}
+			pw.println();
+		}
+
 		pw.println();
 		pw.println(".PHONY: all");
 
