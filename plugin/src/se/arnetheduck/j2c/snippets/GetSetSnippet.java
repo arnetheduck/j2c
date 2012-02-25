@@ -33,13 +33,13 @@ public class GetSetSnippet extends EmptySnippet {
 				if (getter
 						&& mb.getReturnType().isAssignmentCompatible(
 								vb.getType())) {
-					w.println("return " + v + "; /* getter */");
+					w.println("return " + v + "_; /* getter */");
 				} else if (setter
 						&& mb.getReturnType().getName().equals("void")
 						&& mb.getParameterTypes().length == 1
 						&& vb.getType().isAssignmentCompatible(
 								mb.getParameterTypes()[0])) {
-					w.println("this." + v + " = " + v + "; /* setter */");
+					w.println("this->" + v + "_ = a0; /* setter */");
 				}
 
 				return false;
