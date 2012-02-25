@@ -33,6 +33,8 @@ import org.eclipse.jdt.core.dom.ConstructorInvocation;
 import org.eclipse.jdt.core.dom.ContinueStatement;
 import org.eclipse.jdt.core.dom.DoStatement;
 import org.eclipse.jdt.core.dom.EnhancedForStatement;
+import org.eclipse.jdt.core.dom.EnumConstantDeclaration;
+import org.eclipse.jdt.core.dom.EnumDeclaration;
 import org.eclipse.jdt.core.dom.Expression;
 import org.eclipse.jdt.core.dom.FieldAccess;
 import org.eclipse.jdt.core.dom.FieldDeclaration;
@@ -114,6 +116,11 @@ public class ImplWriter extends TransformWriter {
 				ctx.softDep((ITypeBinding) b);
 			}
 		}
+	}
+
+	public void write(EnumDeclaration node) throws Exception {
+		StringWriter body = getBody(node.bodyDeclarations());
+		writeType(body);
 	}
 
 	public void write(TypeDeclaration node) throws Exception {
@@ -712,6 +719,47 @@ public class ImplWriter extends TransformWriter {
 	}
 
 	@Override
+	public boolean visit(EnumConstantDeclaration node) {
+		printi();
+
+		node.getName().accept(this);
+
+		if (!node.arguments().isEmpty()) {
+			visitAllCSV(node.arguments(), true);
+		}
+
+		if (node.getAnonymousClassDeclaration() != null) {
+			node.getAnonymousClassDeclaration().accept(this);
+		}
+		return false;
+	}
+
+	@Override
+	public boolean visit(EnumDeclaration node) {
+		ITypeBinding tb = node.resolveBinding();
+		ImplWriter iw = new ImplWriter(root, ctx, tb, imports);
+		try {
+			iw.write(node);
+		} catch (Exception e) {
+			throw new Error(e);
+		}
+
+		nestedTypes.add(tb);
+		nestedTypes.addAll(iw.nestedTypes);
+
+		HeaderWriter hw = new HeaderWriter(root, ctx, tb);
+
+		hw.writeType(node.getAST(), node.bodyDeclarations(), iw.closures,
+				iw.nestedTypes);
+
+		if (tb.isLocal()) {
+			localTypes.put(tb, iw);
+		}
+
+		return false;
+	}
+
+	@Override
 	public boolean visit(FieldAccess node) {
 		node.getExpression().accept(this);
 		hardDep(node.getExpression().resolveTypeBinding());
@@ -1124,6 +1172,14 @@ public class ImplWriter extends TransformWriter {
 
 		String s = "";
 		for (int i = 0; i < arguments.size(); ++i) {
+			if (b.isVarargs()) {
+				if (i >= b.getParameterTypes().length - 1) {
+					// skip
+				} else {
+					print("0 /*varargs*/");
+				}
+				continue;
+			}
 			Expression argument = arguments.get(i);
 			print(s);
 			s = ", ";

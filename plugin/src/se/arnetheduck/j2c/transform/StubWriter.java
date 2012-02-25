@@ -131,6 +131,10 @@ public class StubWriter {
 		TransformUtil.defineBridge(pw, tb, mb, ctx);
 	}
 
+	public void print(String string) {
+		pw.println(string);
+	}
+
 	public void println(String string) {
 		pw.println(string);
 	}

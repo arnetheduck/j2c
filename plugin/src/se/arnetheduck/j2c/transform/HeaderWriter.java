@@ -56,9 +56,17 @@ public class HeaderWriter extends TransformWriter {
 				new ArrayList<IVariableBinding>(), nested);
 	}
 
+	public void write(EnumDeclaration node, Collection<ITypeBinding> nested)
+			throws Exception {
+		writeType(node.getAST(), node.bodyDeclarations(),
+				new ArrayList<IVariableBinding>(), nested);
+	}
+
 	public void writeType(AST ast, List<BodyDeclaration> declarations,
 			Collection<IVariableBinding> closures,
 			Collection<ITypeBinding> nested) {
+
+		ctx.headers.add(type);
 		try {
 			out = TransformUtil.openHeader(root, type);
 			List<ITypeBinding> bases = TransformUtil.getBases(ast, type);
@@ -150,8 +158,6 @@ public class HeaderWriter extends TransformWriter {
 			println("};");
 
 			out.close();
-
-			ctx.headers.add(type);
 		} catch (IOException e) {
 			throw new Error(e);
 		}

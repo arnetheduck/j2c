@@ -19,6 +19,7 @@ import org.eclipse.jdt.core.dom.AST;
 import org.eclipse.jdt.core.dom.ASTParser;
 import org.eclipse.jdt.core.dom.AbstractTypeDeclaration;
 import org.eclipse.jdt.core.dom.CompilationUnit;
+import org.eclipse.jdt.core.dom.EnumDeclaration;
 import org.eclipse.jdt.core.dom.IPackageBinding;
 import org.eclipse.jdt.core.dom.ITypeBinding;
 import org.eclipse.jdt.core.dom.TypeDeclaration;
@@ -137,8 +138,21 @@ public class Transformer {
 			if (type instanceof TypeDeclaration) {
 				TypeDeclaration td = (TypeDeclaration) type;
 				if (td.isInterface()) {
+					HeaderWriter hw = new HeaderWriter(root, this,
+							type.resolveBinding());
+					hw.write(td, new ArrayList<ITypeBinding>());
 					continue;
 				}
+
+				ImplWriter iw = new ImplWriter(root, this,
+						type.resolveBinding(), cu.imports());
+
+				iw.write(td);
+				HeaderWriter hw = new HeaderWriter(root, this,
+						type.resolveBinding());
+				hw.write(td, iw.nestedTypes);
+			} else if (type instanceof EnumDeclaration) {
+				EnumDeclaration td = (EnumDeclaration) type;
 
 				ImplWriter iw = new ImplWriter(root, this,
 						type.resolveBinding(), cu.imports());
@@ -166,28 +180,28 @@ public class Transformer {
 
 	private void writeDep(IPath root, ITypeBinding tb) {
 		try {
-			if (headers.contains(tb)) {
-				return;
+			if (!headers.contains(tb)) {
+				if (tb.isArray()) {
+					ArrayWriter aw = new ArrayWriter(root, this, tb);
+					aw.write();
+					hardDep(aw.getSuperType());
+
+					return;
+				}
+
+				IType type = project.findType(tb.getQualifiedName());
+				if (type == null || type.getCompilationUnit() == null) {
+					writeHeader(root, tb);
+					return;
+
+				}
+
+				CompilationUnit cu = parse(type.getCompilationUnit());
+				writeImpl(root, cu);
 			}
-
-			if (tb.isArray()) {
-				ArrayWriter aw = new ArrayWriter(root, this, tb);
-				aw.write();
-				headers.add(tb);
-				hardDep(aw.getSuperType());
-
-				return;
-			}
-
-			IType type = project.findType(tb.getQualifiedName());
-			if (type == null || type.getCompilationUnit() == null) {
-				writeHeader(root, tb);
-				return;
-			}
-
-			writeHeader(root, parse(type.getCompilationUnit()));
 		} catch (Exception e) {
 			e.printStackTrace();
+			headers.add(tb); // To avoid endless loops
 		}
 	}
 

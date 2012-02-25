@@ -1,11 +1,14 @@
 package se.arnetheduck.j2c.snippets;
 
+import java.lang.reflect.Modifier;
+
 import org.eclipse.jdt.core.dom.IMethodBinding;
 import org.eclipse.jdt.core.dom.ITypeBinding;
 import org.eclipse.jdt.core.dom.IVariableBinding;
 
 import se.arnetheduck.j2c.transform.EmptySnippet;
 import se.arnetheduck.j2c.transform.StubWriter;
+import se.arnetheduck.j2c.transform.TransformUtil;
 import se.arnetheduck.j2c.transform.Transformer;
 
 public class GetSetSnippet extends EmptySnippet {
@@ -39,7 +42,14 @@ public class GetSetSnippet extends EmptySnippet {
 						&& mb.getParameterTypes().length == 1
 						&& vb.getType().isAssignmentCompatible(
 								mb.getParameterTypes()[0])) {
-					w.println("this->" + v + "_ = a0; /* setter */");
+					w.print(TransformUtil.indent(1));
+					if (Modifier.isStatic(mb.getModifiers())) {
+						w.print(TransformUtil.keywords(tb.getName()) + "::");
+					} else {
+						w.print("this->");
+					}
+
+					w.println(v + "_ = a0; /* setter */");
 				}
 
 				return false;
