@@ -1,9 +1,11 @@
 package se.arnetheduck.j2c.transform;
 
 import java.io.File;
+import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.HashSet;
 import java.util.Iterator;
+import java.util.List;
 import java.util.Set;
 import java.util.TreeSet;
 
@@ -20,6 +22,8 @@ import org.eclipse.jdt.core.dom.CompilationUnit;
 import org.eclipse.jdt.core.dom.IPackageBinding;
 import org.eclipse.jdt.core.dom.ITypeBinding;
 import org.eclipse.jdt.core.dom.TypeDeclaration;
+
+import se.arnetheduck.j2c.snippets.GetSetSnippet;
 
 public class Transformer {
 	private final IJavaProject project;
@@ -48,6 +52,8 @@ public class Transformer {
 		parser.setProject(project);
 		parser.setKind(ASTParser.K_COMPILATION_UNIT);
 		parser.setResolveBindings(true);
+
+		snippets.add(new GetSetSnippet());
 	}
 
 	Set<IPackageBinding> packages = new TreeSet<IPackageBinding>(
@@ -62,6 +68,8 @@ public class Transformer {
 			new TypeBindingComparator());
 	private Set<ITypeBinding> softDeps = new TreeSet<ITypeBinding>(
 			new TypeBindingComparator());
+
+	public List<Snippet> snippets = new ArrayList<Snippet>();
 
 	Set<ITypeBinding> mains = new TreeSet<ITypeBinding>(
 			new TypeBindingComparator());

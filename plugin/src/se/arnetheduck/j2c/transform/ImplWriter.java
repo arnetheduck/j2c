@@ -381,6 +381,17 @@ public class ImplWriter extends TransformWriter {
 	}
 
 	@Override
+	public boolean preVisit2(ASTNode node) {
+		for (Snippet snippet : ctx.snippets) {
+			if (!snippet.node(ctx, this, node)) {
+				return false;
+			}
+		}
+
+		return super.preVisit2(node);
+	}
+
+	@Override
 	public boolean visit(AnonymousClassDeclaration node) {
 		ITypeBinding tb = node.resolveBinding();
 		ImplWriter iw = new ImplWriter(root, ctx, tb, imports);
@@ -1025,7 +1036,15 @@ public class ImplWriter extends TransformWriter {
 		if (node.getBody() != null) {
 			node.getBody().accept(this);
 		} else {
-			println("{");
+			print("{");
+			if (Modifier.isNative(node.getModifiers())) {
+				print(" /* native */");
+			} else {
+				print(" /* stub */");
+			}
+
+			println();
+
 			indent++;
 			if (node.getReturnType2() != null
 					&& !node.getReturnType2().resolveBinding().getName()

@@ -12,6 +12,7 @@ public class StubWriter {
 	private final IPath root;
 	private final ITypeBinding type;
 	private final Transformer ctx;
+	private PrintWriter pw;
 
 	public StubWriter(IPath root, Transformer ctx, ITypeBinding type) {
 		if (type.isInterface()) {
@@ -34,7 +35,7 @@ public class StubWriter {
 			ctx.hardDep(nb);
 		}
 
-		PrintWriter pw = TransformUtil.openImpl(root, tb);
+		pw = TransformUtil.openImpl(root, tb);
 
 		for (IVariableBinding vb : tb.getDeclaredFields()) {
 			printField(pw, vb);
@@ -45,8 +46,6 @@ public class StubWriter {
 		for (IMethodBinding mb : tb.getDeclaredMethods()) {
 			printMethod(pw, tb, mb);
 		}
-
-		printBridgeMethods(pw, tb);
 
 		pw.close();
 	}
@@ -102,20 +101,37 @@ public class StubWriter {
 
 		TransformUtil.printParams(pw, tb, mb, ctx);
 		pw.println();
-		pw.println("{");
-		if (mb.getReturnType() != null
-				&& !mb.getReturnType().getName().equals("void")) {
-			pw.print(TransformUtil.indent(1));
-			pw.println("return 0;");
+		pw.print("{");
+		if (Modifier.isNative(mb.getModifiers())) {
+			pw.print(" /* native */");
+		} else {
+			pw.print(" /* stub */");
 		}
+
+		pw.println();
+		boolean hasBody = false;
+		for (Snippet snippet : ctx.snippets) {
+			if (!snippet.body(ctx, this, mb)) {
+				hasBody = true;
+				break;
+			}
+		}
+
+		if (!hasBody) {
+			if (mb.getReturnType() != null
+					&& !mb.getReturnType().getName().equals("void")) {
+				pw.print(TransformUtil.indent(1));
+				pw.println("return 0;");
+			}
+		}
+
 		pw.println("}");
 		pw.println();
 
 		TransformUtil.defineBridge(pw, tb, mb, ctx);
 	}
 
-	private void printBridgeMethods(PrintWriter pw, ITypeBinding tb)
-			throws Exception {
-		// TODO
+	public void println(String string) {
+		pw.println(string);
 	}
 }

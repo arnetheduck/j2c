@@ -40,7 +40,6 @@ public class HeaderWriter extends TransformWriter {
 	private String lastAccess;
 
 	private boolean hasInitializer;
-	private String initializer;
 
 	private List<MethodDeclaration> constructors = new ArrayList<MethodDeclaration>();
 
@@ -221,6 +220,17 @@ public class HeaderWriter extends TransformWriter {
 			printNestedParams(closures);
 			println(");");
 		}
+	}
+
+	@Override
+	public boolean preVisit2(ASTNode node) {
+		for (Snippet snippet : ctx.snippets) {
+			if (!snippet.node(ctx, this, node)) {
+				return false;
+			}
+		}
+
+		return super.preVisit2(node);
 	}
 
 	private List<Class<?>> handledBlocks = new ArrayList<Class<?>>(

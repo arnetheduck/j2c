@@ -64,7 +64,7 @@ public class MakefileWriter {
 				pw.print(TransformUtil.qualifiedName(main));
 				pw.print(": $(OBJS) $(STUB_OBJS) ");
 				pw.println(TransformUtil.objName(main));
-				pw.println("	g++ -o $@ $^ $(CFLAGS) $(LIBS)");
+				pw.println("	g++ -o $@ $(EXTRA) $^ $(CFLAGS) $(LIBS)");
 				pw.println();
 			}
 
