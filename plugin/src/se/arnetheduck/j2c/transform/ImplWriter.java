@@ -1172,11 +1172,13 @@ public class ImplWriter extends TransformWriter {
 
 		String s = "";
 		for (int i = 0; i < arguments.size(); ++i) {
-			if (b.isVarargs()) {
-				if (i >= b.getParameterTypes().length - 1) {
+			if (b.isVarargs() && i >= b.getParameterTypes().length - 1) {
+				if (i > b.getParameterTypes().length - 1) {
 					// skip
 				} else {
-					print("0 /*varargs*/");
+					if (i > 0)
+						print(", ");
+					print("0 /* varargs */");
 				}
 				continue;
 			}
@@ -1185,6 +1187,13 @@ public class ImplWriter extends TransformWriter {
 			s = ", ";
 			ITypeBinding pb = b.getParameterTypes()[i];
 			cast(argument, pb);
+		}
+
+		if (b.isVarargs() && arguments.size() < b.getParameterTypes().length) {
+			if (arguments.size() > 0) {
+				print(", ");
+			}
+			print("0 /* varargs */");
 		}
 
 		print(")");

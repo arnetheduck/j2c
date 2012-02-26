@@ -3,7 +3,6 @@ package se.arnetheduck.j2c.transform;
 import java.io.File;
 import java.util.ArrayList;
 import java.util.Comparator;
-import java.util.HashSet;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Set;
@@ -31,6 +30,8 @@ public class Transformer {
 
 	private final ASTParser parser = ASTParser.newParser(AST.JLS4);
 
+	private final String name;
+
 	public final static class PackageBindingComparator implements
 			Comparator<IPackageBinding> {
 		@Override
@@ -47,8 +48,9 @@ public class Transformer {
 		}
 	}
 
-	public Transformer(IJavaProject project) throws Exception {
+	public Transformer(IJavaProject project, String name) throws Exception {
 		this.project = project;
+		this.name = name;
 
 		parser.setProject(project);
 		parser.setKind(ASTParser.K_COMPILATION_UNIT);
@@ -101,8 +103,13 @@ public class Transformer {
 		fw.writeForward(packages, softDeps);
 		fw.writePackageHeaders(headers);
 
+		for (ITypeBinding tb : mains) {
+			MainWriter mw = new MainWriter(root, this, tb);
+			mw.write();
+		}
+
 		MakefileWriter mw = new MakefileWriter(root);
-		mw.write(impls, stubs, mains);
+		mw.write(name, impls, stubs, mains);
 		System.out.println("Done.");
 	}
 
@@ -114,17 +121,6 @@ public class Transformer {
 		parser.setSource(unit);
 		CompilationUnit cu = (CompilationUnit) parser.createAST(null);
 		return cu;
-	}
-
-	private void writeHeader(IPath root, CompilationUnit cu) throws Exception {
-		for (AbstractTypeDeclaration type : (Iterable<AbstractTypeDeclaration>) cu
-				.types()) {
-			if (type instanceof TypeDeclaration) {
-				HeaderWriter hw = new HeaderWriter(root, this,
-						type.resolveBinding());
-				hw.write((TypeDeclaration) type, new HashSet<ITypeBinding>());
-			}
-		}
 	}
 
 	private void writeHeader(IPath root, ITypeBinding tb) throws Exception {

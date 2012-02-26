@@ -5,6 +5,7 @@ import org.eclipse.core.commands.ExecutionEvent;
 import org.eclipse.core.commands.ExecutionException;
 import org.eclipse.jdt.core.ICompilationUnit;
 import org.eclipse.jdt.core.IJavaProject;
+import org.eclipse.jdt.core.IPackageFragment;
 import org.eclipse.jface.dialogs.MessageDialog;
 import org.eclipse.jface.viewers.IStructuredSelection;
 import org.eclipse.ui.handlers.HandlerUtil;
@@ -35,6 +36,12 @@ public class TransformHandler extends AbstractHandler {
 		if (firstElement instanceof IJavaProject) {
 			try {
 				HandlerHelper.process((IJavaProject) firstElement);
+			} catch (Exception e) {
+				e.printStackTrace();
+			}
+		} else if (firstElement instanceof IPackageFragment) {
+			try {
+				HandlerHelper.process((IPackageFragment) firstElement);
 			} catch (Exception e) {
 				e.printStackTrace();
 			}

@@ -16,7 +16,7 @@ public class MakefileWriter {
 
 	}
 
-	public void write(Iterable<ITypeBinding> types,
+	public void write(String name, Iterable<ITypeBinding> types,
 			Iterable<ITypeBinding> stubs, Collection<ITypeBinding> mains)
 			throws IOException {
 		FileOutputStream fos = new FileOutputStream(root.append("Makefile")
@@ -27,7 +27,7 @@ public class MakefileWriter {
 		pw.println("SRCS = \\");
 
 		for (ITypeBinding tb : types) {
-			if (tb.isNullType() || mains.contains(tb)) {
+			if (tb.isNullType()) {
 				continue;
 			}
 
@@ -40,7 +40,7 @@ public class MakefileWriter {
 		pw.println("STUB_SRCS = \\");
 
 		for (ITypeBinding tb : stubs) {
-			if (tb.isNullType() || mains.contains(tb)) {
+			if (tb.isNullType()) {
 				continue;
 			}
 
@@ -56,19 +56,35 @@ public class MakefileWriter {
 
 		pw.println();
 
-		if (mains.isEmpty()) {
-			pw.println("all: $(OBJS) $(STUB_OBJS)");
-			pw.println();
-		} else {
+		pw.println("%.a:");
+		pw.println("	ar rcs $@ $^");
+		pw.println("	ranlib $@");
+		pw.println();
+
+		String libName = "lib" + name + ".a";
+		String stubLibName = "lib" + name + "-stubs.a";
+
+		pw.println("all: " + libName + " " + stubLibName);
+		pw.println();
+
+		pw.println(libName + ": $(OBJS)");
+		pw.println();
+
+		pw.println(stubLibName + ": $(STUB_OBJS)");
+		pw.println();
+
+		if (!mains.isEmpty()) {
 			for (ITypeBinding main : mains) {
-				pw.print(TransformUtil.qualifiedName(main));
-				pw.print(": $(OBJS) $(STUB_OBJS) ");
-				pw.println(TransformUtil.objName(main));
-				pw.println("	g++ -o $@ $(EXTRA) $^ $(CFLAGS) $(LIBS)");
+				String mainName = TransformUtil.mainName(main);
+				pw.print(TransformUtil.qualifiedName(main) + ": ");
+				pw.println(mainName + " " + libName + " " + stubLibName);
+				pw.println("	g++ -o $@ $(EXTRA) " + mainName
+						+ " $(CFLAGS) -L. -l" + name + " $(LIBS) -l" + name
+						+ "-stubs");
 				pw.println();
 			}
 
-			pw.print("all: ");
+			pw.print("mains: ");
 			for (ITypeBinding main : mains) {
 				pw.print(TransformUtil.qualifiedName(main));
 				pw.print(" ");

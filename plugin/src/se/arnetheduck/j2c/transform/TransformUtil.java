@@ -147,6 +147,10 @@ public final class TransformUtil {
 		return qualifiedName(tb) + ".o";
 	}
 
+	public static String mainName(ITypeBinding tb) {
+		return qualifiedName(tb) + "-main.cpp";
+	}
+
 	public static Object constantValue(VariableDeclarationFragment node) {
 		IVariableBinding vb = node.resolveBinding();
 		ITypeBinding tb = vb.getType();
