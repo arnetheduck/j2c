@@ -1,6 +1,5 @@
 package se.arnetheduck.j2c.transform;
 
-import java.io.IOException;
 import java.io.PrintWriter;
 import java.io.StringWriter;
 import java.util.ArrayList;
@@ -100,6 +99,8 @@ public class ImplWriter extends TransformWriter {
 	private boolean needsFinally;
 	private boolean needsSynchronized;
 
+	private boolean hasNatives;
+
 	public ImplWriter(IPath root, Transformer ctx, ITypeBinding type,
 			List<ImportDeclaration> imports) {
 		super(ctx, type);
@@ -125,6 +126,12 @@ public class ImplWriter extends TransformWriter {
 
 	public void write(TypeDeclaration node) throws Exception {
 		if (node.isInterface()) {
+			for (BodyDeclaration bd : (Iterable<BodyDeclaration>) node
+					.bodyDeclarations()) {
+				if (bd instanceof TypeDeclaration) {
+					visit((TypeDeclaration) bd);
+				}
+			}
 			return;
 		}
 
@@ -147,12 +154,12 @@ public class ImplWriter extends TransformWriter {
 		return body;
 	}
 
-	private void writeType(StringWriter body) throws IOException {
+	private void writeType(StringWriter body) throws Exception {
 		try {
 			String cons = type.isAnonymous() ? makeBaseConstructors()
 					: makeConstructors();
 
-			out = TransformUtil.openImpl(root, type);
+			out = TransformUtil.openImpl(root, type, "");
 
 			for (ITypeBinding dep : getHardDeps()) {
 				println(TransformUtil.include(dep));
@@ -177,6 +184,13 @@ public class ImplWriter extends TransformWriter {
 
 			println();
 
+			if (type.getQualifiedName().equals("java.lang.Object")) {
+				out.println("java::lang::Object::~Object()");
+				out.println("{");
+				out.println("}");
+				out.println("");
+			}
+
 			if (needsFinally) {
 				makeFinally();
 			}
@@ -195,6 +209,11 @@ public class ImplWriter extends TransformWriter {
 
 			out.close();
 			ctx.impls.add(type);
+
+			if (hasNatives) {
+				StubWriter sw = new StubWriter(root, ctx, type);
+				sw.write(true);
+			}
 		} finally {
 			out = null;
 		}
@@ -1057,8 +1076,13 @@ public class ImplWriter extends TransformWriter {
 
 	@Override
 	public boolean visit(MethodDeclaration node) {
-		if (node.getBody() == null && !Modifier.isNative(node.getModifiers())) {
+		if (node.getBody() == null) {
+			hasNatives |= Modifier.isNative(node.getModifiers());
 			return false;
+		}
+
+		if (TransformUtil.isMain(node.resolveBinding())) {
+			ctx.mains.add(type);
 		}
 
 		printi(TransformUtil.typeParameters(node.typeParameters()));
@@ -1081,35 +1105,12 @@ public class ImplWriter extends TransformWriter {
 
 		println(TransformUtil.throwsDecl(node.thrownExceptions()));
 
-		if (node.getBody() != null) {
-			node.getBody().accept(this);
-		} else {
-			print("{");
-			if (Modifier.isNative(node.getModifiers())) {
-				print(" /* native */");
-			} else {
-				print(" /* stub */");
-			}
-
-			println();
-
-			indent++;
-			if (node.getReturnType2() != null
-					&& !node.getReturnType2().resolveBinding().getName()
-							.equals("void")) {
-				printlni("return 0;");
-			}
-			indent--;
-			print("}");
-		}
+		node.getBody().accept(this);
 
 		println();
 		println();
 
 		TransformUtil.defineBridge(out, type, node.resolveBinding(), ctx);
-
-		IMethodBinding mb = node.resolveBinding();
-		TransformUtil.printMain(out, mb, ctx);
 		return false;
 	}
 

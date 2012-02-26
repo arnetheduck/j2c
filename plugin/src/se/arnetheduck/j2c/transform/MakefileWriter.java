@@ -17,8 +17,8 @@ public class MakefileWriter {
 	}
 
 	public void write(String name, Iterable<ITypeBinding> types,
-			Iterable<ITypeBinding> stubs, Collection<ITypeBinding> mains)
-			throws IOException {
+			Iterable<ITypeBinding> stubs, Iterable<ITypeBinding> natives,
+			Collection<ITypeBinding> mains) throws IOException {
 		FileOutputStream fos = new FileOutputStream(root.append("Makefile")
 				.toFile());
 		PrintWriter pw = new PrintWriter(fos);
@@ -32,7 +32,7 @@ public class MakefileWriter {
 			}
 
 			pw.print("    ");
-			pw.print(TransformUtil.implName(tb));
+			pw.print(TransformUtil.implName(tb, ""));
 			pw.println(" \\");
 		}
 
@@ -45,7 +45,20 @@ public class MakefileWriter {
 			}
 
 			pw.print("    ");
-			pw.print(TransformUtil.implName(tb));
+			pw.print(TransformUtil.implName(tb, TransformUtil.STUB));
+			pw.println(" \\");
+		}
+
+		pw.println();
+		pw.println("NATIVE_SRCS = \\");
+
+		for (ITypeBinding tb : natives) {
+			if (tb.isNullType()) {
+				continue;
+			}
+
+			pw.print("    ");
+			pw.print(TransformUtil.implName(tb, TransformUtil.NATIVE));
 			pw.println(" \\");
 		}
 
@@ -62,15 +75,19 @@ public class MakefileWriter {
 		pw.println();
 
 		String libName = "lib" + name + ".a";
-		String stubLibName = "lib" + name + "-stubs.a";
+		String stubLibName = "lib" + name + TransformUtil.STUB + ".a";
+		String nativeLibName = "lib" + name + TransformUtil.NATIVE + ".a";
 
-		pw.println("all: " + libName + " " + stubLibName);
+		pw.println("all: " + libName + " " + stubLibName + " " + nativeLibName);
 		pw.println();
 
 		pw.println(libName + ": $(OBJS)");
 		pw.println();
 
 		pw.println(stubLibName + ": $(STUB_OBJS)");
+		pw.println();
+
+		pw.println(nativeLibName + ": $(NATIVE_OBJS)");
 		pw.println();
 
 		if (!mains.isEmpty()) {
@@ -80,7 +97,8 @@ public class MakefileWriter {
 				pw.println(mainName + " " + libName + " " + stubLibName);
 				pw.println("	g++ -o $@ $(EXTRA) " + mainName
 						+ " $(CFLAGS) -L. -l" + name + " $(LIBS) -l" + name
-						+ "-stubs");
+						+ TransformUtil.STUB + " -l" + name
+						+ TransformUtil.NATIVE);
 				pw.println();
 			}
 

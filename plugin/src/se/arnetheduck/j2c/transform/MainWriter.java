@@ -36,5 +36,7 @@ public class MainWriter {
 		pw.println("return 0;");
 		pw.print("}");
 		pw.println();
+
+		pw.close();
 	}
 }

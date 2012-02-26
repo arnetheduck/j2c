@@ -31,8 +31,11 @@ public class GetSetSnippet extends EmptySnippet {
 			return true;
 
 		String v = new String(vname);
+		boolean ms = Modifier.isStatic(mb.getModifiers());
+
 		for (IVariableBinding vb : tb.getDeclaredFields()) {
-			if (vb.getName().equals(v)) {
+			if (ms == Modifier.isStatic(vb.getModifiers())
+					&& vb.getName().equals(v)) {
 				if (getter
 						&& mb.getReturnType().isAssignmentCompatible(
 								vb.getType())) {
@@ -43,7 +46,7 @@ public class GetSetSnippet extends EmptySnippet {
 						&& vb.getType().isAssignmentCompatible(
 								mb.getParameterTypes()[0])) {
 					w.print(TransformUtil.indent(1));
-					if (Modifier.isStatic(mb.getModifiers())) {
+					if (ms) {
 						w.print(TransformUtil.keywords(tb.getName()) + "::");
 					} else {
 						w.print("this->");

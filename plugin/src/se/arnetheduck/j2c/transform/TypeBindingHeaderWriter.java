@@ -28,7 +28,11 @@ public class TypeBindingHeaderWriter {
 
 		if (!type.isInterface()) {
 			StubWriter sw = new StubWriter(root, ctx, type);
-			sw.write();
+			sw.write(false);
+			if (TransformUtil.hasNatives(type)) {
+				sw = new StubWriter(root, ctx, type);
+				sw.write(true);
+			}
 		}
 	}
 
@@ -126,19 +130,7 @@ public class TypeBindingHeaderWriter {
 
 		pw.println("};");
 
-		if (tb.getQualifiedName().equals("java.lang.String")) {
-			pw.println("java::lang::String *join(java::lang::String *lhs, java::lang::String *rhs);");
-			for (String type : new String[] { "java::lang::Object *", "bool ",
-					"int8_t ", "wchar_t ", "double ", "float ", "int32_t ",
-					"int64_t ", "int16_t " }) {
-				pw.println("java::lang::String *join(java::lang::String *lhs, "
-						+ type + "rhs);");
-				pw.println("java::lang::String *join(" + type
-						+ "lhs, java::lang::String *rhs);");
-			}
-
-			pw.println("java::lang::String *lit(const wchar_t *chars);");
-		}
+		TransformUtil.printStringSupport(tb, pw);
 
 		pw.close();
 	}

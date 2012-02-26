@@ -15,7 +15,6 @@ import org.eclipse.jdt.core.dom.AST;
 import org.eclipse.jdt.core.dom.ASTNode;
 import org.eclipse.jdt.core.dom.Block;
 import org.eclipse.jdt.core.dom.BodyDeclaration;
-import org.eclipse.jdt.core.dom.EnumConstantDeclaration;
 import org.eclipse.jdt.core.dom.EnumDeclaration;
 import org.eclipse.jdt.core.dom.FieldDeclaration;
 import org.eclipse.jdt.core.dom.IBinding;
@@ -123,6 +122,12 @@ public class HeaderWriter extends TransformWriter {
 
 			printlni("static java::lang::Class *class_;");
 
+			if (type.getQualifiedName().equals("java.lang.Object")) {
+				out.println("public:");
+				out.print(TransformUtil.indent(1));
+				out.println("virtual ~Object();");
+			}
+
 			visitAll(declarations); // This will gather constructors
 
 			lastAccess = TransformUtil.printAccess(out, Modifier.PUBLIC,
@@ -156,6 +161,8 @@ public class HeaderWriter extends TransformWriter {
 			indent--;
 
 			println("};");
+
+			TransformUtil.printStringSupport(type, out);
 
 			out.close();
 		} catch (IOException e) {
@@ -263,55 +270,7 @@ public class HeaderWriter extends TransformWriter {
 	}
 
 	@Override
-	public boolean visit(EnumConstantDeclaration node) {
-		if (node.getJavadoc() != null) {
-			node.getJavadoc().accept(this);
-		}
-
-		printi();
-
-		node.getName().accept(this);
-
-		if (!node.arguments().isEmpty()) {
-			visitAllCSV(node.arguments(), true);
-		}
-
-		if (node.getAnonymousClassDeclaration() != null) {
-			node.getAnonymousClassDeclaration().accept(this);
-		}
-		return false;
-	}
-
-	@Override
 	public boolean visit(EnumDeclaration node) {
-		if (node.getJavadoc() != null) {
-			node.getJavadoc().accept(this);
-		}
-
-		// printModifiers(node.modifiers());
-		printi("enum ");
-		node.getName().accept(this);
-
-		if (!node.superInterfaceTypes().isEmpty()) {
-			print(" implements ");
-
-			visitAllCSV(node.superInterfaceTypes(), false);
-		}
-
-		print(" {");
-
-		indent++;
-
-		visitAllCSV(node.enumConstants(), false);
-
-		if (!node.bodyDeclarations().isEmpty()) {
-			print("; ");
-			visitAll(node.bodyDeclarations());
-		}
-
-		indent--;
-
-		printlni("}\n");
 		return false;
 	}
 

@@ -24,27 +24,29 @@ public class StubWriter {
 		this.type = type;
 	}
 
-	public void write() throws Exception {
-		printClass(type);
-	}
-
-	private void printClass(ITypeBinding tb) throws Exception {
-		ctx.stubs.add(tb);
-
-		for (ITypeBinding nb : tb.getDeclaredTypes()) {
+	public void write(boolean natives) throws Exception {
+		for (ITypeBinding nb : type.getDeclaredTypes()) {
 			ctx.hardDep(nb);
 		}
 
-		pw = TransformUtil.openImpl(root, tb);
+		if (natives) {
+			ctx.natives.add(type);
+			pw = TransformUtil.openImpl(root, type, TransformUtil.NATIVE);
+		} else {
+			ctx.stubs.add(type);
+			pw = TransformUtil.openImpl(root, type, TransformUtil.STUB);
+		}
 
-		for (IVariableBinding vb : tb.getDeclaredFields()) {
+		for (IVariableBinding vb : type.getDeclaredFields()) {
 			printField(pw, vb);
 		}
 
 		pw.println();
 
-		for (IMethodBinding mb : tb.getDeclaredMethods()) {
-			printMethod(pw, tb, mb);
+		for (IMethodBinding mb : type.getDeclaredMethods()) {
+			if (Modifier.isNative(mb.getModifiers()) == natives) {
+				printMethod(pw, type, mb);
+			}
 		}
 
 		pw.close();

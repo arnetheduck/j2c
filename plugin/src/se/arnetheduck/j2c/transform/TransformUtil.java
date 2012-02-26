@@ -36,6 +36,9 @@ public final class TransformUtil {
 	public static final String PACKAGE = "public: /* package */";
 	public static final String PRIVATE = "private:";
 
+	public static final String NATIVE = "-native";
+	public static final String STUB = "-stub";
+
 	public static String cname(String jname) {
 		return jname.replace(".", "::");
 	}
@@ -139,8 +142,8 @@ public final class TransformUtil {
 		return headerName(t.resolveBinding());
 	}
 
-	public static String implName(ITypeBinding tb) {
-		return qualifiedName(tb) + ".cpp";
+	public static String implName(ITypeBinding tb, String suffix) {
+		return qualifiedName(tb) + suffix + ".cpp";
 	}
 
 	public static String objName(ITypeBinding tb) {
@@ -515,11 +518,11 @@ public final class TransformUtil {
 		return pw;
 	}
 
-	public static PrintWriter openImpl(IPath root, ITypeBinding tb)
-			throws IOException {
+	public static PrintWriter openImpl(IPath root, ITypeBinding tb,
+			String suffix) throws IOException {
 
 		FileOutputStream fos = new FileOutputStream(root.append(
-				TransformUtil.implName(tb)).toFile());
+				TransformUtil.implName(tb, suffix)).toFile());
 
 		PrintWriter pw = new PrintWriter(fos);
 
@@ -633,8 +636,7 @@ public final class TransformUtil {
 				pw.println();
 				pw.println("{ ");
 				pw.print(indent(1));
-				if (mb.getReturnType() != null
-						&& !mb.getReturnType().getName().equals("void")) {
+				if (!isVoid(mb.getReturnType())) {
 					pw.print("return ");
 				}
 
@@ -733,26 +735,48 @@ public final class TransformUtil {
 		printParams(pw, tb, mb, ctx);
 	}
 
-	public static void printMain(PrintWriter pw, IMethodBinding mb,
-			Transformer ctx) {
-		if (mb.getReturnType() != null
-				&& mb.getReturnType().getName().equals("void")
+	public static boolean isVoid(ITypeBinding tb) {
+		return tb.getName().equals("void");
+	}
+
+	public static boolean isMain(IMethodBinding mb) {
+		return mb.getReturnType() != null
+				&& isVoid(mb.getReturnType())
 				&& mb.getName().equals("main")
 				&& mb.getParameterTypes().length == 1
 				&& mb.getParameterTypes()[0].isArray()
 				&& mb.getParameterTypes()[0].getComponentType()
-						.getQualifiedName().equals("java.lang.String")) {
-			ctx.mains.add(mb.getDeclaringClass());
-			pw.println("int main(int, char**)");
-			pw.println("{");
-			pw.print(indent(1));
-			pw.print(qualifiedCName(mb.getDeclaringClass()));
-			pw.println("::main(0);");
-			pw.print(indent(1));
-			pw.println("return 0;");
-			pw.print("}");
-			pw.println();
-		}
+						.getQualifiedName().equals("java.lang.String");
 	}
 
+	public static boolean hasNatives(ITypeBinding tb) {
+		for (IMethodBinding mb : tb.getDeclaredMethods()) {
+			if (Modifier.isNative(mb.getModifiers())) {
+				return true;
+			}
+		}
+
+		return false;
+	}
+
+	public static void printStringSupport(ITypeBinding tb, PrintWriter pw) {
+		if (!tb.getQualifiedName().equals("java.lang.String")) {
+			return;
+		}
+
+		pw.println();
+		pw.println("java::lang::String *join(java::lang::String *lhs, java::lang::String *rhs);");
+		for (String type : new String[] { "java::lang::Object *", "bool ",
+				"int8_t ", "wchar_t ", "double ", "float ", "int32_t ",
+				"int64_t ", "int16_t " }) {
+			pw.println("java::lang::String *join(java::lang::String *lhs, "
+					+ type + "rhs);");
+			pw.println("java::lang::String *join(" + type
+					+ "lhs, java::lang::String *rhs);");
+		}
+
+		pw.println("java::lang::String *lit(const wchar_t *chars);");
+		pw.println();
+
+	}
 }

@@ -67,6 +67,8 @@ public class Transformer {
 			new TypeBindingComparator());
 	Set<ITypeBinding> stubs = new TreeSet<ITypeBinding>(
 			new TypeBindingComparator());
+	Set<ITypeBinding> natives = new TreeSet<ITypeBinding>(
+			new TypeBindingComparator());
 	private Set<ITypeBinding> hardDeps = new TreeSet<ITypeBinding>(
 			new TypeBindingComparator());
 	private Set<ITypeBinding> softDeps = new TreeSet<ITypeBinding>(
@@ -109,7 +111,7 @@ public class Transformer {
 		}
 
 		MakefileWriter mw = new MakefileWriter(root);
-		mw.write(name, impls, stubs, mains);
+		mw.write(name, impls, stubs, natives, mains);
 		System.out.println("Done.");
 	}
 
@@ -133,13 +135,6 @@ public class Transformer {
 				.types()) {
 			if (type instanceof TypeDeclaration) {
 				TypeDeclaration td = (TypeDeclaration) type;
-				if (td.isInterface()) {
-					HeaderWriter hw = new HeaderWriter(root, this,
-							type.resolveBinding());
-					hw.write(td, new ArrayList<ITypeBinding>());
-					continue;
-				}
-
 				ImplWriter iw = new ImplWriter(root, this,
 						type.resolveBinding(), cu.imports());
 
