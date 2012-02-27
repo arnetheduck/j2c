@@ -67,39 +67,34 @@ public final class TransformUtil {
 				: tb.getErasure().getPackage();
 	}
 
+	private static Pattern lastBin = Pattern.compile("\\$(\\d*)$");
+
 	public static String name(ITypeBinding tb) {
 		if (tb.isArray()) {
 			return name(tb.getComponentType()) + "Array";
 		}
 
-		if (tb.isAnonymous()) {
-			String c = tb.getDeclaringClass() == null ? "c" + tb.hashCode()
-					: name(tb.getDeclaringClass());
-			String m = tb.getDeclaringMethod() == null ? "m" + tb.hashCode()
-					: tb.getDeclaringMethod().getName();
+		ITypeBinding tbe = tb.getErasure();
 
-			if (tb.isLocal()) {
-				// We use a hack here to avoid getting the same name for two
-				// local classes
-				String key = tb.getKey();
-				Matcher x = Pattern.compile("\\$([^;]*);$").matcher(key);
-				if (x.find()) {
-					return c + "_" + m + x.group(1);
-				}
-			}
-			return c + "_" + m;
+		if (tb.isLocal()) {
+			Matcher match = lastBin.matcher(tbe.getBinaryName());
+			String extra = match.find() ? match.group(1) : "";
+			String c = tb.getDeclaringClass() == null ? "c" : name(tb
+					.getDeclaringClass());
+			String m = tb.getDeclaringMethod() == null ? "m" : tb
+					.getDeclaringMethod().getName();
+			return c + "_" + m + extra;
 		}
 
 		if (tb.isNested()) {
-			return name(tb.getDeclaringClass()) + "_"
-					+ tb.getErasure().getName();
+			return name(tb.getDeclaringClass()) + "_" + tbe.getName();
 		}
 
 		if (tb.isPrimitive()) {
 			return primitive(tb.getName());
 		}
 
-		return tb.getErasure().getName();
+		return tbe.getName();
 	}
 
 	public static String[] packageName(ITypeBinding tb) {
@@ -624,8 +619,9 @@ public final class TransformUtil {
 		}
 	}
 
-	public static void defineBridge(PrintWriter pw, ITypeBinding tb,
-			IMethodBinding mb, Transformer ctx) {
+	public static List<ITypeBinding> defineBridge(PrintWriter pw,
+			ITypeBinding tb, IMethodBinding mb, Transformer ctx) {
+		List<ITypeBinding> deps = new ArrayList<ITypeBinding>();
 		if (!mb.isConstructor()) {
 			IMethodBinding mb2 = getSuperMethod(mb);
 			if (needsBridge(mb, mb2)) {
@@ -649,7 +645,7 @@ public final class TransformUtil {
 					ITypeBinding pb2 = mb2.getParameterTypes()[i];
 
 					if (!pb.isEqualTo(pb2)) {
-						ctx.hardDep(tb);
+						deps.add(tb);
 						pw.print("dynamic_cast<");
 						pw.print(relativeCName(pb, tb));
 						pw.print(ref(pb));
@@ -666,6 +662,8 @@ public final class TransformUtil {
 				pw.println("");
 			}
 		}
+
+		return deps;
 	}
 
 	public static boolean needsBridge(IMethodBinding mb, IMethodBinding mb2) {

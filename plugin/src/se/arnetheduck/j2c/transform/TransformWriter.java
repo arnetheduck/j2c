@@ -326,7 +326,6 @@ public abstract class TransformWriter extends ASTVisitor {
 		IBinding b = qualifier.resolveBinding();
 		if (b instanceof IPackageBinding) {
 			print("::");
-			ctx.packages.add((IPackageBinding) b);
 		} else if (b instanceof ITypeBinding) {
 			hardDep((ITypeBinding) b);
 			print("::");

@@ -130,7 +130,9 @@ public class StubWriter {
 		pw.println("}");
 		pw.println();
 
-		TransformUtil.defineBridge(pw, tb, mb, ctx);
+		for (ITypeBinding dep : TransformUtil.defineBridge(pw, type, mb, ctx)) {
+			ctx.hardDep(dep);
+		}
 	}
 
 	public void print(String string) {

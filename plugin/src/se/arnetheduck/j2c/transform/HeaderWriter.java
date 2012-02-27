@@ -370,10 +370,11 @@ public class HeaderWriter extends TransformWriter {
 
 	@Override
 	public boolean visit(MethodDeclaration node) {
-
 		if (node.getJavadoc() != null) {
 			node.getJavadoc().accept(this);
 		}
+
+		IMethodBinding mb = node.resolveBinding();
 
 		if (node.isConstructor()) {
 			constructors.add(node);
@@ -395,6 +396,12 @@ public class HeaderWriter extends TransformWriter {
 			node.getReturnType2().accept(this);
 			print(" ", TransformUtil.ref(node.getReturnType2()));
 			node.getName().accept(this);
+
+			IMethodBinding mb2 = TransformUtil.getSuperMethod(mb);
+			if (mb2 != null
+					&& !mb2.getReturnType().isEqualTo(mb.getReturnType())) {
+				hardDep(mb2.getReturnType());
+			}
 		}
 
 		visitAllCSV(node.parameters(), true);
@@ -407,7 +414,6 @@ public class HeaderWriter extends TransformWriter {
 
 		println(";");
 
-		IMethodBinding mb = node.resolveBinding();
 		if (!node.isConstructor()) {
 			String using = TransformUtil.methodUsing(mb);
 			if (using != null) {

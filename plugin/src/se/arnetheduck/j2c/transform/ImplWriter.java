@@ -553,12 +553,13 @@ public class ImplWriter extends TransformWriter {
 		return false;
 	}
 
-	private List<Class> handledBlocks = new ArrayList<Class>(Arrays.asList(
-			Block.class, CatchClause.class, DoStatement.class,
-			EnhancedForStatement.class, ForStatement.class, IfStatement.class,
-			Initializer.class, MethodDeclaration.class,
-			SynchronizedStatement.class, SwitchStatement.class,
-			TryStatement.class, WhileStatement.class));
+	private List<Class<?>> handledBlocks = new ArrayList<Class<?>>(
+			Arrays.asList(Block.class, CatchClause.class, DoStatement.class,
+					EnhancedForStatement.class, ForStatement.class,
+					IfStatement.class, Initializer.class,
+					LabeledStatement.class, MethodDeclaration.class,
+					SynchronizedStatement.class, SwitchStatement.class,
+					TryStatement.class, WhileStatement.class));
 
 	@Override
 	public boolean visit(Block node) {
@@ -1081,7 +1082,8 @@ public class ImplWriter extends TransformWriter {
 			return false;
 		}
 
-		if (TransformUtil.isMain(node.resolveBinding())) {
+		IMethodBinding mb = node.resolveBinding();
+		if (TransformUtil.isMain(mb)) {
 			ctx.mains.add(type);
 		}
 
@@ -1110,7 +1112,10 @@ public class ImplWriter extends TransformWriter {
 		println();
 		println();
 
-		TransformUtil.defineBridge(out, type, node.resolveBinding(), ctx);
+		for (ITypeBinding dep : TransformUtil.defineBridge(out, type, mb, ctx)) {
+			hardDep(dep);
+		}
+
 		return false;
 	}
 

@@ -3,12 +3,12 @@ package se.arnetheduck.j2c.transform;
 import java.io.File;
 import java.util.ArrayList;
 import java.util.Comparator;
-import java.util.Iterator;
 import java.util.List;
 import java.util.Set;
 import java.util.TreeSet;
 
 import org.eclipse.core.runtime.IPath;
+import org.eclipse.jdt.core.BindingKey;
 import org.eclipse.jdt.core.ICompilationUnit;
 import org.eclipse.jdt.core.IJavaElement;
 import org.eclipse.jdt.core.IJavaProject;
@@ -16,6 +16,7 @@ import org.eclipse.jdt.core.IType;
 import org.eclipse.jdt.core.JavaModelException;
 import org.eclipse.jdt.core.dom.AST;
 import org.eclipse.jdt.core.dom.ASTParser;
+import org.eclipse.jdt.core.dom.ASTRequestor;
 import org.eclipse.jdt.core.dom.AbstractTypeDeclaration;
 import org.eclipse.jdt.core.dom.CompilationUnit;
 import org.eclipse.jdt.core.dom.EnumDeclaration;
@@ -48,6 +49,14 @@ public class Transformer {
 		}
 	}
 
+	public final static class ICUComparator implements
+			Comparator<ICompilationUnit> {
+		@Override
+		public int compare(ICompilationUnit o1, ICompilationUnit o2) {
+			return o1.getPath().toString().compareTo(o2.getPath().toString());
+		}
+	}
+
 	public Transformer(IJavaProject project, String name) throws Exception {
 		this.project = project;
 		this.name = name;
@@ -73,13 +82,16 @@ public class Transformer {
 			new TypeBindingComparator());
 	private Set<ITypeBinding> softDeps = new TreeSet<ITypeBinding>(
 			new TypeBindingComparator());
+	private Set<ITypeBinding> done = new TreeSet<ITypeBinding>(
+			new TypeBindingComparator());
 
 	public List<Snippet> snippets = new ArrayList<Snippet>();
 
 	Set<ITypeBinding> mains = new TreeSet<ITypeBinding>(
 			new TypeBindingComparator());
 
-	public void process(IPath root, ICompilationUnit... units) throws Exception {
+	public void process(final IPath root, ICompilationUnit... units)
+			throws Exception {
 		File[] files = root.toFile().listFiles();
 
 		for (File f : files) {
@@ -89,21 +101,13 @@ public class Transformer {
 			}
 		}
 
-		for (ICompilationUnit unit : units) {
-			CompilationUnit cu = parse(unit);
-			try {
-				writeImpl(root, cu);
-			} catch (Throwable e) {
-				e.printStackTrace();
-			}
-		}
+		write(root, units);
 
 		processDeps(root);
 
 		softDeps.addAll(headers);
 		ForwardWriter fw = new ForwardWriter(root);
 		fw.writeForward(packages, softDeps);
-		fw.writePackageHeaders(headers);
 
 		for (ITypeBinding tb : mains) {
 			MainWriter mw = new MainWriter(root, this, tb);
@@ -115,17 +119,46 @@ public class Transformer {
 		System.out.println("Done.");
 	}
 
-	private CompilationUnit parse(ICompilationUnit unit) {
-		System.out.println("Processing " + unit.getPath());
+	private void write(final IPath root, ICompilationUnit... units) {
+		parse(units, new ASTRequestor() {
+			@Override
+			public void acceptAST(ICompilationUnit source, CompilationUnit ast) {
+				try {
+					if (ast.getProblems().length > 0) {
+						for (AbstractTypeDeclaration type : (List<AbstractTypeDeclaration>) ast
+								.types()) {
+							ITypeBinding tb = type.resolveBinding();
+							if (tb.isClass() || tb.isInterface() || tb.isEnum()) {
+								writeHeader(root, tb);
+							}
+						}
+					} else {
+						writeImpl(root, ast);
+					}
+				} catch (Throwable e) {
+					e.printStackTrace();
+				}
+			}
+		});
+	}
+
+	private List<CompilationUnit> parse(ICompilationUnit[] units,
+			ASTRequestor requestor) {
+		System.out.println("Processing " + units.length + " units");
 		parser.setProject(project);
 		parser.setKind(ASTParser.K_COMPILATION_UNIT);
 		parser.setResolveBindings(true);
-		parser.setSource(unit);
-		CompilationUnit cu = (CompilationUnit) parser.createAST(null);
-		return cu;
+
+		final List<CompilationUnit> ret = new ArrayList<CompilationUnit>();
+		String bogusKey = BindingKey.createTypeBindingKey("java.lang.Object"); //$NON-NLS-1$
+		String[] keys = new String[] { bogusKey }; // We need at least one here
+
+		parser.createASTs(units, keys, requestor, null);
+		return ret;
 	}
 
 	private void writeHeader(IPath root, ITypeBinding tb) throws Exception {
+		done.add(tb);
 		TypeBindingHeaderWriter hw = new TypeBindingHeaderWriter(root, this, tb);
 		hw.write();
 	}
@@ -158,41 +191,62 @@ public class Transformer {
 
 	public void processDeps(IPath root) {
 		while (!hardDeps.isEmpty()) {
-			Iterator<ITypeBinding> it = hardDeps.iterator();
-			ITypeBinding tb = it.next();
-			softDeps.add(tb);
-			if (tb.getPackage() != null) {
-				packages.add(tb.getPackage());
-			}
-			it.remove();
-			writeDep(root, tb);
-		}
-	}
+			softDeps.addAll(hardDeps);
 
-	private void writeDep(IPath root, ITypeBinding tb) {
-		try {
-			if (!headers.contains(tb)) {
-				if (tb.isArray()) {
+			Set<ICompilationUnit> units = new TreeSet<ICompilationUnit>(
+					new ICUComparator());
+			final List<ITypeBinding> arrays = new ArrayList<ITypeBinding>();
+			final List<ITypeBinding> bindings = new ArrayList<ITypeBinding>();
+
+			for (ITypeBinding tb : hardDeps) {
+				if (done.contains(tb)) {
+					continue;
+				}
+
+				done.add(tb);
+
+				try {
+					if (tb.isArray()) {
+						arrays.add(tb);
+					} else {
+						IJavaElement elem = project.findElement(tb.getKey(),
+								null);
+						IType type = elem instanceof IType ? (IType) elem
+								: null;
+						if (type == null || type.getCompilationUnit() == null) {
+							bindings.add(tb);
+						} else {
+							units.add(type.getCompilationUnit());
+						}
+					}
+				} catch (Exception e) {
+					e.printStackTrace();
+				}
+			}
+
+			hardDeps.clear();
+
+			for (ITypeBinding tb : arrays) {
+				try {
 					ArrayWriter aw = new ArrayWriter(root, this, tb);
-					aw.write();
 					hardDep(aw.getSuperType());
-
-					return;
+					aw.write();
+				} catch (Exception e) {
+					e.printStackTrace();
 				}
-
-				IType type = project.findType(tb.getQualifiedName());
-				if (type == null || type.getCompilationUnit() == null) {
-					writeHeader(root, tb);
-					return;
-
-				}
-
-				CompilationUnit cu = parse(type.getCompilationUnit());
-				writeImpl(root, cu);
 			}
-		} catch (Exception e) {
-			e.printStackTrace();
-			headers.add(tb); // To avoid endless loops
+
+			for (ITypeBinding tb : bindings) {
+				try {
+					writeHeader(root, tb);
+				} catch (Exception e) {
+					e.printStackTrace();
+				}
+			}
+
+			if (!units.isEmpty()) {
+				write(root, units.toArray(new ICompilationUnit[0]));
+			}
 		}
 	}
 
