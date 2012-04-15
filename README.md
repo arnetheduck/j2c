@@ -29,10 +29,11 @@ of 1.5+.
 
 Running
 --
-J2C comes in the form of an Eclipse plugin. I still haven't figured out the
-publishing parts so you'll have run the plugin by opening the project in
-Eclipse and starting a new Eclipse test instance by using the run button in the
-plugin.xml overview.
+J2C comes in the form of an Eclipse plugin. If you used the zip, install it
+as you normally would.
+If you downloaded the source code you'll have run the plugin by opening the 
+project in Eclipse and starting a new Eclipse test instance by using the run
+button in the plugin.xml overview.
 
 Once you have the plugin running, set up your Java code as an Eclipse Java
 Project. Eclipse must be able to compile your code for J2C do to its work!
