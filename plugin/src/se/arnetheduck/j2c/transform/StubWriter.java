@@ -1,7 +1,10 @@
 package se.arnetheduck.j2c.transform;
 
 import java.io.PrintWriter;
+import java.io.StringWriter;
 import java.lang.reflect.Modifier;
+import java.util.Set;
+import java.util.TreeSet;
 
 import org.eclipse.core.runtime.IPath;
 import org.eclipse.jdt.core.dom.IMethodBinding;
@@ -12,6 +15,9 @@ public class StubWriter {
 	private final IPath root;
 	private final ITypeBinding type;
 	private final Transformer ctx;
+	private Set<ITypeBinding> hardDeps = new TreeSet<ITypeBinding>(
+			new Transformer.TypeBindingComparator());
+
 	private PrintWriter pw;
 
 	public StubWriter(IPath root, Transformer ctx, ITypeBinding type) {
@@ -24,11 +30,12 @@ public class StubWriter {
 		this.type = type;
 	}
 
-	public void write(boolean natives) throws Exception {
-		for (ITypeBinding nb : type.getDeclaredTypes()) {
-			ctx.hardDep(nb);
-		}
+	protected void hardDep(ITypeBinding dep) {
+		TransformUtil.addDep(dep, hardDeps);
+		ctx.hardDep(dep);
+	}
 
+	public void write(boolean natives) throws Exception {
 		if (natives) {
 			ctx.natives.add(type);
 			pw = TransformUtil.openImpl(root, type, TransformUtil.NATIVE);
@@ -37,22 +44,41 @@ public class StubWriter {
 			pw = TransformUtil.openImpl(root, type, TransformUtil.STUB);
 		}
 
+		for (ITypeBinding tb : hardDeps) {
+			pw.println(TransformUtil.include(tb));
+		}
+
+		pw.print(body(natives));
+
+		pw.close();
+	}
+
+	public String body(boolean natives) throws Exception {
+		PrintWriter old = pw;
+
+		StringWriter ret = new StringWriter();
+		pw = new PrintWriter(ret);
+
 		for (IVariableBinding vb : type.getDeclaredFields()) {
-			printField(pw, vb);
+			printField(vb);
 		}
 
 		pw.println();
 
 		for (IMethodBinding mb : type.getDeclaredMethods()) {
 			if (Modifier.isNative(mb.getModifiers()) == natives) {
-				printMethod(pw, type, mb);
+				printMethod(type, mb);
 			}
 		}
 
 		pw.close();
+
+		pw = old;
+
+		return ret.toString();
 	}
 
-	private void printField(PrintWriter pw, IVariableBinding vb) {
+	private void printField(IVariableBinding vb) {
 		if (!TransformUtil.isStatic(vb)) {
 			return;
 		}
@@ -60,27 +86,26 @@ public class StubWriter {
 		ctx.softDep(vb.getType());
 
 		Object cv = TransformUtil.constantValue(vb);
-		pw.print(TransformUtil.fieldModifiers(vb.getModifiers(), false,
-				cv != null));
-		pw.print(TransformUtil.qualifiedCName(vb.getType()));
-		pw.print(" ");
+		print(TransformUtil
+				.fieldModifiers(vb.getModifiers(), false, cv != null));
+		print(TransformUtil.qualifiedCName(vb.getType()));
+		print(" ");
 
-		pw.print(TransformUtil.ref(vb.getType()));
-		pw.print(TransformUtil.qualifiedCName(vb.getDeclaringClass()));
-		pw.print("::");
-		pw.print(vb.getName());
-		pw.println("_;");
+		print(TransformUtil.ref(vb.getType()));
+		print(TransformUtil.qualifiedCName(vb.getDeclaringClass()));
+		print("::");
+		print(vb.getName());
+		println("_;");
 	}
 
-	private void printMethod(PrintWriter pw, ITypeBinding tb, IMethodBinding mb)
+	private void printMethod(ITypeBinding tb, IMethodBinding mb)
 			throws Exception {
-
 		if (Modifier.isAbstract(mb.getModifiers())) {
 			return;
 		}
 
 		if (Modifier.isPrivate(mb.getModifiers())) {
-			pw.println("/* private: xxx " + mb.getName() + "(...) */");
+			println("/* private: xxx " + mb.getName() + "(...) */");
 			return;
 		}
 
@@ -88,26 +113,26 @@ public class StubWriter {
 			ITypeBinding rt = mb.getReturnType();
 			ctx.softDep(rt);
 
-			pw.print(TransformUtil.qualifiedCName(rt));
-			pw.print(" ");
-			pw.print(TransformUtil.ref(rt));
+			print(TransformUtil.qualifiedCName(rt));
+			print(" ");
+			print(TransformUtil.ref(rt));
 		} else {
-			pw.print("void ");
+			print("void ");
 		}
 
-		pw.print(TransformUtil.qualifiedCName(tb));
-		pw.print("::");
+		print(TransformUtil.qualifiedCName(tb));
+		print("::");
 
-		pw.print(mb.isConstructor() ? "_construct" : TransformUtil.keywords(mb
+		print(mb.isConstructor() ? "_construct" : TransformUtil.keywords(mb
 				.getMethodDeclaration().getName()));
 
 		TransformUtil.printParams(pw, tb, mb, ctx);
 		pw.println();
-		pw.print("{");
+		print("{");
 		if (Modifier.isNative(mb.getModifiers())) {
-			pw.print(" /* native */");
+			print(" /* native */");
 		} else {
-			pw.print(" /* stub */");
+			print(" /* stub */");
 		}
 
 		pw.println();
@@ -122,21 +147,21 @@ public class StubWriter {
 		if (!hasBody) {
 			if (mb.getReturnType() != null
 					&& !mb.getReturnType().getName().equals("void")) {
-				pw.print(TransformUtil.indent(1));
-				pw.println("return 0;");
+				print(TransformUtil.indent(1));
+				println("return 0;");
 			}
 		}
 
-		pw.println("}");
+		println("}");
 		pw.println();
 
 		for (ITypeBinding dep : TransformUtil.defineBridge(pw, type, mb, ctx)) {
-			ctx.hardDep(dep);
+			hardDep(dep);
 		}
 	}
 
 	public void print(String string) {
-		pw.println(string);
+		pw.print(string);
 	}
 
 	public void println(String string) {
