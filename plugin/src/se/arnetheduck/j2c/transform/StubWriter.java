@@ -53,7 +53,7 @@ public class StubWriter {
 	}
 
 	private void printField(PrintWriter pw, IVariableBinding vb) {
-		if (!Modifier.isStatic(vb.getModifiers())) {
+		if (!TransformUtil.isStatic(vb)) {
 			return;
 		}
 

@@ -63,6 +63,7 @@ public final class TransformUtil {
 	}
 
 	private static IPackageBinding elementPackage(ITypeBinding tb) {
+		// When processing generics, only the erasure will have a package
 		return tb.isArray() ? tb.getElementType().getErasure().getPackage()
 				: tb.getErasure().getPackage();
 	}
@@ -72,6 +73,10 @@ public final class TransformUtil {
 	public static String name(ITypeBinding tb) {
 		if (tb.isArray()) {
 			return name(tb.getComponentType()) + "Array";
+		}
+
+		if (tb.isPrimitive()) {
+			return primitive(tb.getName());
 		}
 
 		ITypeBinding tbe = tb.getErasure();
@@ -90,22 +95,16 @@ public final class TransformUtil {
 			return name(tb.getDeclaringClass()) + "_" + tbe.getName();
 		}
 
-		if (tb.isPrimitive()) {
-			return primitive(tb.getName());
-		}
-
 		return tbe.getName();
 	}
 
 	public static String[] packageName(ITypeBinding tb) {
-		IPackageBinding pkg = tb.isArray() ? tb.getElementType().getPackage()
-				: tb.getPackage();
+		IPackageBinding pkg = elementPackage(tb);
 		return pkg == null ? new String[0] : pkg.getNameComponents();
 	}
 
 	public static String qualifiedName(ITypeBinding tb) {
-		IPackageBinding pkg = tb.isArray() ? tb.getElementType().getPackage()
-				: tb.getPackage();
+		IPackageBinding pkg = elementPackage(tb);
 		return pkg == null ? name(tb) : (pkg.getName() + "." + name(tb));
 	}
 
@@ -113,36 +112,16 @@ public final class TransformUtil {
 		return include(headerName(tb));
 	}
 
-	public static String include(IPackageBinding pb) {
-		return include(headerName(pb));
-	}
-
 	public static String include(String s) {
 		return "#include \"" + s + "\"";
-	}
-
-	public static String include(Type t) {
-		return include(headerName(t));
 	}
 
 	public static String headerName(ITypeBinding tb) {
 		return qualifiedName(tb) + ".h";
 	}
 
-	public static String headerName(IPackageBinding pb) {
-		return pb.getName() + ".h";
-	}
-
-	public static String headerName(Type t) {
-		return headerName(t.resolveBinding());
-	}
-
 	public static String implName(ITypeBinding tb, String suffix) {
 		return qualifiedName(tb) + suffix + ".cpp";
-	}
-
-	public static String objName(ITypeBinding tb) {
-		return qualifiedName(tb) + ".o";
 	}
 
 	public static String mainName(ITypeBinding tb) {
@@ -156,7 +135,7 @@ public final class TransformUtil {
 		Expression initializer = node.getInitializer();
 		Object v = initializer == null ? null : initializer
 				.resolveConstantExpressionValue();
-		if (isConstExpr(tb) && Modifier.isStatic(vb.getModifiers())
+		if (isConstExpr(tb) && isStatic(vb)
 				&& Modifier.isFinal(vb.getModifiers()) && v != null) {
 			return checkConstant(v);
 		}
@@ -168,7 +147,7 @@ public final class TransformUtil {
 		ITypeBinding tb = vb.getType();
 
 		Object v = vb.getConstantValue();
-		if (isConstExpr(tb) && Modifier.isStatic(vb.getModifiers())
+		if (isConstExpr(tb) && isStatic(vb)
 				&& Modifier.isFinal(vb.getModifiers()) && v != null) {
 			return checkConstant(v);
 		}
@@ -296,8 +275,8 @@ public final class TransformUtil {
 		return builder.toString();
 	}
 
-	public static String primitive(String primitve) {
-		return primitive(PrimitiveType.toCode(primitve));
+	public static String primitive(String token) {
+		return primitive(PrimitiveType.toCode(token));
 	}
 
 	public static String primitive(PrimitiveType.Code code) {
@@ -377,8 +356,20 @@ public final class TransformUtil {
 		return t.isPrimitiveType() ? "" : "*";
 	}
 
+	public static boolean isStatic(ITypeBinding tb) {
+		return Modifier.isStatic(tb.getModifiers());
+	}
+
+	public static boolean isStatic(IMethodBinding mb) {
+		return Modifier.isStatic(mb.getModifiers());
+	}
+
+	public static boolean isStatic(IVariableBinding vb) {
+		return Modifier.isStatic(vb.getModifiers());
+	}
+
 	public static boolean isInner(ITypeBinding tb) {
-		return tb.isNested() && !Modifier.isStatic(tb.getModifiers());
+		return tb.isNested() && !isStatic(tb);
 	}
 
 	public static String outerThis(ITypeBinding tb) {
@@ -396,7 +387,8 @@ public final class TransformUtil {
 
 	public static boolean outerStatic(ITypeBinding tb) {
 		if (tb.isLocal()) {
-			if (tb.getDeclaringMethod() == null) {
+			IMethodBinding mb = tb.getDeclaringMethod();
+			if (mb == null) {
 				IJavaElement je = tb.getJavaElement();
 				while (je != null && !(je instanceof IInitializer)) {
 					je = je.getParent();
@@ -413,11 +405,10 @@ public final class TransformUtil {
 				return false;
 			}
 
-			return Modifier.isStatic(tb.getDeclaringMethod().getModifiers());
-
+			return isStatic(mb);
 		}
 
-		return Modifier.isStatic(tb.getDeclaringClass().getModifiers());
+		return isStatic(tb.getDeclaringClass());
 	}
 
 	private static Collection<String> keywords = Arrays.asList("delete",
@@ -507,7 +498,7 @@ public final class TransformUtil {
 		pw.println("#pragma once");
 		pw.println();
 
-		pw.println(TransformUtil.include("forward.h"));
+		pw.println(include("forward.h"));
 		pw.println();
 
 		return pw;
@@ -523,7 +514,7 @@ public final class TransformUtil {
 
 		pw.println("// Generated from " + tb.getJavaElement().getPath());
 
-		pw.println(TransformUtil.include(tb));
+		pw.println(include(tb));
 		pw.println();
 
 		return pw;
@@ -572,27 +563,27 @@ public final class TransformUtil {
 		out.println();
 	}
 
-	public static void printParams(PrintWriter pw, ITypeBinding tb,
+	public static void printParams(PrintWriter out, ITypeBinding tb,
 			IMethodBinding mb, Transformer ctx) {
-		pw.print("(");
+		out.print("(");
 		for (int i = 0; i < mb.getParameterTypes().length; ++i) {
 			if (i > 0)
-				pw.print(", ");
+				out.print(", ");
 
 			ITypeBinding pb = mb.getParameterTypes()[i];
 			ctx.softDep(pb);
 
-			pw.print(relativeCName(pb, tb));
-			pw.print(" ");
-			pw.print(ref(pb));
-			pw.print("a" + i);
+			out.print(relativeCName(pb, tb));
+			out.print(" ");
+			out.print(ref(pb));
+			out.print("a" + i);
 		}
 
-		pw.print(")");
+		out.print(")");
 	}
 
 	public static IMethodBinding getSuperMethod(IMethodBinding mb) {
-		if (Modifier.isStatic(mb.getModifiers())) {
+		if (isStatic(mb)) {
 			return null;
 		}
 
@@ -783,6 +774,5 @@ public final class TransformUtil {
 
 		pw.println("java::lang::String *lit(const wchar_t *chars);");
 		pw.println();
-
 	}
 }

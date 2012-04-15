@@ -1,6 +1,6 @@
 Introduction
 --
-J2C will convert Java code into hopefully compileable C++ code. It works on
+J2C will convert Java code into hopefully compilable C++ code. It works on
 source level, translating Java source code constructs into their rough
 equivalents in C++ . The output will be reasonably valid C++ code that looks a
 lot like its Java counterpart and hopefully works mostly the same.

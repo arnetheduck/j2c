@@ -47,8 +47,7 @@ public class ArrayWriter {
 		pw.println();
 
 		String name = TransformUtil.name(type);
-		String qname = TransformUtil.qualifiedName(type);
-		String cname = TransformUtil.cname(qname);
+		String cname = TransformUtil.qualifiedCName(type);
 		ITypeBinding ct = type.getComponentType();
 		String ret = TransformUtil.cname(TransformUtil.name(ct));
 
