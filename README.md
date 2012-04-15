@@ -7,9 +7,12 @@ lot like its Java counterpart and hopefully works mostly the same.
 
 Download
 --
-The project is only available as source code for the time being. You can get it
+The most recent version of the project is available as source code. You can get it
 either from Eclipse labs (https://code.google.com/a/eclipselabs.org/p/j2c/) or
 github (https://github.com/arnetheduck/j2c).
+
+From time to time, a release may appear at the Eclipse labs site - see
+https://code.google.com/a/eclipselabs.org/p/j2c/downloads/list .
 
 Status
 --
