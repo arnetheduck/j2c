@@ -375,6 +375,12 @@ public class HeaderWriter extends TransformWriter {
 		}
 
 		IMethodBinding mb = node.resolveBinding();
+		IMethodBinding mb2 = TransformUtil.getSuperMethod(mb);
+
+		if (Modifier.isAbstract(mb.getModifiers()) && mb2 != null) {
+			// Defining once more will lead to virtual inheritance issues
+			return false;
+		}
 
 		if (node.isConstructor()) {
 			constructors.add(node);
@@ -397,10 +403,8 @@ public class HeaderWriter extends TransformWriter {
 			print(" ", TransformUtil.ref(node.getReturnType2()));
 			node.getName().accept(this);
 
-			IMethodBinding mb2 = TransformUtil.getSuperMethod(mb);
-			if (mb2 != null
-					&& !mb2.getReturnType().isEqualTo(mb.getReturnType())) {
-				hardDep(mb2.getReturnType());
+			if (mb2 != null && TransformUtil.returnCovariant(mb, mb2)) {
+				hardDep(mb.getReturnType());
 			}
 		}
 

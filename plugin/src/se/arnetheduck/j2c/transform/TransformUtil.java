@@ -592,6 +592,10 @@ public final class TransformUtil {
 	}
 
 	public static IMethodBinding getSuperMethod(IMethodBinding mb) {
+		if (Modifier.isStatic(mb.getModifiers())) {
+			return null;
+		}
+
 		for (ITypeBinding tb : mb.getDeclaringClass().getInterfaces()) {
 			for (IMethodBinding mb2 : tb.getDeclaredMethods()) {
 				if (mb.overrides(mb2)) {
@@ -680,8 +684,12 @@ public final class TransformUtil {
 	}
 
 	private static boolean sameReturn(IMethodBinding mb, IMethodBinding mb2) {
-		return mb.getReturnType().getErasure()
-				.isEqualTo(mb2.getReturnType().getErasure());
+		return mb
+				.getMethodDeclaration()
+				.getReturnType()
+				.getErasure()
+				.isEqualTo(
+						mb2.getMethodDeclaration().getReturnType().getErasure());
 
 	}
 

@@ -14,6 +14,7 @@ import org.eclipse.jdt.core.IJavaElement;
 import org.eclipse.jdt.core.IJavaProject;
 import org.eclipse.jdt.core.IType;
 import org.eclipse.jdt.core.JavaModelException;
+import org.eclipse.jdt.core.compiler.IProblem;
 import org.eclipse.jdt.core.dom.AST;
 import org.eclipse.jdt.core.dom.ASTParser;
 import org.eclipse.jdt.core.dom.ASTRequestor;
@@ -124,7 +125,7 @@ public class Transformer {
 			@Override
 			public void acceptAST(ICompilationUnit source, CompilationUnit ast) {
 				try {
-					if (ast.getProblems().length > 0) {
+					if (hasError(ast)) {
 						for (AbstractTypeDeclaration type : (List<AbstractTypeDeclaration>) ast
 								.types()) {
 							ITypeBinding tb = type.resolveBinding();
@@ -140,6 +141,16 @@ public class Transformer {
 				}
 			}
 		});
+	}
+
+	private static boolean hasError(CompilationUnit ast) {
+		for (IProblem p : ast.getProblems()) {
+			if (p.isError()) {
+				return true;
+			}
+		}
+
+		return false;
 	}
 
 	private List<CompilationUnit> parse(ICompilationUnit[] units,
