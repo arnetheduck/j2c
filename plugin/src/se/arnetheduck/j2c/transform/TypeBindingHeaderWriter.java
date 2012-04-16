@@ -125,7 +125,7 @@ public class TypeBindingHeaderWriter {
 			}
 			pw.print(TransformUtil.indent(1));
 			pw.print(TransformUtil.name(tb));
-			pw.print("() { }");
+			pw.println("() { }");
 		}
 
 		pw.println("};");
@@ -167,7 +167,10 @@ public class TypeBindingHeaderWriter {
 		}
 
 		if (Modifier.isPrivate(mb.getModifiers())) {
-			pw.println("/* private: xxx " + mb.getName() + "(...) */");
+			// Skip implementation details
+			pw.print("/*");
+			TransformUtil.printSignature(pw, tb, mb, ctx, false);
+			pw.println("; (private) */");
 			return;
 		}
 
