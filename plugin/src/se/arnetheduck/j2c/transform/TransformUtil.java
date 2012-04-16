@@ -582,16 +582,51 @@ public final class TransformUtil {
 		out.print(")");
 	}
 
+	public static IMethodBinding getSuperMethod(IMethodBinding mb,
+			ITypeBinding tb) {
+		for (IMethodBinding mb2 : tb.getDeclaredMethods()) {
+			if (mb.overrides(mb2)) {
+				return mb2;
+			}
+		}
+
+		return null;
+	}
+
+	/** Check if super-interface (or Object) has the same method already */
+	public static boolean baseHasSame(IMethodBinding mb, ITypeBinding tb,
+			Transformer ctx) {
+		for (ITypeBinding ib : tb.getInterfaces()) {
+			if (getSuperMethod(mb, ib) != null) {
+				return true;
+			}
+
+			if (baseHasSame(mb, ib, ctx)) {
+				return true;
+			}
+		}
+
+		if (tb.isInterface()) {
+			ITypeBinding ob = ctx.resolve(Object.class);
+			for (IMethodBinding mb2 : ob.getDeclaredMethods()) {
+				if (sameSignature(mb, mb2)) {
+					return true;
+				}
+			}
+		}
+
+		return false;
+	}
+
 	public static IMethodBinding getSuperMethod(IMethodBinding mb) {
 		if (isStatic(mb)) {
 			return null;
 		}
 
 		for (ITypeBinding tb : mb.getDeclaringClass().getInterfaces()) {
-			for (IMethodBinding mb2 : tb.getDeclaredMethods()) {
-				if (mb.overrides(mb2)) {
-					return mb2;
-				}
+			IMethodBinding mb2 = getSuperMethod(mb, tb);
+			if (mb2 != null) {
+				return mb2;
 			}
 		}
 

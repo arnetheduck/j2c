@@ -375,10 +375,13 @@ public class HeaderWriter extends TransformWriter {
 		}
 
 		IMethodBinding mb = node.resolveBinding();
-		IMethodBinding mb2 = TransformUtil.getSuperMethod(mb);
 
-		if (Modifier.isAbstract(mb.getModifiers()) && mb2 != null) {
+		if ((Modifier.isAbstract(mb.getModifiers()) || type.isInterface())
+				&& TransformUtil.baseHasSame(mb, type, ctx)) {
 			// Defining once more will lead to virtual inheritance issues
+			printi("/*");
+			TransformUtil.printSignature(out, type, mb, ctx, false);
+			println("; (already declared) */");
 			return false;
 		}
 
@@ -402,6 +405,8 @@ public class HeaderWriter extends TransformWriter {
 			node.getReturnType2().accept(this);
 			print(" ", TransformUtil.ref(node.getReturnType2()));
 			node.getName().accept(this);
+
+			IMethodBinding mb2 = TransformUtil.getSuperMethod(mb);
 
 			if (mb2 != null && TransformUtil.returnCovariant(mb, mb2)) {
 				hardDep(mb.getReturnType());

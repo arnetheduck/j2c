@@ -162,12 +162,19 @@ public class TypeBindingHeaderWriter {
 
 	private void printMethod(PrintWriter pw, ITypeBinding tb,
 			IMethodBinding mb, Set<String> usings) throws Exception {
-		if (tb.isInterface() && !baseHasSame(mb, tb)) {
+		if ((Modifier.isAbstract(mb.getModifiers()) || tb.isInterface())
+				&& TransformUtil.baseHasSame(mb, tb, ctx)) {
+			// Defining once more will lead to virtual inheritance issues
+			pw.print(TransformUtil.indent(1));
+			pw.print("/*");
+			TransformUtil.printSignature(pw, tb, mb, ctx, false);
+			pw.println("; (already declared) */");
 			return;
 		}
 
 		if (Modifier.isPrivate(mb.getModifiers())) {
 			// Skip implementation details
+			pw.print(TransformUtil.indent(1));
 			pw.print("/*");
 			TransformUtil.printSignature(pw, tb, mb, ctx, false);
 			pw.println("; (private) */");
@@ -205,22 +212,5 @@ public class TypeBindingHeaderWriter {
 				pw.println(using);
 			}
 		}
-	}
-
-	/** Check if super-interface has the same method already */
-	private static boolean baseHasSame(IMethodBinding mb, ITypeBinding tb) {
-		for (ITypeBinding ib : tb.getInterfaces()) {
-			for (IMethodBinding imb : ib.getDeclaredMethods()) {
-				if (mb.overrides(imb)) {
-					return false;
-				}
-			}
-
-			if (!baseHasSame(mb, ib)) {
-				return false;
-			}
-		}
-
-		return true;
 	}
 }
