@@ -729,13 +729,61 @@ public class ImplWriter extends TransformWriter {
 
 	@Override
 	public boolean visit(EnhancedForStatement node) {
-		printi("for (");
-		node.getParameter().accept(this);
-		print(" : ");
-		node.getExpression().accept(this);
-		print(") ");
-		node.getBody().accept(this);
+		if (node.getExpression().resolveTypeBinding().isArray()) {
+			printlni("{");
+			indent++;
+			printi("auto _a = ");
+			node.getExpression().accept(this);
+			println(";");
+			printlni("for(int _i = 0; _i < _a->length_; ++_i) {");
+			indent++;
+			printi();
+			node.getParameter().accept(this);
+			println(" = (*_a)[_i];");
+			printi();
+			node.getBody().accept(this);
+			indent--;
+			printlni("}");
+			indent--;
+			printlni("}");
+		} else {
+			printi("for (auto _i = ");
+			node.getExpression().accept(this);
+			println("->iterator(); _i->hasNext(); ) {");
+			indent++;
+			printi();
+			node.getParameter().accept(this);
+			print(" = dynamic_cast<");
+			node.getParameter().getType().accept(this);
+
+			println(TransformUtil.ref(node.getParameter().getType()),
+					">(_i->next());");
+			printi();
+			node.getBody().accept(this);
+			indent--;
+			printlni("}");
+
+			ITypeBinding tb = node.getExpression().resolveTypeBinding();
+			hardDep(getIterator(tb));
+			hardDep(node.getParameter().resolveBinding().getType());
+		}
 		return false;
+	}
+
+	private ITypeBinding getIterator(ITypeBinding tb) {
+		for (IMethodBinding mb : tb.getDeclaredMethods()) {
+			if (mb.getName().equals("iterator")
+					&& mb.getReturnType().getErasure().getQualifiedName()
+							.equals(Iterator.class.getName())) {
+				return mb.getReturnType();
+			}
+		}
+
+		if (tb.getSuperclass() != null) {
+			return getIterator(tb.getSuperclass());
+		}
+
+		return null;
 	}
 
 	@Override
