@@ -30,7 +30,7 @@ public class MainWriter {
 		pw.println("int main(int, char**)");
 		pw.println("{");
 		pw.print(TransformUtil.indent(1));
-		pw.print(TransformUtil.qualifiedCName(type));
+		pw.print(TransformUtil.qualifiedCName(type, true));
 		pw.println("::main(0);");
 		pw.print(TransformUtil.indent(1));
 		pw.println("return 0;");

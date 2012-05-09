@@ -43,12 +43,15 @@ public final class TransformUtil {
 		return jname.replace(".", "::");
 	}
 
-	public static String qualifiedCName(ITypeBinding tb) {
+	public static String qualifiedCName(ITypeBinding tb, boolean global) {
 		IPackageBinding pkg = elementPackage(tb);
-		return cname(pkg == null ? name(tb) : (pkg.getName() + "." + name(tb)));
+		return (global && !tb.isPrimitive() ? "::" : "")
+				+ cname(pkg == null ? name(tb)
+						: (pkg.getName() + "." + name(tb)));
 	}
 
-	public static String relativeCName(ITypeBinding tb, ITypeBinding root) {
+	public static String relativeCName(ITypeBinding tb, ITypeBinding root,
+			boolean global) {
 		IPackageBinding pkg = elementPackage(tb);
 		if (pkg == null) {
 			return name(tb);
@@ -56,7 +59,7 @@ public final class TransformUtil {
 
 		IPackageBinding rootPkg = elementPackage(root);
 		if (rootPkg == null || !rootPkg.getKey().equals(pkg.getKey())) {
-			return qualifiedCName(tb);
+			return qualifiedCName(tb, global);
 		}
 
 		return name(tb);
@@ -373,8 +376,8 @@ public final class TransformUtil {
 	}
 
 	public static String outerThis(ITypeBinding tb) {
-		return TransformUtil.relativeCName(tb.getDeclaringClass(), tb) + " *"
-				+ outerThisName(tb);
+		return TransformUtil.relativeCName(tb.getDeclaringClass(), tb, false)
+				+ " *" + outerThisName(tb);
 	}
 
 	public static String outerThisName(ITypeBinding tb) {
@@ -446,8 +449,8 @@ public final class TransformUtil {
 		}
 
 		if (using != null) {
-			return "using " + relativeCName(using, tb) + "::" + mb.getName()
-					+ ";";
+			return "using " + relativeCName(using, tb, false) + "::"
+					+ mb.getName() + ";";
 		}
 
 		return null;
@@ -573,7 +576,7 @@ public final class TransformUtil {
 			ITypeBinding pb = mb.getParameterTypes()[i];
 			ctx.softDep(pb);
 
-			out.print(relativeCName(pb, tb));
+			out.print(relativeCName(pb, tb, false));
 			out.print(" ");
 			out.print(ref(pb));
 			out.print("a" + i);
@@ -677,7 +680,7 @@ public final class TransformUtil {
 					if (!pb.isEqualTo(pb2)) {
 						deps.add(tb);
 						pw.print("dynamic_cast<");
-						pw.print(relativeCName(pb, tb));
+						pw.print(relativeCName(pb, tb, false));
 						pw.print(ref(pb));
 						pw.print(">(");
 						pw.print("a" + i);
@@ -748,16 +751,16 @@ public final class TransformUtil {
 
 			if (!qualified) {
 				pw.print(methodModifiers(mb.getModifiers(), tb.getModifiers()));
-				pw.print(relativeCName(rt, tb));
+				pw.print(relativeCName(rt, tb, true));
 			} else {
-				pw.print(qualifiedCName(rt));
+				pw.print(qualifiedCName(rt, true));
 			}
 
 			pw.print(" ");
 			pw.print(ref(rt));
 
 			if (qualified) {
-				pw.print(qualifiedCName(tb));
+				pw.print(qualifiedCName(tb, true));
 				pw.print("::");
 			}
 

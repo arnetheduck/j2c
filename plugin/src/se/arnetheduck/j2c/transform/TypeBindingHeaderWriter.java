@@ -64,7 +64,7 @@ public class TypeBindingHeaderWriter {
 			pw.print("class ");
 		}
 
-		pw.println(TransformUtil.qualifiedCName(tb));
+		pw.println(TransformUtil.qualifiedCName(tb, false));
 
 		String sep = ": public ";
 		for (ITypeBinding b : bases) {
@@ -74,7 +74,7 @@ public class TypeBindingHeaderWriter {
 			pw.print(sep);
 			sep = ", public ";
 			pw.print(TransformUtil.virtual(b));
-			pw.println(TransformUtil.relativeCName(b, tb));
+			pw.println(TransformUtil.relativeCName(b, tb, true));
 		}
 
 		pw.println("{");
@@ -82,7 +82,7 @@ public class TypeBindingHeaderWriter {
 		if (tb.getSuperclass() != null) {
 			pw.print(TransformUtil.indent(1));
 			pw.print("typedef ");
-			pw.print(TransformUtil.relativeCName(tb.getSuperclass(), tb));
+			pw.print(TransformUtil.relativeCName(tb.getSuperclass(), tb, true));
 			pw.println(" super;");
 		}
 
@@ -145,7 +145,7 @@ public class TypeBindingHeaderWriter {
 				constant != null));
 
 		pw.print(TransformUtil.relativeCName(vb.getType(),
-				vb.getDeclaringClass()));
+				vb.getDeclaringClass(), true));
 		pw.print(" ");
 
 		pw.print(TransformUtil.ref(vb.getType()));

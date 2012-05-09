@@ -88,11 +88,11 @@ public class StubWriter {
 		Object cv = TransformUtil.constantValue(vb);
 		print(TransformUtil
 				.fieldModifiers(vb.getModifiers(), false, cv != null));
-		print(TransformUtil.qualifiedCName(vb.getType()));
+		print(TransformUtil.qualifiedCName(vb.getType(), true));
 		print(" ");
 
 		print(TransformUtil.ref(vb.getType()));
-		print(TransformUtil.qualifiedCName(vb.getDeclaringClass()));
+		print(TransformUtil.qualifiedCName(vb.getDeclaringClass(), true));
 		print("::");
 		print(vb.getName());
 		println("_;");
@@ -113,14 +113,14 @@ public class StubWriter {
 			ITypeBinding rt = mb.getReturnType();
 			ctx.softDep(rt);
 
-			print(TransformUtil.qualifiedCName(rt));
+			print(TransformUtil.qualifiedCName(rt, true));
 			print(" ");
 			print(TransformUtil.ref(rt));
 		} else {
 			print("void ");
 		}
 
-		print(TransformUtil.qualifiedCName(tb));
+		print(TransformUtil.qualifiedCName(tb, true));
 		print("::");
 
 		print(mb.isConstructor() ? "_construct" : TransformUtil.keywords(mb

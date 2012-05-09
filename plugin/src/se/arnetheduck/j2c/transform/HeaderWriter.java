@@ -85,14 +85,14 @@ public class HeaderWriter extends TransformWriter {
 				print("class ");
 			}
 
-			println(TransformUtil.qualifiedCName(type));
+			println(TransformUtil.qualifiedCName(type, false));
 
 			String sep = ": public ";
 
 			indent++;
 			for (ITypeBinding base : bases) {
 				printlni(sep, TransformUtil.virtual(base),
-						TransformUtil.relativeCName(base, type));
+						TransformUtil.relativeCName(base, type, true));
 				sep = ", public ";
 			}
 			indent--;
@@ -105,9 +105,9 @@ public class HeaderWriter extends TransformWriter {
 				printi("typedef ");
 				if (type.getSuperclass() != null) {
 					print(TransformUtil.relativeCName(type.getSuperclass(),
-							type));
+							type, true));
 				} else {
-					print("java::lang::Object");
+					print("::java::lang::Object");
 				}
 
 				println(" super;");
@@ -120,7 +120,7 @@ public class HeaderWriter extends TransformWriter {
 			lastAccess = TransformUtil.printAccess(out, Modifier.PUBLIC,
 					lastAccess);
 
-			printlni("static java::lang::Class *class_;");
+			printlni("static ::java::lang::Class *class_;");
 
 			if (type.getQualifiedName().equals("java.lang.Object")) {
 				out.println("public:");
@@ -151,9 +151,8 @@ public class HeaderWriter extends TransformWriter {
 				if (closures != null) {
 					for (IVariableBinding closure : closures) {
 						printlni(TransformUtil.relativeCName(closure.getType(),
-								type), " ",
-								TransformUtil.ref(closure.getType()),
-								closure.getName(), "_;");
+								type, false), " ", TransformUtil.ref(closure
+								.getType()), closure.getName(), "_;");
 					}
 				}
 			}
@@ -220,7 +219,7 @@ public class HeaderWriter extends TransformWriter {
 				ITypeBinding pb = mb.getParameterTypes()[i];
 				ctx.softDep(pb);
 
-				print(sep, TransformUtil.relativeCName(pb, type), " ",
+				print(sep, TransformUtil.relativeCName(pb, type, true), " ",
 						TransformUtil.ref(pb), "a" + i);
 				sep = ", ";
 			}
@@ -285,17 +284,16 @@ public class HeaderWriter extends TransformWriter {
 
 		List<VariableDeclarationFragment> fragments = node.fragments();
 
+		ITypeBinding tb = node.getType().resolveBinding();
 		if (isAnyArray(fragments)) {
 			for (VariableDeclarationFragment f : fragments) {
 				printi(TransformUtil.fieldModifiers(node.getModifiers(), true,
 						hasInitilializer(fragments)));
 
-				ITypeBinding at = f.getExtraDimensions() > 0 ? node.getType()
-						.resolveBinding()
-						.createArrayType(f.getExtraDimensions()) : node
-						.getType().resolveBinding();
+				ITypeBinding at = f.getExtraDimensions() > 0 ? tb
+						.createArrayType(f.getExtraDimensions()) : tb;
 
-				print(TransformUtil.relativeCName(at, type), " ");
+				print(TransformUtil.relativeCName(at, type, true), " ");
 
 				f.accept(this);
 
@@ -305,7 +303,7 @@ public class HeaderWriter extends TransformWriter {
 			printi(TransformUtil.fieldModifiers(node.getModifiers(), true,
 					hasInitilializer(fragments)));
 
-			node.getType().accept(this);
+			print(TransformUtil.relativeCName(tb, type, true), " ");
 
 			print(" ");
 
@@ -441,7 +439,7 @@ public class HeaderWriter extends TransformWriter {
 		IBinding b = node.resolveBinding();
 		if (b instanceof ITypeBinding) {
 			ctx.softDep((ITypeBinding) b);
-			print(TransformUtil.relativeCName((ITypeBinding) b, type));
+			print(TransformUtil.relativeCName((ITypeBinding) b, type, false));
 			return false;
 		}
 		return super.visit(node);
@@ -451,7 +449,7 @@ public class HeaderWriter extends TransformWriter {
 	public boolean visit(SimpleType node) {
 		ITypeBinding b = node.resolveBinding();
 		ctx.softDep(b);
-		print(TransformUtil.relativeCName(b, type));
+		print(TransformUtil.relativeCName(b, type, false));
 		return false;
 	}
 
@@ -460,7 +458,7 @@ public class HeaderWriter extends TransformWriter {
 		IBinding b = node.resolveBinding();
 		if (b instanceof ITypeBinding) {
 			ctx.softDep((ITypeBinding) b);
-			print(TransformUtil.relativeCName((ITypeBinding) b, type));
+			print(TransformUtil.relativeCName((ITypeBinding) b, type, false));
 			return false;
 		}
 		return super.visit(node);
@@ -470,7 +468,7 @@ public class HeaderWriter extends TransformWriter {
 	public boolean visit(QualifiedType node) {
 		ITypeBinding b = node.resolveBinding();
 		ctx.softDep(b);
-		print(TransformUtil.relativeCName(b, type));
+		print(TransformUtil.relativeCName(b, type, false));
 		return false;
 	}
 
@@ -481,10 +479,9 @@ public class HeaderWriter extends TransformWriter {
 		if (node.getExtraDimensions() > 0) {
 			ctx.softDep(tb);
 			tb = tb.createArrayType(node.getExtraDimensions());
-			print(TransformUtil.relativeCName(tb, type));
-		} else {
-			node.getType().accept(this);
 		}
+
+		print(TransformUtil.relativeCName(tb, type, true));
 		if (node.isVarargs()) {
 			print("/*...*/");
 		}

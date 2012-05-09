@@ -18,7 +18,6 @@ import org.eclipse.jdt.core.dom.AnonymousClassDeclaration;
 import org.eclipse.jdt.core.dom.ArrayAccess;
 import org.eclipse.jdt.core.dom.ArrayCreation;
 import org.eclipse.jdt.core.dom.ArrayInitializer;
-import org.eclipse.jdt.core.dom.ArrayType;
 import org.eclipse.jdt.core.dom.Assignment;
 import org.eclipse.jdt.core.dom.Assignment.Operator;
 import org.eclipse.jdt.core.dom.Block;
@@ -258,7 +257,7 @@ public class ImplWriter extends TransformWriter {
 		PrintWriter old = out;
 		StringWriter sw = new StringWriter();
 		out = new PrintWriter(sw);
-		String qname = TransformUtil.qualifiedCName(type);
+		String qname = TransformUtil.qualifiedCName(type, true);
 		String name = TransformUtil.name(type);
 
 		boolean hasEmpty = false;
@@ -357,7 +356,7 @@ public class ImplWriter extends TransformWriter {
 		StringWriter sw = new StringWriter();
 		out = new PrintWriter(sw);
 		// Synthesize base class constructors
-		String qname = TransformUtil.qualifiedCName(type);
+		String qname = TransformUtil.qualifiedCName(type, true);
 		String name = TransformUtil.name(type);
 		for (IMethodBinding mb : type.getSuperclass().getDeclaredMethods()) {
 			if (!mb.isConstructor()) {
@@ -372,7 +371,7 @@ public class ImplWriter extends TransformWriter {
 				ITypeBinding pb = mb.getParameterTypes()[i];
 				ctx.softDep(pb);
 
-				print(sep, TransformUtil.relativeCName(pb, type), " ",
+				print(sep, TransformUtil.relativeCName(pb, type, true), " ",
 						TransformUtil.ref(pb), "a" + i);
 				sep = ", ";
 			}
@@ -380,7 +379,8 @@ public class ImplWriter extends TransformWriter {
 			println(")");
 			indent++;
 			printi(": ");
-			print(TransformUtil.relativeCName(type.getSuperclass(), type), "(");
+			print(TransformUtil.relativeCName(type.getSuperclass(), type, true),
+					"(");
 
 			sep = "";
 			for (int i = 0; i < mb.getParameterTypes().length; ++i) {
@@ -463,11 +463,9 @@ public class ImplWriter extends TransformWriter {
 
 	@Override
 	public boolean visit(ArrayCreation node) {
-		print("(new ");
-		ArrayType at = node.getType();
-		hardDep(at.resolveBinding());
-
-		at.accept(this);
+		ITypeBinding tb = node.getType().resolveBinding();
+		hardDep(tb);
+		print("(new ", TransformUtil.relativeCName(tb, type, true));
 
 		for (Iterator<Expression> it = node.dimensions().iterator(); it
 				.hasNext();) {
@@ -490,7 +488,7 @@ public class ImplWriter extends TransformWriter {
 		if (!(node.getParent() instanceof ArrayCreation)) {
 			print("(new ");
 			ITypeBinding at = node.resolveTypeBinding();
-			print(TransformUtil.qualifiedCName(at));
+			print(TransformUtil.qualifiedCName(at, true));
 			hardDep(at);
 		}
 
@@ -593,15 +591,16 @@ public class ImplWriter extends TransformWriter {
 
 	@Override
 	public boolean visit(CastExpression node) {
-		hardDep(node.getType().resolveBinding());
+		ITypeBinding tb = node.getType().resolveBinding();
+		hardDep(tb);
 		hardDep(node.getExpression().resolveTypeBinding());
 
 		print(node.getType().isPrimitiveType()
 				|| node.getExpression() instanceof NullLiteral ? "static_cast<"
 				: "dynamic_cast<");
 
-		node.getType().accept(this);
-		print(TransformUtil.ref(node.getType()));
+		print(TransformUtil.relativeCName(tb, type, true),
+				TransformUtil.ref(node.getType()));
 
 		print(">(");
 
@@ -640,8 +639,9 @@ public class ImplWriter extends TransformWriter {
 		} else {
 			print(TransformUtil.typeArguments(node.typeArguments()));
 
-			node.getType().accept(this);
+			print(TransformUtil.relativeCName(tb, type, true));
 		}
+
 		hardDep(tb);
 
 		print("(");
@@ -862,13 +862,13 @@ public class ImplWriter extends TransformWriter {
 			ITypeBinding tb = node.getType().resolveBinding();
 			tb = f.getExtraDimensions() > 0 ? tb.createArrayType(f
 					.getExtraDimensions()) : tb;
-			print(TransformUtil.qualifiedCName(tb));
+			print(TransformUtil.qualifiedCName(tb, true));
 
 			print(" ");
 
 			print(TransformUtil.ref(tb));
 
-			print(TransformUtil.qualifiedCName(type), "::");
+			print(TransformUtil.qualifiedCName(type, false), "::");
 
 			f.getName().accept(this);
 
@@ -1066,7 +1066,7 @@ public class ImplWriter extends TransformWriter {
 		}
 
 		String name = TransformUtil.name(type);
-		String qcname = TransformUtil.qualifiedCName(type);
+		String qcname = TransformUtil.qualifiedCName(type, true);
 
 		println(qcname, "::", name, "Initializer::", name, "Initializer() {");
 		indent++;
@@ -1093,8 +1093,9 @@ public class ImplWriter extends TransformWriter {
 		println();
 
 		String name = TransformUtil.name(type);
-		String cname = TransformUtil.qualifiedCName(type);
-		print(cname, "::", name, "Initializer ", cname, "::staticInitializer;");
+		String cname = TransformUtil.qualifiedCName(type, false);
+		println(cname, "::", name, "Initializer ", cname,
+				"::staticInitializer;");
 
 		out.close();
 		out = oldOut;
@@ -1140,13 +1141,14 @@ public class ImplWriter extends TransformWriter {
 		if (node.isConstructor()) {
 			constructors.add(node);
 
-			printi("void ", TransformUtil.qualifiedCName(type), "::_construct");
+			printi("void ", TransformUtil.qualifiedCName(type, true),
+					"::_construct");
 		} else {
 			print(TransformUtil.qualifiedCName(node.getReturnType2()
-					.resolveBinding()), " ", TransformUtil.ref(node
+					.resolveBinding(), true), " ", TransformUtil.ref(node
 					.getReturnType2()));
 
-			print(TransformUtil.qualifiedCName(type), "::");
+			print(TransformUtil.qualifiedCName(type, true), "::");
 
 			node.getName().accept(this);
 		}
@@ -1260,7 +1262,7 @@ public class ImplWriter extends TransformWriter {
 		if (!tb.isEqualTo(pb)) {
 			// Java has different implicit cast rules
 			hardDep(tb);
-			print("static_cast<", TransformUtil.relativeCName(pb, type),
+			print("static_cast<", TransformUtil.relativeCName(pb, type, true),
 					TransformUtil.ref(pb), ">(");
 			argument.accept(this);
 			print(")");
@@ -1476,7 +1478,7 @@ public class ImplWriter extends TransformWriter {
 					hardDep(fb);
 
 					printi(TransformUtil.variableModifiers(vds.getModifiers()));
-					print(TransformUtil.relativeCName(fb, type), " ");
+					print(TransformUtil.relativeCName(fb, type, true), " ");
 					print(TransformUtil.ref(fb));
 					fragment.getName().accept(this);
 					println(";");

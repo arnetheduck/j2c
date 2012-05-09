@@ -47,14 +47,14 @@ public class ArrayWriter {
 		pw.println();
 
 		String name = TransformUtil.name(type);
-		String cname = TransformUtil.qualifiedCName(type);
+		String cname = TransformUtil.qualifiedCName(type, false);
 		ITypeBinding ct = type.getComponentType();
 		String ret = TransformUtil.cname(TransformUtil.name(ct));
 
 		ITypeBinding sb = getSuperType();
 
 		String parentType = sb == null ? null : TransformUtil.relativeCName(sb,
-				type);
+				type, true);
 
 		if (sb == null) {
 			ITypeBinding object = ctx.resolve(Object.class);
@@ -75,9 +75,9 @@ public class ArrayWriter {
 
 		pw.println("class " + cname);
 		if (sb == null) {
-			pw.println("    : public virtual java::lang::Object");
-			pw.println("    , public virtual java::lang::Cloneable");
-			pw.println("    , public virtual java::io::Serializable");
+			pw.println("    : public virtual ::java::lang::Object");
+			pw.println("    , public virtual ::java::lang::Cloneable");
+			pw.println("    , public virtual ::java::io::Serializable");
 		} else {
 			pw.println("    : public " + parentType);
 		}
@@ -85,7 +85,7 @@ public class ArrayWriter {
 		pw.println("{");
 		pw.println("public:");
 		pw.print(TransformUtil.indent(1));
-		pw.println("static java::lang::Class *class_;");
+		pw.println("static ::java::lang::Class *class_;");
 
 		pw.println("    template<typename... T>");
 		if (sb == null) {

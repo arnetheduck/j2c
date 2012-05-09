@@ -153,9 +153,8 @@ public abstract class TransformWriter extends ASTVisitor {
 
 		if (closures != null) {
 			for (IVariableBinding closure : closures) {
-				print(sep,
-						TransformUtil.relativeCName(closure.getType(), type),
-						" ", TransformUtil.ref(closure.getType()),
+				print(sep, TransformUtil.relativeCName(closure.getType(), type,
+						true), " ", TransformUtil.ref(closure.getType()),
 						closure.getName(), "_");
 				sep = ", ";
 			}
@@ -171,7 +170,7 @@ public abstract class TransformWriter extends ASTVisitor {
 			node.getComponentType().accept(this);
 		} else {
 			print(TransformUtil.relativeCName(node.getComponentType()
-					.resolveBinding(), type));
+					.resolveBinding(), type, true));
 		}
 		ctx.softDep(node.resolveBinding());
 		print("Array");
@@ -461,8 +460,9 @@ public abstract class TransformWriter extends ASTVisitor {
 
 	@Override
 	public boolean visit(VariableDeclarationExpression node) {
-		print(TransformUtil.variableModifiers(node.getModifiers()));
-		node.getType().accept(this);
+		ITypeBinding tb = node.getType().resolveBinding();
+		print(TransformUtil.variableModifiers(node.getModifiers()),
+				TransformUtil.relativeCName(tb, type, true), " ");
 
 		print(" ");
 
@@ -479,21 +479,21 @@ public abstract class TransformWriter extends ASTVisitor {
 			hasDims |= fragment.getExtraDimensions() > 0;
 		}
 
+		ITypeBinding tb = node.getType().resolveBinding();
+
 		if (hasDims) {
 			for (VariableDeclarationFragment fragment : fragments) {
 				printi(TransformUtil.variableModifiers(node.getModifiers()));
-				ITypeBinding fb = node.getType().resolveBinding()
-						.createArrayType(fragment.getExtraDimensions());
+				ITypeBinding fb = tb.createArrayType(fragment
+						.getExtraDimensions());
 				hardDep(fb);
-				print(TransformUtil.relativeCName(fb, type), " ");
+				print(TransformUtil.relativeCName(fb, type, true), " ");
 				fragment.accept(this);
 				println(";");
 			}
 		} else {
-			printi(TransformUtil.variableModifiers(node.getModifiers()));
-
-			node.getType().accept(this);
-			print(" ");
+			printi(TransformUtil.variableModifiers(node.getModifiers()),
+					TransformUtil.relativeCName(tb, type, true), " ");
 
 			visitAllCSV(node.fragments(), false);
 
