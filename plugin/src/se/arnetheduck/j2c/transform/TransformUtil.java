@@ -626,6 +626,14 @@ public final class TransformUtil {
 			return null;
 		}
 
+		if (mb.getDeclaringClass().getSuperclass() != null) {
+			IMethodBinding mb2 = getSuperMethod(mb, mb.getDeclaringClass()
+					.getSuperclass());
+			if (mb2 != null) {
+				return mb2;
+			}
+		}
+
 		for (ITypeBinding tb : mb.getDeclaringClass().getInterfaces()) {
 			IMethodBinding mb2 = getSuperMethod(mb, tb);
 			if (mb2 != null) {

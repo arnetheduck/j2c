@@ -1,6 +1,8 @@
 package se.arnetheduck.j2c.transform;
 
 import java.io.IOException;
+import java.io.PrintWriter;
+import java.io.StringWriter;
 import java.lang.reflect.Modifier;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -68,105 +70,126 @@ public class HeaderWriter extends TransformWriter {
 		ctx.headers.add(type);
 		try {
 			out = TransformUtil.openHeader(root, type);
-			List<ITypeBinding> bases = TransformUtil.getBases(ast, type);
 
-			for (ITypeBinding base : bases) {
-				hardDep(base);
-				println(TransformUtil.include(base));
+			String body = getBody(ast, declarations, closures, nested);
+			for (ITypeBinding tb : hardDeps) {
+				out.println(TransformUtil.include(tb));
 			}
 
-			println();
-
-			if (type.isInterface()) {
-				lastAccess = TransformUtil.PUBLIC;
-				print("struct ");
-			} else {
-				lastAccess = TransformUtil.PRIVATE;
-				print("class ");
-			}
-
-			println(TransformUtil.qualifiedCName(type, false));
-
-			String sep = ": public ";
-
-			indent++;
-			for (ITypeBinding base : bases) {
-				printlni(sep, TransformUtil.virtual(base),
-						TransformUtil.relativeCName(base, type, true));
-				sep = ", public ";
-			}
-			indent--;
-
-			println("{");
-
-			indent++;
-
-			if (!type.isInterface()) {
-				printi("typedef ");
-				if (type.getSuperclass() != null) {
-					print(TransformUtil.relativeCName(type.getSuperclass(),
-							type, true));
-				} else {
-					print("::java::lang::Object");
-				}
-
-				println(" super;");
-			}
-
-			for (ITypeBinding nb : nested) {
-				printlni("friend class ", TransformUtil.name(nb), ";");
-			}
-
-			lastAccess = TransformUtil.printAccess(out, Modifier.PUBLIC,
-					lastAccess);
-
-			printlni("static ::java::lang::Class *class_;");
-
-			if (type.getQualifiedName().equals("java.lang.Object")) {
-				out.println("public:");
-				out.print(TransformUtil.indent(1));
-				out.println("virtual ~Object();");
-			}
-
-			visitAll(declarations); // This will gather constructors
-
-			lastAccess = TransformUtil.printAccess(out, Modifier.PUBLIC,
-					lastAccess);
-
-			if (!type.isInterface()) {
-				if (type.isAnonymous()) {
-					makeBaseConstructors(closures);
-				} else {
-					makeConstructors(closures);
-				}
-
-				ITypeBinding sb = type.getSuperclass();
-				boolean superInner = sb != null && TransformUtil.isInner(sb)
-						&& !TransformUtil.outerStatic(sb);
-				if (!superInner && TransformUtil.isInner(type)
-						&& !TransformUtil.outerStatic(type)) {
-					printlni(TransformUtil.outerThis(type), ";");
-				}
-
-				if (closures != null) {
-					for (IVariableBinding closure : closures) {
-						printlni(TransformUtil.relativeCName(closure.getType(),
-								type, false), " ", TransformUtil.ref(closure
-								.getType()), closure.getName(), "_;");
-					}
-				}
-			}
-
-			indent--;
-
-			println("};");
-
-			TransformUtil.printStringSupport(type, out);
+			out.print(body);
 
 			out.close();
 		} catch (IOException e) {
 			throw new Error(e);
 		}
+	}
+
+	private String getBody(AST ast, List<BodyDeclaration> declarations,
+			Collection<IVariableBinding> closures,
+			Collection<ITypeBinding> nested) {
+
+		PrintWriter old = out;
+		StringWriter sw = new StringWriter();
+		out = new PrintWriter(sw);
+
+		List<ITypeBinding> bases = TransformUtil.getBases(ast, type);
+
+		for (ITypeBinding base : bases) {
+			hardDep(base);
+		}
+
+		println();
+
+		if (type.isInterface()) {
+			lastAccess = TransformUtil.PUBLIC;
+			print("struct ");
+		} else {
+			lastAccess = TransformUtil.PRIVATE;
+			print("class ");
+		}
+
+		println(TransformUtil.qualifiedCName(type, false));
+
+		String sep = ": public ";
+
+		indent++;
+		for (ITypeBinding base : bases) {
+			printlni(sep, TransformUtil.virtual(base),
+					TransformUtil.relativeCName(base, type, true));
+			sep = ", public ";
+		}
+		indent--;
+
+		println("{");
+
+		indent++;
+
+		if (!type.isInterface()) {
+			printi("typedef ");
+			if (type.getSuperclass() != null) {
+				print(TransformUtil.relativeCName(type.getSuperclass(), type,
+						true));
+			} else {
+				print("::java::lang::Object");
+			}
+
+			println(" super;");
+		}
+
+		for (ITypeBinding nb : nested) {
+			printlni("friend class ", TransformUtil.name(nb), ";");
+		}
+
+		lastAccess = TransformUtil
+				.printAccess(out, Modifier.PUBLIC, lastAccess);
+
+		printlni("static ::java::lang::Class *class_;");
+
+		if (type.getQualifiedName().equals("java.lang.Object")) {
+			out.println("public:");
+			out.print(TransformUtil.indent(1));
+			out.println("virtual ~Object();");
+		}
+
+		visitAll(declarations); // This will gather constructors
+
+		lastAccess = TransformUtil
+				.printAccess(out, Modifier.PUBLIC, lastAccess);
+
+		if (!type.isInterface()) {
+			if (type.isAnonymous()) {
+				makeBaseConstructors(closures);
+			} else {
+				makeConstructors(closures);
+			}
+
+			ITypeBinding sb = type.getSuperclass();
+			boolean superInner = sb != null && TransformUtil.isInner(sb)
+					&& !TransformUtil.outerStatic(sb);
+			if (!superInner && TransformUtil.isInner(type)
+					&& !TransformUtil.outerStatic(type)) {
+				printlni(TransformUtil.outerThis(type), ";");
+			}
+
+			if (closures != null) {
+				for (IVariableBinding closure : closures) {
+					printlni(TransformUtil.relativeCName(closure.getType(),
+							type, false), " ", TransformUtil.ref(closure
+							.getType()), closure.getName(), "_;");
+				}
+			}
+		}
+
+		indent--;
+
+		println("};");
+
+		TransformUtil.printStringSupport(type, out);
+
+		out.close();
+
+		out = old;
+		return sw.toString();
 	}
 
 	private void makeConstructors(Collection<IVariableBinding> closures) {
