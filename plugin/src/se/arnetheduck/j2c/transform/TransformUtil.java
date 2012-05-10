@@ -687,10 +687,10 @@ public final class TransformUtil {
 
 					if (!pb.isEqualTo(pb2)) {
 						deps.add(tb);
-						pw.print("dynamic_cast<");
+						pw.print("dynamic_cast< ");
 						pw.print(relativeCName(pb, tb, false));
 						pw.print(ref(pb));
-						pw.print(">(");
+						pw.print(" >(");
 						pw.print("a" + i);
 						pw.print(")");
 					} else {

@@ -596,13 +596,13 @@ public class ImplWriter extends TransformWriter {
 		hardDep(node.getExpression().resolveTypeBinding());
 
 		print(node.getType().isPrimitiveType()
-				|| node.getExpression() instanceof NullLiteral ? "static_cast<"
-				: "dynamic_cast<");
+				|| node.getExpression() instanceof NullLiteral ? "static_cast< "
+				: "dynamic_cast< ");
 
 		print(TransformUtil.relativeCName(tb, type, true),
 				TransformUtil.ref(node.getType()));
 
-		print(">(");
+		print(" >(");
 
 		node.getExpression().accept(this);
 
@@ -753,19 +753,19 @@ public class ImplWriter extends TransformWriter {
 			indent++;
 			printi();
 			node.getParameter().accept(this);
-			print(" = dynamic_cast<");
-			node.getParameter().getType().accept(this);
+			print(" = dynamic_cast< ");
+			ITypeBinding tb = node.getParameter().getType().resolveBinding();
+			print(TransformUtil.relativeCName(tb, type, true));
 
-			println(TransformUtil.ref(node.getParameter().getType()),
-					">(_i->next());");
+			println(TransformUtil.ref(tb), " >(_i->next());");
 			printi();
 			node.getBody().accept(this);
 			indent--;
 			printlni("}");
 
-			ITypeBinding tb = node.getExpression().resolveTypeBinding();
-			hardDep(getIterator(tb));
-			hardDep(node.getParameter().resolveBinding().getType());
+			ITypeBinding tb2 = node.getExpression().resolveTypeBinding();
+			hardDep(getIterator(tb2));
+			hardDep(tb);
 		}
 		return false;
 	}
@@ -1105,10 +1105,10 @@ public class ImplWriter extends TransformWriter {
 
 	@Override
 	public boolean visit(InstanceofExpression node) {
-		print("dynamic_cast<");
-		node.getRightOperand().accept(this);
-		hardDep(node.getRightOperand().resolveBinding());
-		print("*>(");
+		ITypeBinding tb = node.getRightOperand().resolveBinding();
+		hardDep(tb);
+		print("dynamic_cast< ", TransformUtil.relativeCName(tb, type, true));
+		print("* >(");
 		node.getLeftOperand().accept(this);
 		print(")");
 		return false;
@@ -1262,8 +1262,8 @@ public class ImplWriter extends TransformWriter {
 		if (!tb.isEqualTo(pb)) {
 			// Java has different implicit cast rules
 			hardDep(tb);
-			print("static_cast<", TransformUtil.relativeCName(pb, type, true),
-					TransformUtil.ref(pb), ">(");
+			print("static_cast< ", TransformUtil.relativeCName(pb, type, true),
+					TransformUtil.ref(pb), " >(");
 			argument.accept(this);
 			print(")");
 		} else {
