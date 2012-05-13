@@ -15,6 +15,7 @@ import java.util.regex.Pattern;
 
 import org.eclipse.core.runtime.IPath;
 import org.eclipse.jdt.core.Flags;
+import org.eclipse.jdt.core.IField;
 import org.eclipse.jdt.core.IInitializer;
 import org.eclipse.jdt.core.IJavaElement;
 import org.eclipse.jdt.core.JavaModelException;
@@ -393,16 +394,22 @@ public final class TransformUtil {
 			IMethodBinding mb = tb.getDeclaringMethod();
 			if (mb == null) {
 				IJavaElement je = tb.getJavaElement();
-				while (je != null && !(je instanceof IInitializer)) {
-					je = je.getParent();
-				}
 
-				if (je instanceof IInitializer) {
-					try {
-						return Flags.isStatic(((IInitializer) je).getFlags());
-					} catch (JavaModelException e) {
-						throw new Error(e);
+				try {
+					while (je != null) {
+						if (je instanceof IInitializer) {
+							return Flags.isStatic(((IInitializer) je)
+									.getFlags());
+						}
+
+						if (je instanceof IField) {
+							return Flags.isStatic(((IField) je).getFlags());
+						}
+
+						je = je.getParent();
 					}
+				} catch (JavaModelException e) {
+					throw new Error(e);
 				}
 
 				return false;

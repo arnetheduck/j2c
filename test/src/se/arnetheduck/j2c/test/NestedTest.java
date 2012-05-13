@@ -10,6 +10,10 @@ public class NestedTest {
 	public static class Static {
 		public static final int Y = 5;
 
+		static int s() {
+			return Y;
+		}
+
 		int m() {
 			return x;
 		}
