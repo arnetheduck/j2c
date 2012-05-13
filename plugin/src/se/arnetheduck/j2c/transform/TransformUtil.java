@@ -686,7 +686,7 @@ public final class TransformUtil {
 					ITypeBinding pb2 = mb2.getParameterTypes()[i];
 
 					if (!pb.isEqualTo(pb2)) {
-						deps.add(tb);
+						deps.add(pb);
 						pw.print("dynamic_cast< ");
 						pw.print(relativeCName(pb, tb, false));
 						pw.print(ref(pb));
