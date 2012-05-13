@@ -1185,6 +1185,17 @@ public class ImplWriter extends TransformWriter {
 	@Override
 	public boolean visit(MethodInvocation node) {
 		IMethodBinding b = node.resolveMethodBinding();
+		boolean erased = !b
+				.getMethodDeclaration()
+				.getReturnType()
+				.isEqualTo(
+						b.getMethodDeclaration().getReturnType().getErasure());
+
+		if (erased) {
+			print("dynamic_cast< ",
+					TransformUtil.relativeCName(b.getReturnType(), type, true),
+					"* >(");
+		}
 		if (node.getExpression() != null) {
 			node.getExpression().accept(this);
 
@@ -1253,6 +1264,10 @@ public class ImplWriter extends TransformWriter {
 		}
 
 		print(")");
+
+		if (erased) {
+			print(")");
+		}
 
 		return false;
 	}
@@ -1365,17 +1380,15 @@ public class ImplWriter extends TransformWriter {
 		ITypeBinding tb = node.getType().resolveBinding();
 		if (node.getExtraDimensions() > 0) {
 			tb = tb.createArrayType(node.getExtraDimensions());
-			print(TransformUtil.name(tb));
-		} else {
-			node.getType().accept(this);
 		}
+
+		print(TransformUtil.relativeCName(tb, type, true));
+
 		if (node.isVarargs()) {
 			print("/*...*/");
 		}
 
-		print(" ");
-
-		print(TransformUtil.ref(tb));
+		print(" ", TransformUtil.ref(tb));
 
 		node.getName().accept(this);
 
