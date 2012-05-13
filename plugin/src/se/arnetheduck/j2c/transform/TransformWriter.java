@@ -319,22 +319,24 @@ public abstract class TransformWriter extends ASTVisitor {
 	@Override
 	public boolean visit(QualifiedName node) {
 		Name qualifier = node.getQualifier();
-
-		qualifier.accept(this);
-
 		IBinding b = qualifier.resolveBinding();
-		if (b instanceof IPackageBinding) {
-			print("::");
-		} else if (b instanceof ITypeBinding) {
-			hardDep((ITypeBinding) b);
-			print("::");
-		} else if (b instanceof IVariableBinding) {
-			hardDep(((IVariableBinding) b).getType());
-			print("->");
-		} else {
-			throw new Error("Unknown binding " + b.getClass());
-		}
 
+		if (b instanceof ITypeBinding) {
+			hardDep((ITypeBinding) b);
+			print(TransformUtil.relativeCName((ITypeBinding) b, type, true),
+					"::");
+		} else {
+			qualifier.accept(this);
+
+			if (b instanceof IPackageBinding) {
+				print("::");
+			} else if (b instanceof IVariableBinding) {
+				hardDep(((IVariableBinding) b).getType());
+				print("->");
+			} else {
+				throw new Error("Unknown binding " + b.getClass());
+			}
+		}
 		node.getName().accept(this);
 
 		return false;

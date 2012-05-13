@@ -8,6 +8,8 @@ public class NestedTest {
 	}
 
 	public static class Static {
+		public static final int Y = 5;
+
 		int m() {
 			return x;
 		}
