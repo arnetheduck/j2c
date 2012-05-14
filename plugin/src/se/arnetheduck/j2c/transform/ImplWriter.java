@@ -1624,6 +1624,7 @@ public class ImplWriter extends TransformWriter {
 	public boolean visit(ThrowStatement node) {
 		printi("throw ");
 		node.getExpression().accept(this);
+		hardDep(node.getExpression().resolveTypeBinding());
 		println(";");
 
 		return false;
