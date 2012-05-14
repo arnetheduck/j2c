@@ -1528,6 +1528,10 @@ public class ImplWriter extends TransformWriter {
 				}
 
 				s.accept(this);
+
+				if (i == statements.size() - 1) {
+					println(" { }");
+				}
 				indent++;
 				indented = true;
 			} else if (s instanceof Block) {

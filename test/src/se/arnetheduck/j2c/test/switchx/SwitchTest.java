@@ -1,4 +1,6 @@
-package se.arnetheduck.j2c.test;
+package se.arnetheduck.j2c.test.switchx;
+
+import se.arnetheduck.j2c.test.Empty;
 
 public class SwitchTest {
 	public int simple(int i) {
