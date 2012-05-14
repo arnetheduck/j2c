@@ -22,4 +22,12 @@ public class ArrayTest {
 		Empty[] ee = h2;
 		return ee;
 	}
+
+	int[] aclone() {
+		return a.clone();
+	}
+
+	Empty[] hclone() {
+		return h.clone();
+	}
 }

@@ -103,6 +103,8 @@ public class ArrayWriter {
 				+ "&operator[](int i) { return static_cast<" + ret + " *"
 				+ TransformUtil.ref(ct) + ">(p)[i]; }");
 
+		pw.print("    " + name + "* clone() { return this; /* TODO */ }");
+
 		if (sb == null) {
 			pw.println();
 			pw.println("    const int length_;");
