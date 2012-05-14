@@ -434,10 +434,14 @@ public final class TransformUtil {
 	}
 
 	public static String methodUsing(IMethodBinding mb) {
+		if (Modifier.isPrivate(mb.getModifiers())) {
+			return null;
+		}
+
 		ITypeBinding tb = mb.getDeclaringClass();
 
 		ITypeBinding using = null;
-		for (IMethodBinding b : methods(tb.getSuperclass(), mb.getName())) {
+		for (IMethodBinding b : baseMethods(tb, mb.getName())) {
 			if (mb.getParameterTypes().length != b.getParameterTypes().length) {
 				using = b.getDeclaringClass();
 				break;
@@ -463,6 +467,17 @@ public final class TransformUtil {
 		return null;
 	}
 
+	public static List<IMethodBinding> baseMethods(ITypeBinding tb, String name) {
+		List<IMethodBinding> ret = new ArrayList<IMethodBinding>();
+		ret.addAll(methods(tb.getSuperclass(), name));
+
+		for (ITypeBinding ib : tb.getInterfaces()) {
+			ret.addAll(methods(ib, name));
+		}
+
+		return ret;
+	}
+
 	public static List<IMethodBinding> methods(ITypeBinding tb, String name) {
 		if (tb == null) {
 			return Collections.emptyList();
@@ -476,6 +491,11 @@ public final class TransformUtil {
 		}
 
 		ret.addAll(methods(tb.getSuperclass(), name));
+
+		for (ITypeBinding ib : tb.getInterfaces()) {
+			ret.addAll(methods(ib, name));
+		}
+
 		return ret;
 	}
 
@@ -596,6 +616,20 @@ public final class TransformUtil {
 			ITypeBinding tb) {
 		for (IMethodBinding mb2 : tb.getDeclaredMethods()) {
 			if (mb.overrides(mb2)) {
+				return mb2;
+			}
+		}
+
+		if (tb.getSuperclass() != null) {
+			IMethodBinding mb2 = getSuperMethod(mb, tb.getSuperclass());
+			if (mb2 != null) {
+				return mb2;
+			}
+		}
+
+		for (ITypeBinding ib : tb.getInterfaces()) {
+			IMethodBinding mb2 = getSuperMethod(mb, ib);
+			if (mb2 != null) {
 				return mb2;
 			}
 		}

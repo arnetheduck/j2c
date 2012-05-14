@@ -1,6 +1,7 @@
 package se.arnetheduck.j2c.transform;
 
 import java.io.PrintWriter;
+import java.lang.reflect.Modifier;
 import java.util.Collection;
 import java.util.Iterator;
 import java.util.List;
@@ -395,6 +396,12 @@ public abstract class TransformWriter extends ASTVisitor {
 				print(TransformUtil.relativeCName(mb.getDeclaringClass(), type,
 						true), "::");
 				hardDep(mb.getDeclaringClass());
+			}
+
+			if (Modifier.isPrivate(mb.getModifiers())) {
+				// private methods mess up using statements that import methods
+				// from base classes
+				print("_");
 			}
 
 			print(TransformUtil.keywords(node.getIdentifier()));
