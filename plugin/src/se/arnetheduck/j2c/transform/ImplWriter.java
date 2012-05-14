@@ -168,17 +168,23 @@ public class ImplWriter extends TransformWriter {
 				println("#include <cmath>");
 			}
 
+			println();
 			println("using namespace java::lang;");
 
 			for (ImportDeclaration node : imports) {
-				print("using ");
-				if (node.isOnDemand()) {
-					print("namespace ");
+				if (node.isStatic()) {
+					continue; // We qualify references to static imports
 				}
 
-				node.getName().accept(this);
-				// TODO static imports
-				println(";");
+				if (node.isOnDemand()) {
+					println("using namespace ::", TransformUtil.cname(node
+							.getName().getFullyQualifiedName()), ";");
+				} else {
+					println("using ",
+							TransformUtil.qualifiedCName(
+									(ITypeBinding) node.resolveBinding(), true),
+							";");
+				}
 			}
 
 			println();
@@ -1208,22 +1214,16 @@ public class ImplWriter extends TransformWriter {
 
 		ITypeBinding dc = b.getDeclaringClass();
 
-		if (type.isNested() && Modifier.isStatic(b.getModifiers())
-				&& !type.isSubTypeCompatible(dc)) {
-			print(TransformUtil.name(dc), "::");
-			hardDep(dc);
-		} else if (TransformUtil.isInner(type) && node.getExpression() == null) {
+		if (!(type.isNested() && Modifier.isStatic(b.getModifiers()))
+				&& TransformUtil.isInner(type) && node.getExpression() == null
+				&& !Modifier.isStatic(b.getModifiers())) {
 			if (dc != null && !type.isSubTypeCompatible(dc)) {
 				for (ITypeBinding x = type; x.getDeclaringClass() != null
 						&& !x.isSubTypeCompatible(dc); x = x
 						.getDeclaringClass()) {
 					hardDep(x.getDeclaringClass());
 
-					if (Modifier.isStatic(b.getModifiers())) {
-						print(TransformUtil.name(x.getDeclaringClass()), "::");
-					} else {
-						print(TransformUtil.outerThisName(x), "->");
-					}
+					print(TransformUtil.outerThisName(x), "->");
 				}
 			}
 		}
@@ -1323,11 +1323,8 @@ public class ImplWriter extends TransformWriter {
 			ctx.softDep(vb.getType());
 
 			ITypeBinding dc = vb.getDeclaringClass();
-			if (type.isNested() && Modifier.isStatic(vb.getModifiers())
-					&& !type.isSubTypeCompatible(dc)) {
-				print(TransformUtil.name(dc), "::");
-				hardDep(dc);
-			} else if (TransformUtil.isInner(type)) {
+			if (!(type.isNested() && Modifier.isStatic(vb.getModifiers()) && !type
+					.isSubTypeCompatible(dc)) && TransformUtil.isInner(type)) {
 				if (vb.isField() && dc != null && !dc.isSubTypeCompatible(type)) {
 					boolean pq = node.getParent() instanceof QualifiedName;
 					boolean hasThis = pq
@@ -1345,12 +1342,7 @@ public class ImplWriter extends TransformWriter {
 								.getDeclaringClass()) {
 							hardDep(x.getDeclaringClass());
 
-							if (Modifier.isStatic(vb.getModifiers())) {
-								print(TransformUtil.name(x.getDeclaringClass()),
-										"::");
-							} else {
-								print(TransformUtil.outerThisName(x), "->");
-							}
+							print(TransformUtil.outerThisName(x), "->");
 						}
 					}
 				} else if (Modifier.isFinal(vb.getModifiers())) {

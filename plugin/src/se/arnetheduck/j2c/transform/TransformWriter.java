@@ -27,6 +27,8 @@ import org.eclipse.jdt.core.dom.IVariableBinding;
 import org.eclipse.jdt.core.dom.ImportDeclaration;
 import org.eclipse.jdt.core.dom.LineComment;
 import org.eclipse.jdt.core.dom.MemberRef;
+import org.eclipse.jdt.core.dom.MethodDeclaration;
+import org.eclipse.jdt.core.dom.MethodInvocation;
 import org.eclipse.jdt.core.dom.MethodRef;
 import org.eclipse.jdt.core.dom.MethodRefParameter;
 import org.eclipse.jdt.core.dom.Name;
@@ -331,6 +333,15 @@ public abstract class TransformWriter extends ASTVisitor {
 				print(TransformUtil.relativeCName((ITypeBinding) b, type, true),
 						"::");
 			} else {
+				if (qualifier instanceof SimpleName
+						&& b instanceof IVariableBinding) {
+					IVariableBinding vb = (IVariableBinding) b;
+					if (TransformUtil.isStatic(vb)
+							&& !type.isSubTypeCompatible(vb.getDeclaringClass())) {
+						print(TransformUtil.relativeCName(
+								vb.getDeclaringClass(), type, true), "::");
+					}
+				}
 				qualifier.accept(this);
 
 				if (b instanceof IPackageBinding) {
@@ -363,6 +374,13 @@ public abstract class TransformWriter extends ASTVisitor {
 
 		if (b instanceof IVariableBinding) {
 			IVariableBinding vb = (IVariableBinding) b;
+			if (vb.isField() && TransformUtil.isStatic(vb)
+					&& needsQualification(node, vb.getDeclaringClass())) {
+				print(TransformUtil.relativeCName(vb.getDeclaringClass(), type,
+						true), "::");
+				hardDep(vb.getDeclaringClass());
+			}
+
 			ctx.softDep(vb.getType());
 
 			print(node.getIdentifier());
@@ -371,12 +389,30 @@ public abstract class TransformWriter extends ASTVisitor {
 			print(TransformUtil.name((ITypeBinding) b));
 			ctx.softDep((ITypeBinding) b);
 		} else if (b instanceof IMethodBinding) {
+			IMethodBinding mb = (IMethodBinding) b;
+			if (TransformUtil.isStatic(mb)
+					&& needsQualification(node, mb.getDeclaringClass())) {
+				print(TransformUtil.relativeCName(mb.getDeclaringClass(), type,
+						true), "::");
+				hardDep(mb.getDeclaringClass());
+			}
+
 			print(TransformUtil.keywords(node.getIdentifier()));
 		} else {
 			print(node.getIdentifier());
 		}
 
 		return false;
+	}
+
+	private boolean needsQualification(SimpleName node, ITypeBinding tb) {
+		ASTNode parent = node.getParent();
+		return !(parent instanceof QualifiedName)
+				&& !(parent instanceof VariableDeclarationFragment)
+				&& !(parent instanceof MethodDeclaration)
+				&& !(parent instanceof MethodInvocation
+						&& ((MethodInvocation) parent).getExpression() != null && ((MethodInvocation) parent)
+						.getName() == node) && !type.isSubTypeCompatible(tb);
 	}
 
 	@Override
