@@ -753,11 +753,11 @@ public class ImplWriter extends TransformWriter {
 			indent++;
 			printi();
 			node.getParameter().accept(this);
-			print(" = dynamic_cast< ");
+			print(" = ");
 			ITypeBinding tb = node.getParameter().getType().resolveBinding();
-			print(TransformUtil.relativeCName(tb, type, true));
 
-			println(TransformUtil.ref(tb), " >(_i->next());");
+			dynamicCast(tb);
+			println("_i->next());");
 			printi();
 			node.getBody().accept(this);
 			indent--;
@@ -765,8 +765,8 @@ public class ImplWriter extends TransformWriter {
 
 			ITypeBinding tb2 = node.getExpression().resolveTypeBinding();
 			hardDep(getIterator(tb2));
-			hardDep(tb);
 		}
+
 		return false;
 	}
 
@@ -1106,9 +1106,7 @@ public class ImplWriter extends TransformWriter {
 	@Override
 	public boolean visit(InstanceofExpression node) {
 		ITypeBinding tb = node.getRightOperand().resolveBinding();
-		hardDep(tb);
-		print("dynamic_cast< ", TransformUtil.relativeCName(tb, type, true));
-		print("* >(");
+		dynamicCast(tb);
 		node.getLeftOperand().accept(this);
 		print(")");
 		return false;
@@ -1192,9 +1190,7 @@ public class ImplWriter extends TransformWriter {
 						b.getMethodDeclaration().getReturnType().getErasure());
 
 		if (erased) {
-			print("dynamic_cast< ",
-					TransformUtil.relativeCName(b.getReturnType(), type, true),
-					"* >(");
+			dynamicCast(b.getReturnType());
 		}
 		if (node.getExpression() != null) {
 			node.getExpression().accept(this);
@@ -1270,6 +1266,12 @@ public class ImplWriter extends TransformWriter {
 		}
 
 		return false;
+	}
+
+	private void dynamicCast(ITypeBinding rt) {
+		hardDep(rt);
+		print("dynamic_cast< ", TransformUtil.relativeCName(rt, type, true),
+				"* >(");
 	}
 
 	private void cast(Expression argument, ITypeBinding pb) {
