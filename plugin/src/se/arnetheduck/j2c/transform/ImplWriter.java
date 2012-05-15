@@ -586,11 +586,14 @@ public class ImplWriter extends TransformWriter {
 
 	@Override
 	public boolean visit(BreakStatement node) {
-		printi("break");
 		if (node.getLabel() != null) {
-			print(" ");
+			printi("goto ");
 			node.getLabel().accept(this);
+			print("_break");
+		} else {
+			printi("break");
 		}
+
 		println(";");
 		return false;
 	}
@@ -711,12 +714,14 @@ public class ImplWriter extends TransformWriter {
 
 	@Override
 	public boolean visit(ContinueStatement node) {
-		printi("continue");
-
 		if (node.getLabel() != null) {
-			print(" ");
+			printi("goto ");
 			node.getLabel().accept(this);
+			print("_cont");
+		} else {
+			printi("continue");
 		}
+
 		println(";");
 
 		return false;
@@ -735,6 +740,9 @@ public class ImplWriter extends TransformWriter {
 
 	@Override
 	public boolean visit(EnhancedForStatement node) {
+
+		LabeledStatement label = (LabeledStatement) (node.getParent() instanceof LabeledStatement ? node
+				.getParent() : null);
 		if (node.getExpression().resolveTypeBinding().isArray()) {
 			printlni("{");
 			indent++;
@@ -748,8 +756,18 @@ public class ImplWriter extends TransformWriter {
 			println(" = (*_a)[_i];");
 			printi();
 			node.getBody().accept(this);
+			if (label != null) {
+				println();
+				label.getLabel().accept(this);
+				println("_cont:;");
+			}
 			indent--;
 			printlni("}");
+			if (label != null) {
+				println();
+				label.getLabel().accept(this);
+				println("_break:;");
+			}
 			indent--;
 			printlni("}");
 		} else {
@@ -766,8 +784,17 @@ public class ImplWriter extends TransformWriter {
 			println("_i->next());");
 			printi();
 			node.getBody().accept(this);
+			if (label != null) {
+				println();
+				printlni(label.getLabel().getIdentifier() + "_cont:");
+			}
 			indent--;
 			printlni("}");
+
+			if (label != null) {
+				println();
+				printlni(label.getLabel().getIdentifier() + "_cont:");
+			}
 
 			ITypeBinding tb2 = node.getExpression().resolveTypeBinding();
 			hardDep(getIterator(tb2));
@@ -906,7 +933,7 @@ public class ImplWriter extends TransformWriter {
 		visitAllCSV(node.updaters(), false);
 
 		print(") ");
-		node.getBody().accept(this);
+		handleLabelBody(node.getParent(), node.getBody());
 		println();
 		return false;
 	}
@@ -1120,12 +1147,33 @@ public class ImplWriter extends TransformWriter {
 
 	@Override
 	public boolean visit(LabeledStatement node) {
-		printi();
-		node.getLabel().accept(this);
-		print(": ");
 		node.getBody().accept(this);
 
 		return false;
+	}
+
+	private void handleLabelBody(ASTNode parent, Statement body) {
+		if (parent instanceof LabeledStatement) {
+			LabeledStatement node = (LabeledStatement) parent;
+			println("{");
+			indent++;
+
+			if (body instanceof Block) {
+				visitAll(((Block) body).statements());
+			} else {
+				body.accept(this);
+			}
+
+			println();
+			node.getLabel().accept(this);
+			println("_cont:;");
+			indent--;
+			printlni("}");
+			node.getLabel().accept(this);
+			println("_break:;");
+		} else {
+			body.accept(this);
+		}
 	}
 
 	@Override
@@ -1796,7 +1844,7 @@ public class ImplWriter extends TransformWriter {
 		printi("while (");
 		node.getExpression().accept(this);
 		print(") ");
-		node.getBody().accept(this);
+		handleLabelBody(node.getParent(), node.getBody());
 
 		return false;
 	}
