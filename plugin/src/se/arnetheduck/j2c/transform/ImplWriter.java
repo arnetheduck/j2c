@@ -1282,29 +1282,51 @@ public class ImplWriter extends TransformWriter {
 		print("(");
 
 		String s = "";
+		boolean isVarArg = false;
 		for (int i = 0; i < arguments.size(); ++i) {
-			if (b.isVarargs() && i >= b.getParameterTypes().length - 1) {
-				if (i > b.getParameterTypes().length - 1) {
-					// skip
-				} else {
-					if (i > 0)
-						print(", ");
-					print("0 /* varargs */");
-				}
-				continue;
-			}
-			Expression argument = arguments.get(i);
 			print(s);
 			s = ", ";
-			ITypeBinding pb = b.getParameterTypes()[i];
+			if (b.isVarargs() && i == b.getParameterTypes().length - 1) {
+				ITypeBinding tb = b.getParameterTypes()[b.getParameterTypes().length - 1]
+						.getErasure();
+				if (!arguments.get(i).resolveTypeBinding()
+						.isAssignmentCompatible(tb)) {
+					hardDep(tb);
+					print("new " + TransformUtil.relativeCName(tb, type, true),
+							"(");
+					print(arguments.size() - b.getParameterTypes().length + 1,
+							", ");
+					isVarArg = true;
+				}
+			}
+
+			ITypeBinding pb;
+			if (b.isVarargs() && i >= b.getParameterTypes().length - 1) {
+				pb = b.getParameterTypes()[b.getParameterTypes().length - 1];
+				if (isVarArg) {
+					pb = pb.getComponentType();
+				}
+			} else {
+				pb = b.getParameterTypes()[i];
+			}
+
+			Expression argument = arguments.get(i);
 			cast(argument, pb);
+
+			if (isVarArg && i == arguments.size() - 1
+					&& i >= b.getParameterTypes().length - 1) {
+				print(")");
+			}
 		}
 
 		if (b.isVarargs() && arguments.size() < b.getParameterTypes().length) {
 			if (arguments.size() > 0) {
 				print(", ");
 			}
-			print("0 /* varargs */");
+
+			ITypeBinding tb = b.getParameterTypes()[b.getParameterTypes().length - 1];
+			hardDep(tb);
+			print("new " + TransformUtil.relativeCName(tb, type, true), "(0)");
 		}
 
 		print(")");
@@ -1424,10 +1446,12 @@ public class ImplWriter extends TransformWriter {
 			tb = tb.createArrayType(node.getExtraDimensions());
 		}
 
-		print(TransformUtil.relativeCName(tb, type, true));
-
 		if (node.isVarargs()) {
+			tb = tb.createArrayType(1);
+			print(TransformUtil.relativeCName(tb, type, true));
 			print("/*...*/");
+		} else {
+			print(TransformUtil.relativeCName(tb, type, true));
 		}
 
 		print(" ", TransformUtil.ref(tb));

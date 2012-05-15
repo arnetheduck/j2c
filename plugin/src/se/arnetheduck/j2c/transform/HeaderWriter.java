@@ -504,9 +504,12 @@ public class HeaderWriter extends TransformWriter {
 			tb = tb.createArrayType(node.getExtraDimensions());
 		}
 
-		print(TransformUtil.relativeCName(tb, type, true));
 		if (node.isVarargs()) {
+			tb = tb.createArrayType(1);
+			print(TransformUtil.relativeCName(tb, type, true));
 			print("/*...*/");
+		} else {
+			print(TransformUtil.relativeCName(tb, type, true));
 		}
 
 		print(" ", TransformUtil.ref(tb));
