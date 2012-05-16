@@ -9,7 +9,9 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
 import java.util.Collections;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
@@ -39,6 +41,27 @@ public final class TransformUtil {
 
 	public static final String NATIVE = "-native";
 	public static final String STUB = "-stub";
+
+	public static final Map<String, String> primitives = new HashMap<String, String>() {
+		{
+			put("boolean", "java.lang.Boolean");
+			put("char", "java.lang.Character");
+			put("byte", "java.lang.Byte");
+			put("short", "java.lang.Short");
+			put("int", "java.lang.Integer");
+			put("long", "java.lang.Long");
+			put("float", "java.lang.Float");
+			put("double", "java.lang.Double");
+		}
+	};
+
+	public static final Map<String, String> reverses = new HashMap<String, String>() {
+		{
+			for (Map.Entry<String, String> x : primitives.entrySet()) {
+				put(x.getValue(), x.getKey());
+			}
+		}
+	};
 
 	public static String cname(String jname) {
 		return jname.replace(".", "::");

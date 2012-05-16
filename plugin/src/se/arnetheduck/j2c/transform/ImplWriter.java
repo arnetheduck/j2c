@@ -412,6 +412,9 @@ public class ImplWriter extends TransformWriter {
 		println(n, "(", n, ")");
 	}
 
+	List<ASTNode> boxes = new ArrayList<ASTNode>();
+	List<ASTNode> unboxes = new ArrayList<ASTNode>();
+
 	@Override
 	public boolean preVisit2(ASTNode node) {
 		for (Snippet snippet : ctx.snippets) {
@@ -420,7 +423,43 @@ public class ImplWriter extends TransformWriter {
 			}
 		}
 
+		if (node instanceof Expression) {
+			Expression expr = (Expression) node;
+			ITypeBinding tb = expr.resolveTypeBinding();
+			if (expr.resolveBoxing()) {
+				String x = TransformUtil.primitives.get(tb.getName());
+				if (x != null
+						&& (!(node instanceof QualifiedName || node instanceof SimpleName) || !(node
+								.getParent() instanceof QualifiedName))) {
+					boxes.add(node);
+					ITypeBinding tb2 = node.getAST().resolveWellKnownType(x);
+					hardDep(tb2);
+					print(TransformUtil.relativeCName(tb2, type, true),
+							"::valueOf(");
+				}
+			} else if (expr.resolveUnboxing()) {
+				if (TransformUtil.reverses.containsKey(tb.getQualifiedName())) {
+					unboxes.add(node);
+					hardDep(tb);
+					print("(");
+				}
+			}
+		}
+
 		return super.preVisit2(node);
+	}
+
+	@Override
+	public void postVisit(ASTNode node) {
+		if (!boxes.isEmpty() && boxes.get(boxes.size() - 1) == node) {
+			print(")");
+			boxes.remove(boxes.size() - 1);
+		}
+		if (!unboxes.isEmpty() && unboxes.get(unboxes.size() - 1) == node) {
+			print(")->", TransformUtil.reverses.get(((Expression) node)
+					.resolveTypeBinding().getQualifiedName()), "Value()");
+			unboxes.remove(unboxes.size() - 1);
+		}
 	}
 
 	@Override
@@ -907,6 +946,12 @@ public class ImplWriter extends TransformWriter {
 
 			if (f.getInitializer() != null) {
 				print(" = ");
+
+				ITypeBinding ib = f.getInitializer().resolveTypeBinding();
+				if (!ib.isEqualTo(tb)) {
+					hardDep(ib);
+				}
+
 				f.getInitializer().accept(this);
 			}
 
