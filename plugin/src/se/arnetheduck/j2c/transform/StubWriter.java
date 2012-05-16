@@ -123,8 +123,7 @@ public class StubWriter {
 		print(TransformUtil.qualifiedCName(tb, true));
 		print("::");
 
-		print(mb.isConstructor() ? "_construct" : TransformUtil.keywords(mb
-				.getMethodDeclaration().getName()));
+		print(mb.isConstructor() ? "_construct" : TransformUtil.name(mb));
 
 		TransformUtil.printParams(pw, tb, mb, ctx);
 		pw.println();

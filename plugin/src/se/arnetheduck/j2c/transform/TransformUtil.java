@@ -102,6 +102,13 @@ public final class TransformUtil {
 		return tbe.getName();
 	}
 
+	public static String name(IMethodBinding mb) {
+		// private methods mess up using statements that import methods
+		// from base classes
+		String name = keywords(mb.getName());
+		return Modifier.isPrivate(mb.getModifiers()) ? "_" + name : name;
+	}
+
 	public static String[] packageName(ITypeBinding tb) {
 		IPackageBinding pkg = elementPackage(tb);
 		return pkg == null ? new String[0] : pkg.getNameComponents();
@@ -422,7 +429,8 @@ public final class TransformUtil {
 	}
 
 	private static Collection<String> keywords = Arrays.asList("delete",
-			"register", "union");
+			"register", "union", "and", "bitor", "or", "xor", "compl",
+			"bitand", "and_eq", "or_eq", "xor_eq", "not", "not_eq");
 
 	/** Filter out C++ keywords */
 	public static String keywords(String name) {
@@ -718,7 +726,7 @@ public final class TransformUtil {
 					pw.print("return ");
 				}
 
-				pw.print(keywords(mb2.getMethodDeclaration().getName()));
+				pw.print(name(mb2));
 				pw.print("(");
 				for (int i = 0; i < mb2.getParameterTypes().length; ++i) {
 					if (i > 0)
@@ -813,7 +821,7 @@ public final class TransformUtil {
 				pw.print("::");
 			}
 
-			pw.print(keywords(mb.getMethodDeclaration().getName()));
+			pw.print(name(mb));
 		}
 
 		printParams(pw, tb, mb, ctx);

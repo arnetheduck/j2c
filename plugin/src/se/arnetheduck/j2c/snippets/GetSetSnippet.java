@@ -47,7 +47,7 @@ public class GetSetSnippet extends EmptySnippet {
 								mb.getParameterTypes()[0])) {
 					w.print(TransformUtil.indent(1));
 					if (ms) {
-						w.print(TransformUtil.keywords(tb.getName()) + "::");
+						w.print(TransformUtil.name(tb) + "::");
 					} else {
 						w.print("this->");
 					}
