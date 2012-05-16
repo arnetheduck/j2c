@@ -428,6 +428,9 @@ public class ImplWriter extends TransformWriter {
 			ITypeBinding tb = expr.resolveTypeBinding();
 			if (expr.resolveBoxing()) {
 				String x = TransformUtil.primitives.get(tb.getName());
+				// Feature: resolveBoxing is true even for the qualifier of a
+				// QualifiedName, even though
+				// it's the full qualified name that actually gets boxed
 				if (x != null
 						&& (!(node instanceof QualifiedName || node instanceof SimpleName) || !(node
 								.getParent() instanceof QualifiedName))) {
