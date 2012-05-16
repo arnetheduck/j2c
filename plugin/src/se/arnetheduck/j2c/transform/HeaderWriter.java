@@ -140,6 +140,11 @@ public class HeaderWriter extends TransformWriter {
 			printlni("friend class ", TransformUtil.name(nb), ";");
 		}
 
+		for (ITypeBinding pb = type.getDeclaringClass(); pb != null; pb = pb
+				.getDeclaringClass()) {
+			printlni("friend class ", TransformUtil.name(pb), ";");
+		}
+
 		lastAccess = TransformUtil
 				.printAccess(out, Modifier.PUBLIC, lastAccess);
 
