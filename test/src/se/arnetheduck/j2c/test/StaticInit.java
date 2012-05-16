@@ -11,5 +11,4 @@ public class StaticInit {
 	static {
 		y = 6;
 	}
-
 }

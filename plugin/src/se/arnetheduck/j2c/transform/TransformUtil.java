@@ -230,14 +230,15 @@ public final class TransformUtil {
 				|| tb.getName().equals("short");
 	}
 
-	public static String fieldModifiers(int modifiers, boolean header,
-			boolean hasInitializer) {
+	public static String fieldModifiers(ITypeBinding type, int modifiers,
+			boolean header, boolean hasInitializer) {
 		String ret = "";
-		if (header && Modifier.isStatic(modifiers)) {
+		if (header && (Modifier.isStatic(modifiers) || type.isInterface())) {
 			ret += "static ";
 		}
 
-		if (Modifier.isFinal(modifiers) && hasInitializer) {
+		if (hasInitializer
+				&& (Modifier.isFinal(modifiers) || type.isInterface())) {
 			ret += "const ";
 		}
 
@@ -257,8 +258,8 @@ public final class TransformUtil {
 		return "virtual ";
 	}
 
-	public static String variableModifiers(int modifiers) {
-		return fieldModifiers(modifiers, false, false);
+	public static String variableModifiers(ITypeBinding type, int modifiers) {
+		return fieldModifiers(type, modifiers, false, false);
 	}
 
 	public static String typeArguments(Collection<Type> parameters) {

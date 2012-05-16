@@ -315,8 +315,8 @@ public class HeaderWriter extends TransformWriter {
 		ITypeBinding tb = node.getType().resolveBinding();
 		if (isAnyArray(fragments)) {
 			for (VariableDeclarationFragment f : fragments) {
-				printi(TransformUtil.fieldModifiers(node.getModifiers(), true,
-						hasInitilializer(fragments)));
+				printi(TransformUtil.fieldModifiers(type, node.getModifiers(),
+						true, hasInitilializer(fragments)));
 
 				ITypeBinding at = f.getExtraDimensions() > 0 ? tb
 						.createArrayType(f.getExtraDimensions()) : tb;
@@ -328,8 +328,8 @@ public class HeaderWriter extends TransformWriter {
 				println(";");
 			}
 		} else {
-			printi(TransformUtil.fieldModifiers(node.getModifiers(), true,
-					hasInitilializer(fragments)));
+			printi(TransformUtil.fieldModifiers(type, node.getModifiers(),
+					true, hasInitilializer(fragments)));
 
 			print(TransformUtil.relativeCName(tb, type, true), " ");
 

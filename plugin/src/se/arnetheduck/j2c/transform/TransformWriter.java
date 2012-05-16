@@ -505,7 +505,7 @@ public abstract class TransformWriter extends ASTVisitor {
 	@Override
 	public boolean visit(VariableDeclarationExpression node) {
 		ITypeBinding tb = node.getType().resolveBinding();
-		print(TransformUtil.variableModifiers(node.getModifiers()),
+		print(TransformUtil.variableModifiers(type, node.getModifiers()),
 				TransformUtil.relativeCName(tb, type, true), " ");
 
 		print(" ");
@@ -527,7 +527,8 @@ public abstract class TransformWriter extends ASTVisitor {
 
 		if (hasDims) {
 			for (VariableDeclarationFragment fragment : fragments) {
-				printi(TransformUtil.variableModifiers(node.getModifiers()));
+				printi(TransformUtil.variableModifiers(type,
+						node.getModifiers()));
 				ITypeBinding fb = tb.createArrayType(fragment
 						.getExtraDimensions());
 				hardDep(fb);
@@ -536,7 +537,7 @@ public abstract class TransformWriter extends ASTVisitor {
 				println(";");
 			}
 		} else {
-			printi(TransformUtil.variableModifiers(node.getModifiers()),
+			printi(TransformUtil.variableModifiers(type, node.getModifiers()),
 					TransformUtil.relativeCName(tb, type, true), " ");
 
 			visitAllCSV(node.fragments(), false);

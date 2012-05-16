@@ -141,7 +141,7 @@ public class TypeBindingHeaderWriter {
 		pw.print(TransformUtil.indent(1));
 
 		Object constant = TransformUtil.constantValue(vb);
-		pw.print(TransformUtil.fieldModifiers(vb.getModifiers(), true,
+		pw.print(TransformUtil.fieldModifiers(type, vb.getModifiers(), true,
 				constant != null));
 
 		pw.print(TransformUtil.relativeCName(vb.getType(),

@@ -86,8 +86,8 @@ public class StubWriter {
 		ctx.softDep(vb.getType());
 
 		Object cv = TransformUtil.constantValue(vb);
-		print(TransformUtil
-				.fieldModifiers(vb.getModifiers(), false, cv != null));
+		print(TransformUtil.fieldModifiers(type, vb.getModifiers(), false,
+				cv != null));
 		print(TransformUtil.qualifiedCName(vb.getType(), true));
 		print(" ");
 

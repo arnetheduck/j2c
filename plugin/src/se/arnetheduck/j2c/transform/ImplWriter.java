@@ -931,8 +931,8 @@ public class ImplWriter extends TransformWriter {
 				continue;
 			}
 
-			printi(TransformUtil.fieldModifiers(node.getModifiers(), false,
-					hasInitilializer(fragments)));
+			printi(TransformUtil.fieldModifiers(type, node.getModifiers(),
+					false, hasInitilializer(fragments)));
 
 			ITypeBinding tb = node.getType().resolveBinding();
 			tb = f.getExtraDimensions() > 0 ? tb.createArrayType(f
@@ -1604,7 +1604,8 @@ public class ImplWriter extends TransformWriter {
 							: vdb.createArrayType(fragment.getExtraDimensions());
 					hardDep(fb);
 
-					printi(TransformUtil.variableModifiers(vds.getModifiers()));
+					printi(TransformUtil.variableModifiers(type,
+							vds.getModifiers()));
 					print(TransformUtil.relativeCName(fb, type, true), " ");
 					print(TransformUtil.ref(fb));
 					fragment.getName().accept(this);
