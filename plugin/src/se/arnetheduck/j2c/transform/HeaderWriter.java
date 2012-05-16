@@ -17,6 +17,7 @@ import org.eclipse.jdt.core.dom.AST;
 import org.eclipse.jdt.core.dom.ASTNode;
 import org.eclipse.jdt.core.dom.Block;
 import org.eclipse.jdt.core.dom.BodyDeclaration;
+import org.eclipse.jdt.core.dom.EnumConstantDeclaration;
 import org.eclipse.jdt.core.dom.EnumDeclaration;
 import org.eclipse.jdt.core.dom.FieldDeclaration;
 import org.eclipse.jdt.core.dom.IBinding;
@@ -53,17 +54,19 @@ public class HeaderWriter extends TransformWriter {
 
 	public void write(TypeDeclaration node, Collection<ITypeBinding> nested)
 			throws Exception {
-		writeType(node.getAST(), node.bodyDeclarations(),
-				new ArrayList<IVariableBinding>(), nested);
+		writeType(node.getAST(), new ArrayList<EnumConstantDeclaration>(),
+				node.bodyDeclarations(), new ArrayList<IVariableBinding>(),
+				nested);
 	}
 
 	public void write(EnumDeclaration node, Collection<ITypeBinding> nested)
 			throws Exception {
-		writeType(node.getAST(), node.bodyDeclarations(),
+		writeType(node.getAST(), node.enumConstants(), node.bodyDeclarations(),
 				new ArrayList<IVariableBinding>(), nested);
 	}
 
-	public void writeType(AST ast, List<BodyDeclaration> declarations,
+	public void writeType(AST ast, List<EnumConstantDeclaration> enums,
+			List<BodyDeclaration> declarations,
 			Collection<IVariableBinding> closures,
 			Collection<ITypeBinding> nested) {
 
@@ -71,7 +74,7 @@ public class HeaderWriter extends TransformWriter {
 		try {
 			out = TransformUtil.openHeader(root, type);
 
-			String body = getBody(ast, declarations, closures, nested);
+			String body = getBody(ast, enums, declarations, closures, nested);
 			for (ITypeBinding tb : hardDeps) {
 				out.println(TransformUtil.include(tb));
 			}
@@ -84,7 +87,8 @@ public class HeaderWriter extends TransformWriter {
 		}
 	}
 
-	private String getBody(AST ast, List<BodyDeclaration> declarations,
+	private String getBody(AST ast, List<EnumConstantDeclaration> enums,
+			List<BodyDeclaration> declarations,
 			Collection<IVariableBinding> closures,
 			Collection<ITypeBinding> nested) {
 
@@ -147,6 +151,8 @@ public class HeaderWriter extends TransformWriter {
 
 		lastAccess = TransformUtil
 				.printAccess(out, Modifier.PUBLIC, lastAccess);
+
+		visitAll(enums);
 
 		printlni("static ::java::lang::Class *class_;");
 
@@ -298,6 +304,16 @@ public class HeaderWriter extends TransformWriter {
 
 	@Override
 	public boolean visit(EnumDeclaration node) {
+		return false;
+	}
+
+	@Override
+	public boolean visit(EnumConstantDeclaration node) {
+		printi("static ", TransformUtil.name(type), " *");
+
+		node.getName().accept(this);
+		println(";");
+
 		return false;
 	}
 

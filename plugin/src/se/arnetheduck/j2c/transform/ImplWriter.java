@@ -119,7 +119,8 @@ public class ImplWriter extends TransformWriter {
 	}
 
 	public void write(EnumDeclaration node) throws Exception {
-		StringWriter body = getBody(node.bodyDeclarations());
+		StringWriter body = getBody(node.enumConstants(),
+				node.bodyDeclarations());
 		writeType(body);
 	}
 
@@ -134,18 +135,23 @@ public class ImplWriter extends TransformWriter {
 			return;
 		}
 
-		StringWriter body = getBody(node.bodyDeclarations());
+		StringWriter body = getBody(new ArrayList<EnumConstantDeclaration>(),
+				node.bodyDeclarations());
 		writeType(body);
 	}
 
 	public void write(AnonymousClassDeclaration node) throws Exception {
-		StringWriter body = getBody(node.bodyDeclarations());
+		StringWriter body = getBody(new ArrayList<EnumConstantDeclaration>(),
+				node.bodyDeclarations());
 		writeType(body);
 	}
 
-	private StringWriter getBody(List<BodyDeclaration> declarations) {
+	private StringWriter getBody(List<EnumConstantDeclaration> enums,
+			List<BodyDeclaration> declarations) {
 		StringWriter body = new StringWriter();
 		out = new PrintWriter(body);
+
+		visitAll(enums);
 
 		visitAll(declarations);
 
@@ -491,8 +497,8 @@ public class ImplWriter extends TransformWriter {
 
 		HeaderWriter hw = new HeaderWriter(root, ctx, tb);
 
-		hw.writeType(node.getAST(), node.bodyDeclarations(), iw.closures,
-				iw.nestedTypes);
+		hw.writeType(node.getAST(), new ArrayList<EnumConstantDeclaration>(),
+				node.bodyDeclarations(), iw.closures, iw.nestedTypes);
 		return false;
 	}
 
@@ -863,17 +869,24 @@ public class ImplWriter extends TransformWriter {
 
 	@Override
 	public boolean visit(EnumConstantDeclaration node) {
-		printi();
+		String qcn = TransformUtil.qualifiedCName(type, true);
+		print(qcn, " *", qcn, "::");
 
 		node.getName().accept(this);
 
-		if (!node.arguments().isEmpty()) {
-			visitAllCSV(node.arguments(), true);
-		}
+		/*
+		 * TODO needs an initializer class
+		 */
+		print(" = new ", qcn);
+
+		visitAllCSV(node.arguments(), true);
+
+		println(";");
 
 		if (node.getAnonymousClassDeclaration() != null) {
-			node.getAnonymousClassDeclaration().accept(this);
+			// TODO node.getAnonymousClassDeclaration().accept(this);
 		}
+
 		return false;
 	}
 
@@ -892,8 +905,8 @@ public class ImplWriter extends TransformWriter {
 
 		HeaderWriter hw = new HeaderWriter(root, ctx, tb);
 
-		hw.writeType(node.getAST(), node.bodyDeclarations(), iw.closures,
-				iw.nestedTypes);
+		hw.writeType(node.getAST(), node.enumConstants(),
+				node.bodyDeclarations(), iw.closures, iw.nestedTypes);
 
 		if (tb.isLocal()) {
 			localTypes.put(tb, iw);
@@ -1818,8 +1831,8 @@ public class ImplWriter extends TransformWriter {
 
 		HeaderWriter hw = new HeaderWriter(root, ctx, tb);
 
-		hw.writeType(node.getAST(), node.bodyDeclarations(), iw.closures,
-				iw.nestedTypes);
+		hw.writeType(node.getAST(), new ArrayList<EnumConstantDeclaration>(),
+				node.bodyDeclarations(), iw.closures, iw.nestedTypes);
 
 		if (tb.isLocal()) {
 			localTypes.put(tb, iw);
