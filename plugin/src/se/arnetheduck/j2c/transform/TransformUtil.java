@@ -492,8 +492,8 @@ public final class TransformUtil {
 		}
 
 		if (using != null) {
-			return "using " + relativeCName(using, tb, false) + "::"
-					+ mb.getName() + ";";
+			return "using " + relativeCName(using, tb, false) + "::" + name(mb)
+					+ ";";
 		}
 
 		return null;
