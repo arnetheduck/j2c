@@ -1257,9 +1257,9 @@ public class ImplWriter extends TransformWriter {
 			printi("void ", TransformUtil.qualifiedCName(type, true),
 					"::_construct");
 		} else {
-			print(TransformUtil.qualifiedCName(node.getReturnType2()
-					.resolveBinding(), true), " ", TransformUtil.ref(node
-					.getReturnType2()));
+			ITypeBinding rt = TransformUtil.returnType(node);
+			print(TransformUtil.qualifiedCName(rt, true), " ",
+					TransformUtil.ref(rt));
 
 			print(TransformUtil.qualifiedCName(type, true), "::");
 

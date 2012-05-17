@@ -444,8 +444,11 @@ public class HeaderWriter extends TransformWriter {
 					type.getModifiers()));
 			print(TransformUtil.typeParameters(node.typeParameters()));
 
-			node.getReturnType2().accept(this);
-			print(" ", TransformUtil.ref(node.getReturnType2()));
+			ITypeBinding rt = TransformUtil.returnType(node);
+
+			print(TransformUtil.qualifiedCName(rt, true), " ",
+					TransformUtil.ref(rt));
+
 			node.getName().accept(this);
 
 			IMethodBinding mb2 = TransformUtil.getSuperMethod(mb);

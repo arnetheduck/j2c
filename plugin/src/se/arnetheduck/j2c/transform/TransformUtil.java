@@ -27,6 +27,7 @@ import org.eclipse.jdt.core.dom.IMethodBinding;
 import org.eclipse.jdt.core.dom.IPackageBinding;
 import org.eclipse.jdt.core.dom.ITypeBinding;
 import org.eclipse.jdt.core.dom.IVariableBinding;
+import org.eclipse.jdt.core.dom.MethodDeclaration;
 import org.eclipse.jdt.core.dom.Name;
 import org.eclipse.jdt.core.dom.PrimitiveType;
 import org.eclipse.jdt.core.dom.Type;
@@ -828,6 +829,10 @@ public final class TransformUtil {
 		}
 
 		return true;
+	}
+
+	public static ITypeBinding returnType(MethodDeclaration md) {
+		return md.resolveBinding().getReturnType();
 	}
 
 	public static boolean returnCovariant(IMethodBinding mb, IMethodBinding mb2) {
