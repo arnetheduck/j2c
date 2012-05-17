@@ -11,5 +11,11 @@ public class LabelTest {
 				}
 			}
 		}
+
+		test: {
+			for (int i = 0; i < 10; ++i) {
+				break test;
+			}
+		}
 	}
 }

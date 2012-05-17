@@ -284,7 +284,7 @@ public class HeaderWriter extends TransformWriter {
 
 	@Override
 	public boolean visit(Block node) {
-		if (handledBlocks.contains(node.getParent().getClass())) {
+		if (!handledBlocks.contains(node.getParent().getClass())) {
 			printlni("{");
 
 			indent++;

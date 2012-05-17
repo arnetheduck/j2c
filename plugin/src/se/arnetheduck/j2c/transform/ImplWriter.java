@@ -615,18 +615,27 @@ public class ImplWriter extends TransformWriter {
 
 	@Override
 	public boolean visit(Block node) {
-		if (handledBlocks.contains(node.getParent().getClass())) {
-			println("{");
+		ASTNode parent = node.getParent();
+		if (!handledBlocks.contains(parent.getClass())) {
+			System.out.println("Skipped " + parent.getClass() + " block");
+			return false;
+		}
 
-			indent++;
+		println("{");
 
-			visitAll(node.statements());
+		indent++;
 
+		visitAll(node.statements());
+
+		if (parent instanceof LabeledStatement) {
+			LabeledStatement ls = (LabeledStatement) parent;
+			indent--;
+			printlni("}");
+			ls.getLabel().accept(this);
+			println("_break:;");
+		} else {
 			indent--;
 			printi("}");
-		} else {
-			System.out.println("Skipped " + node.getParent().getClass()
-					+ " block");
 		}
 
 		return false;
@@ -846,7 +855,7 @@ public class ImplWriter extends TransformWriter {
 				printlni(label.getLabel().getIdentifier() + "_cont:");
 			}
 
-			ITypeBinding tb2 = tb;
+			ITypeBinding tb2 = eb;
 			hardDep(getIterator(tb2));
 		}
 
