@@ -51,6 +51,7 @@ import org.eclipse.jdt.core.dom.LabeledStatement;
 import org.eclipse.jdt.core.dom.MethodDeclaration;
 import org.eclipse.jdt.core.dom.MethodInvocation;
 import org.eclipse.jdt.core.dom.Modifier;
+import org.eclipse.jdt.core.dom.Name;
 import org.eclipse.jdt.core.dom.NullLiteral;
 import org.eclipse.jdt.core.dom.PostfixExpression;
 import org.eclipse.jdt.core.dom.PrefixExpression;
@@ -432,30 +433,45 @@ public class ImplWriter extends TransformWriter {
 		if (node instanceof Expression) {
 			Expression expr = (Expression) node;
 			ITypeBinding tb = expr.resolveTypeBinding();
-			if (expr.resolveBoxing()) {
-				String x = TransformUtil.primitives.get(tb.getName());
-				// Feature: resolveBoxing is true even for the qualifier of a
-				// QualifiedName, even though
-				// it's the full qualified name that actually gets boxed
-				if (x != null
-						&& (!(node instanceof QualifiedName || node instanceof SimpleName) || !(node
-								.getParent() instanceof QualifiedName))) {
+
+			if ((expr.resolveBoxing() || expr.resolveUnboxing())
+					&& checkBoxNesting(expr)) {
+
+				if (expr.resolveBoxing()) {
+					String x = TransformUtil.primitives.get(tb.getName());
+					assert (x != null);
 					boxes.add(node);
 					ITypeBinding tb2 = node.getAST().resolveWellKnownType(x);
 					hardDep(tb2);
 					print(TransformUtil.relativeCName(tb2, type, true),
 							"::valueOf(");
-				}
-			} else if (expr.resolveUnboxing()) {
-				if (TransformUtil.reverses.containsKey(tb.getQualifiedName())) {
-					unboxes.add(node);
-					hardDep(tb);
-					print("(");
+				} else if (expr.resolveUnboxing()) {
+					if (TransformUtil.reverses.containsKey(tb
+							.getQualifiedName())) {
+						unboxes.add(node);
+						hardDep(tb);
+						print("(");
+					}
 				}
 			}
 		}
 
 		return super.preVisit2(node);
+	}
+
+	private boolean checkBoxNesting(Expression expr) {
+		if (expr.getParent() instanceof Name) {
+			return false;
+		}
+
+		if (expr.getParent() instanceof MethodInvocation) {
+			MethodInvocation mi = (MethodInvocation) expr.getParent();
+			if (mi.getExpression() == expr || mi.getName() == expr) {
+				return false;
+			}
+		}
+
+		return true;
 	}
 
 	@Override
@@ -1426,7 +1442,8 @@ public class ImplWriter extends TransformWriter {
 
 	private void cast(Expression argument, ITypeBinding pb) {
 		ITypeBinding tb = argument.resolveTypeBinding();
-		if (!tb.isEqualTo(pb)) {
+		if (!tb.isEqualTo(pb)
+				&& !(argument.resolveBoxing() || argument.resolveUnboxing())) {
 			// Java has different implicit cast rules
 			hardDep(tb);
 			print("static_cast< ", TransformUtil.relativeCName(pb, type, true),

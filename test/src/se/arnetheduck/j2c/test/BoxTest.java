@@ -6,6 +6,14 @@ public class BoxTest {
 	void m() {
 		Integer i = 42;
 		int j = i;
+		j = Integer.valueOf(j);
+		i = Integer.bitCount(i);
+		j = m2(i);
+		i = m2(j);
+	}
+
+	int m2(Integer i) {
+		return i;
 	}
 
 	static void x() {
