@@ -207,7 +207,7 @@ public abstract class TransformWriter extends ASTVisitor {
 
 	@Override
 	public boolean visit(CharacterLiteral node) {
-		print(node.getEscapedValue());
+		print(TransformUtil.checkConstant(node.charValue()));
 		return false;
 	}
 
@@ -443,9 +443,9 @@ public abstract class TransformWriter extends ASTVisitor {
 
 	@Override
 	public boolean visit(StringLiteral node) {
-		print("lit(L", node.getEscapedValue(), ")");
+		print("lit(u", node.getEscapedValue(), ")");
 
-		hardDep(node.getAST().resolveWellKnownType("java.lang.String"));
+		hardDep(node.getAST().resolveWellKnownType(String.class.getName()));
 
 		return false;
 	}

@@ -192,15 +192,27 @@ public final class TransformUtil {
 	public static Object checkConstant(Object cv) {
 		if (cv instanceof Character) {
 			char ch = (char) cv;
-			if ((ch < ' ') || ch > 127) {
+			if ((ch < ' ')) {
 				return (int) ch;
 			}
 
 			if (ch == '\'') {
-				return "'\\''";
+				return "u'\\''";
 			}
 
-			return "'" + ch + "'";
+			if (ch == '\\') {
+				return "u'\\\\'";
+			}
+
+			if (ch >= 0xd800 && ch <= 0xdfff) {
+				return (int) ch;
+			}
+
+			if (ch > 127) {
+				return String.format("u'\\u%04x'", (int) ch);
+			}
+
+			return "u'" + ch + "'";
 		} else if (cv instanceof Integer) {
 			if ((int) cv == Integer.MIN_VALUE) {
 				// In C++, the part after '-' is parsed first which overflows
@@ -320,7 +332,7 @@ public final class TransformUtil {
 		} else if (code == PrimitiveType.BYTE) {
 			return "int8_t";
 		} else if (code == PrimitiveType.CHAR) {
-			return "wchar_t";
+			return "char16_t";
 		} else if (code == PrimitiveType.DOUBLE) {
 			return "double";
 		} else if (code == PrimitiveType.FLOAT) {
@@ -883,7 +895,7 @@ public final class TransformUtil {
 		pw.println();
 		pw.println("java::lang::String *join(java::lang::String *lhs, java::lang::String *rhs);");
 		for (String type : new String[] { "java::lang::Object *", "bool ",
-				"int8_t ", "wchar_t ", "double ", "float ", "int32_t ",
+				"int8_t ", "char16_t ", "double ", "float ", "int32_t ",
 				"int64_t ", "int16_t " }) {
 			pw.println("java::lang::String *join(java::lang::String *lhs, "
 					+ type + "rhs);");
@@ -891,7 +903,7 @@ public final class TransformUtil {
 					+ "lhs, java::lang::String *rhs);");
 		}
 
-		pw.println("java::lang::String *lit(const wchar_t *chars);");
+		pw.println("java::lang::String *lit(const char16_t *chars);");
 		pw.println();
 	}
 }

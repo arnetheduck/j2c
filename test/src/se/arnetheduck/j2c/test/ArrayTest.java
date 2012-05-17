@@ -27,6 +27,10 @@ public class ArrayTest {
 		return a.clone();
 	}
 
+	int aclone2()[] {
+		return a.clone();
+	}
+
 	Empty[] hclone() {
 		return h.clone();
 	}
