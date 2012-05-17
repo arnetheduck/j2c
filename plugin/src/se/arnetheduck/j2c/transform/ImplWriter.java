@@ -1313,11 +1313,7 @@ public class ImplWriter extends TransformWriter {
 	@Override
 	public boolean visit(MethodInvocation node) {
 		IMethodBinding b = node.resolveMethodBinding();
-		boolean erased = !b
-				.getMethodDeclaration()
-				.getReturnType()
-				.isEqualTo(
-						b.getMethodDeclaration().getReturnType().getErasure());
+		boolean erased = returnErased(b);
 
 		if (erased) {
 			dynamicCast(b.getReturnType());
@@ -1412,6 +1408,14 @@ public class ImplWriter extends TransformWriter {
 		}
 
 		return false;
+	}
+
+	private boolean returnErased(IMethodBinding b) {
+		return !b
+				.getMethodDeclaration()
+				.getReturnType()
+				.isEqualTo(
+						b.getMethodDeclaration().getReturnType().getErasure());
 	}
 
 	private void dynamicCast(ITypeBinding rt) {
@@ -1579,6 +1583,13 @@ public class ImplWriter extends TransformWriter {
 
 	@Override
 	public boolean visit(SuperMethodInvocation node) {
+		IMethodBinding b = node.resolveMethodBinding();
+		boolean erased = returnErased(b);
+
+		if (erased) {
+			dynamicCast(b.getReturnType());
+		}
+
 		if (node.getQualifier() != null) {
 			node.getQualifier().accept(this);
 			print(".");
@@ -1595,6 +1606,10 @@ public class ImplWriter extends TransformWriter {
 
 		for (Expression e : arguments) {
 			hardDep(e.resolveTypeBinding());
+		}
+
+		if (erased) {
+			print(")");
 		}
 
 		return false;

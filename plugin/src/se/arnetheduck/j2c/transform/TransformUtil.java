@@ -465,9 +465,16 @@ public final class TransformUtil {
 		return isStatic(tb.getDeclaringClass());
 	}
 
-	private static Collection<String> keywords = Arrays.asList("delete",
-			"register", "union", "and", "bitor", "or", "xor", "compl",
-			"bitand", "and_eq", "or_eq", "xor_eq", "not", "not_eq");
+	private static Collection<String> keywords = Arrays.asList("alignas",
+			"alignof", "and", "and_eq", "asm", "auto", "bitand", "bitor",
+			"bool", "char16_t", "char32_t", "compl", "const", "constexpre",
+			"const_cast", "decltype", "delete", "dynamic_cast", "explicit",
+			"export", "extern", "friend", "goto", "inline", "mutable",
+			"namespace", "noexcept", "not", "not_eq", "nullptr", "operator",
+			"or", "or_eq", "register", "reinterpret_cast", "signed", "sizeof",
+			"static_assert", "static_cast", "struct", "template",
+			"thread_local", "typedef", "typeid", "typename", "union",
+			"unsigned", "using", "wchar_t", "xor", "xor_eq");
 
 	/** Filter out C++ keywords */
 	public static String keywords(String name) {
