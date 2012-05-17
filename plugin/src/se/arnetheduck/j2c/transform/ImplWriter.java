@@ -791,9 +791,9 @@ public class ImplWriter extends TransformWriter {
 
 		LabeledStatement label = (LabeledStatement) (node.getParent() instanceof LabeledStatement ? node
 				.getParent() : null);
-		ITypeBinding tb = node.getExpression().resolveTypeBinding();
-		hardDep(tb);
-		if (tb.isArray()) {
+		ITypeBinding eb = node.getExpression().resolveTypeBinding();
+		hardDep(eb);
+		if (eb.isArray()) {
 			printlni("{");
 			indent++;
 			printi("auto _a = ");
