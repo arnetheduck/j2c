@@ -552,6 +552,9 @@ public class ImplWriter extends TransformWriter {
 		if (!node.expressions().isEmpty()) {
 			print(", ");
 			visitAllCSV(node.expressions(), false);
+			for (Expression e : (List<Expression>) node.expressions()) {
+				hardDep(e.resolveTypeBinding());
+			}
 		}
 
 		print(")");
@@ -845,14 +848,14 @@ public class ImplWriter extends TransformWriter {
 			node.getBody().accept(this);
 			if (label != null) {
 				println();
-				printlni(label.getLabel().getIdentifier() + "_cont:");
+				printlni(label.getLabel().getIdentifier() + "_cont:;");
 			}
 			indent--;
 			printlni("}");
 
 			if (label != null) {
 				println();
-				printlni(label.getLabel().getIdentifier() + "_cont:");
+				printlni(label.getLabel().getIdentifier() + "_break:;");
 			}
 
 			ITypeBinding tb2 = eb;
