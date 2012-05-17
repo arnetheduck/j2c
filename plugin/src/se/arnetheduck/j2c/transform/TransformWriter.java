@@ -182,13 +182,13 @@ public abstract class TransformWriter extends ASTVisitor {
 
 	@Override
 	public boolean visit(AssertStatement node) {
-		printi("/* assert");
+		printi("/* assert(");
 		node.getExpression().accept(this);
 		if (node.getMessage() != null) {
 			print(" : ");
 			node.getMessage().accept(this);
 		}
-		println("; */");
+		println(") */ ;");
 
 		return false;
 	}
