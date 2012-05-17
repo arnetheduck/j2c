@@ -1258,6 +1258,7 @@ public class ImplWriter extends TransformWriter {
 					"::_construct");
 		} else {
 			ITypeBinding rt = TransformUtil.returnType(node);
+			ctx.softDep(rt);
 			print(TransformUtil.qualifiedCName(rt, true), " ",
 					TransformUtil.ref(rt));
 

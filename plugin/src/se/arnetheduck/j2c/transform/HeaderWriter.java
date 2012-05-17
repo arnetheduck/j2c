@@ -445,7 +445,7 @@ public class HeaderWriter extends TransformWriter {
 			print(TransformUtil.typeParameters(node.typeParameters()));
 
 			ITypeBinding rt = TransformUtil.returnType(node);
-
+			ctx.softDep(rt);
 			print(TransformUtil.qualifiedCName(rt, true), " ",
 					TransformUtil.ref(rt));
 
