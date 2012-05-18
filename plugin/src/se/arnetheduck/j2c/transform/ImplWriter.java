@@ -1334,16 +1334,24 @@ public class ImplWriter extends TransformWriter {
 		if (erased) {
 			dynamicCast(b.getReturnType());
 		}
-		if (node.getExpression() != null) {
-			node.getExpression().accept(this);
 
-			if ((b.getModifiers() & Modifier.STATIC) > 0) {
-				print("::");
+		Expression expr = node.getExpression();
+		if (expr != null) {
+			expr.accept(this);
+
+			if (expr instanceof Name) {
+				IBinding eb = ((Name) expr).resolveBinding();
+				if (eb instanceof ITypeBinding) {
+					print("::");
+				} else {
+					print("->");
+				}
 			} else {
+				// Assume the expression returned an instance
 				print("->");
 			}
 
-			hardDep(node.getExpression().resolveTypeBinding());
+			hardDep(expr.resolveTypeBinding());
 		}
 
 		print(TransformUtil.typeArguments(node.typeArguments()));
@@ -1351,7 +1359,7 @@ public class ImplWriter extends TransformWriter {
 		ITypeBinding dc = b.getDeclaringClass();
 
 		if (!(type.isNested() && Modifier.isStatic(b.getModifiers()))
-				&& TransformUtil.isInner(type) && node.getExpression() == null
+				&& TransformUtil.isInner(type) && expr == null
 				&& !Modifier.isStatic(b.getModifiers())) {
 			if (dc != null && !type.isSubTypeCompatible(dc)) {
 				for (ITypeBinding x = type; x.getDeclaringClass() != null
