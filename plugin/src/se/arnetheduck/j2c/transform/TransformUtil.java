@@ -737,6 +737,10 @@ public final class TransformUtil {
 		return null;
 	}
 
+	public static boolean isBridged(IMethodBinding mb) {
+		return needsBridge(mb, getSuperMethod(mb));
+	}
+
 	public static void declareBridge(PrintWriter pw, ITypeBinding tb,
 			IMethodBinding mb, Transformer ctx) {
 		if (!mb.isConstructor()) {

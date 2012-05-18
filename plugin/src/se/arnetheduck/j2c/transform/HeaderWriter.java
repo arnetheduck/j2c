@@ -7,6 +7,7 @@ import java.lang.reflect.Modifier;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
+import java.util.Collections;
 import java.util.HashSet;
 import java.util.Iterator;
 import java.util.List;
@@ -43,7 +44,8 @@ public class HeaderWriter extends TransformWriter {
 
 	private boolean hasInitializer;
 
-	private List<MethodDeclaration> constructors = new ArrayList<MethodDeclaration>();
+	private final List<MethodDeclaration> constructors = new ArrayList<MethodDeclaration>();
+	private final List<IMethodBinding> methods = new ArrayList<IMethodBinding>();
 
 	private Set<String> usings = new HashSet<String>();
 
@@ -189,6 +191,8 @@ public class HeaderWriter extends TransformWriter {
 							.getType()), closure.getName(), "_;");
 				}
 			}
+
+			makeBaseCalls();
 		}
 
 		indent--;
@@ -266,6 +270,54 @@ public class HeaderWriter extends TransformWriter {
 			printNestedParams(closures);
 			println(");");
 		}
+	}
+
+	// In java, if a super class implements the method of an interface, it
+	// doesn't
+	// have to be reimplemented on the class implementing the interface
+	private void makeBaseCalls() {
+		List<IMethodBinding> im = new ArrayList<IMethodBinding>();
+		for (ITypeBinding ib : interfaces(type)) {
+			im.addAll(Arrays.asList(ib.getDeclaredMethods()));
+		}
+
+		List<IMethodBinding> missing = new ArrayList<IMethodBinding>(im);
+
+		for (IMethodBinding imb : im) {
+			for (IMethodBinding mb : methods) {
+				if (mb.overrides(imb)) {
+					missing.remove(imb);
+					break;
+				}
+			}
+		}
+
+		for (IMethodBinding mb : missing) {
+			// These should be declared on a base type if the java code is valid
+			printi();
+			TransformUtil.printSignature(out, type, mb, ctx, false);
+			print(" { return super::", TransformUtil.name(mb), "(");
+			String sep = "";
+			for (int i = 0; i < mb.getParameterTypes().length; ++i) {
+				print(sep, "a", i);
+				sep = ", ";
+			}
+			println("); }");
+		}
+	}
+
+	private static List<ITypeBinding> interfaces(ITypeBinding tb) {
+		if (tb.getInterfaces().length == 0) {
+			return Collections.emptyList();
+		}
+
+		List<ITypeBinding> ret = new ArrayList<ITypeBinding>();
+		for (ITypeBinding ib : tb.getInterfaces()) {
+			ret.add(ib);
+			ret.addAll(interfaces(ib));
+		}
+
+		return ret;
 	}
 
 	@Override
@@ -437,6 +489,7 @@ public class HeaderWriter extends TransformWriter {
 
 			printi("void _construct");
 		} else {
+			methods.add(mb);
 			lastAccess = TransformUtil.printAccess(out, node.getModifiers(),
 					lastAccess);
 
