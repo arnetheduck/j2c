@@ -240,7 +240,6 @@ public class Transformer {
 			for (ITypeBinding tb : arrays) {
 				try {
 					ArrayWriter aw = new ArrayWriter(root, this, tb);
-					hardDep(aw.getSuperType());
 					aw.write();
 				} catch (Exception e) {
 					e.printStackTrace();

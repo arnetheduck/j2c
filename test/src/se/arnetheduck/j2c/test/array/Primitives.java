@@ -1,12 +1,8 @@
-package se.arnetheduck.j2c.test;
+package se.arnetheduck.j2c.test.array;
 
-public class ArrayTest {
+public class Primitives {
 	int[] a;
 	int b[];
-
-	Empty[] h;
-
-	Sub[] h2;
 
 	int[] c() {
 		return null;
@@ -18,20 +14,11 @@ public class ArrayTest {
 	void f(int g[]) {
 	}
 
-	Object[] x() {
-		Empty[] ee = h2;
-		return ee;
-	}
-
 	int[] aclone() {
 		return a.clone();
 	}
 
 	int aclone2()[] {
 		return a.clone();
-	}
-
-	Empty[] hclone() {
-		return h.clone();
 	}
 }
