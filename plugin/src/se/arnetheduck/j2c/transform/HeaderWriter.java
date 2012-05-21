@@ -301,6 +301,9 @@ public class HeaderWriter extends TransformWriter {
 		}
 
 		for (IMethodBinding mb : missing) {
+			lastAccess = TransformUtil.printAccess(out, Modifier.PUBLIC,
+					lastAccess);
+
 			// These should be declared on a base type if the java code is valid
 			printi();
 			TransformUtil.printSignature(out, type, mb, ctx, false);
