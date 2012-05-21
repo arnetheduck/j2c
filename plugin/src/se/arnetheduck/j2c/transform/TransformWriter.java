@@ -413,7 +413,8 @@ public abstract class TransformWriter extends ASTVisitor {
 	private boolean needsQualification(SimpleName node, ITypeBinding tb) {
 		ASTNode parent = node.getParent();
 		return !(parent instanceof QualifiedName)
-				&& !(parent instanceof VariableDeclarationFragment)
+				&& !(parent instanceof VariableDeclarationFragment && ((VariableDeclarationFragment) parent)
+						.getInitializer() != node)
 				&& !(parent instanceof MethodDeclaration)
 				&& !(parent instanceof MethodInvocation
 						&& ((MethodInvocation) parent).getExpression() != null && ((MethodInvocation) parent)

@@ -1345,15 +1345,17 @@ public class ImplWriter extends TransformWriter {
 
 		print(TransformUtil.typeArguments(node.typeArguments()));
 
-		ITypeBinding dc = b.getDeclaringClass();
+		ITypeBinding dc = b.getDeclaringClass() == null ? null : b
+				.getDeclaringClass().getErasure();
 
 		if (!(type.isNested() && Modifier.isStatic(b.getModifiers()))
 				&& TransformUtil.isInner(type) && expr == null
 				&& !Modifier.isStatic(b.getModifiers())) {
 			if (dc != null && !type.isSubTypeCompatible(dc)) {
+
 				for (ITypeBinding x = type; x.getDeclaringClass() != null
 						&& !x.isSubTypeCompatible(dc); x = x
-						.getDeclaringClass()) {
+						.getDeclaringClass().getErasure()) {
 					hardDep(x.getDeclaringClass());
 
 					print(TransformUtil.outerThisName(x), "->");
@@ -1486,7 +1488,9 @@ public class ImplWriter extends TransformWriter {
 			IVariableBinding vb = (IVariableBinding) b;
 			ctx.softDep(vb.getType());
 
-			ITypeBinding dc = vb.getDeclaringClass();
+			ITypeBinding dc = vb.getDeclaringClass() == null ? null : vb
+					.getDeclaringClass().getErasure();
+
 			if (!(type.isNested() && Modifier.isStatic(vb.getModifiers()) && !type
 					.isSubTypeCompatible(dc)) && TransformUtil.isInner(type)) {
 				if (vb.isField() && dc != null && !dc.isSubTypeCompatible(type)) {
@@ -1503,7 +1507,7 @@ public class ImplWriter extends TransformWriter {
 					if (!hasThis) {
 						for (ITypeBinding x = type; x.getDeclaringClass() != null
 								&& !x.isSubTypeCompatible(dc); x = x
-								.getDeclaringClass()) {
+								.getDeclaringClass().getErasure()) {
 							hardDep(x.getDeclaringClass());
 
 							print(TransformUtil.outerThisName(x), "->");
