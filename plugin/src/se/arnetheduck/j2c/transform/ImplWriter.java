@@ -81,7 +81,7 @@ import org.eclipse.jdt.core.dom.VariableDeclarationFragment;
 import org.eclipse.jdt.core.dom.VariableDeclarationStatement;
 import org.eclipse.jdt.core.dom.WhileStatement;
 
-import se.arnetheduck.j2c.transform.Transformer.TypeBindingComparator;
+import se.arnetheduck.j2c.transform.Transformer.BindingComparator;
 
 public class ImplWriter extends TransformWriter {
 	private final IPath root;
@@ -92,9 +92,9 @@ public class ImplWriter extends TransformWriter {
 	private List<FieldDeclaration> fields = new ArrayList<FieldDeclaration>();
 	private final List<ImportDeclaration> imports;
 	public final Set<ITypeBinding> nestedTypes = new TreeSet<ITypeBinding>(
-			new Transformer.TypeBindingComparator());
+			new BindingComparator());
 	public final Map<ITypeBinding, ImplWriter> localTypes = new TreeMap<ITypeBinding, ImplWriter>(
-			new TypeBindingComparator());
+			new BindingComparator());
 
 	private boolean needsFinally;
 	private boolean needsSynchronized;

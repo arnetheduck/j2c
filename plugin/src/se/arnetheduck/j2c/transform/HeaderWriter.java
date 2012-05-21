@@ -12,6 +12,7 @@ import java.util.HashSet;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Set;
+import java.util.TreeSet;
 
 import org.eclipse.core.runtime.IPath;
 import org.eclipse.jdt.core.dom.AST;
@@ -276,7 +277,13 @@ public class HeaderWriter extends TransformWriter {
 	// doesn't
 	// have to be reimplemented on the class implementing the interface
 	private void makeBaseCalls() {
-		List<IMethodBinding> im = new ArrayList<IMethodBinding>();
+		if (Modifier.isAbstract(type.getModifiers())) {
+			return;
+		}
+
+		Set<IMethodBinding> im = new TreeSet<IMethodBinding>(
+				new Transformer.BindingComparator());
+
 		for (ITypeBinding ib : interfaces(type)) {
 			im.addAll(Arrays.asList(ib.getDeclaredMethods()));
 		}
@@ -285,7 +292,15 @@ public class HeaderWriter extends TransformWriter {
 
 		for (IMethodBinding imb : im) {
 			for (IMethodBinding mb : methods) {
-				if (mb.overrides(imb)) {
+				if (mb.isSubsignature(imb)) {
+					missing.remove(imb);
+					break;
+				}
+			}
+
+			// Same method in two interfaces
+			for (IMethodBinding mb : missing) {
+				if (!mb.isEqualTo(imb) && mb.isSubsignature(imb)) {
 					missing.remove(imb);
 					break;
 				}

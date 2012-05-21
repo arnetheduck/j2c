@@ -1,6 +1,6 @@
 package se.arnetheduck.j2c.test.methods;
 
-public class Override {
+public class Overrides {
 	public interface A {
 		int add();
 	}

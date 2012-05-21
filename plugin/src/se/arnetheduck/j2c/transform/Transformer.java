@@ -21,6 +21,7 @@ import org.eclipse.jdt.core.dom.ASTRequestor;
 import org.eclipse.jdt.core.dom.AbstractTypeDeclaration;
 import org.eclipse.jdt.core.dom.CompilationUnit;
 import org.eclipse.jdt.core.dom.EnumDeclaration;
+import org.eclipse.jdt.core.dom.IBinding;
 import org.eclipse.jdt.core.dom.IPackageBinding;
 import org.eclipse.jdt.core.dom.ITypeBinding;
 import org.eclipse.jdt.core.dom.TypeDeclaration;
@@ -34,18 +35,9 @@ public class Transformer {
 
 	private final String name;
 
-	public final static class PackageBindingComparator implements
-			Comparator<IPackageBinding> {
+	public final static class BindingComparator implements Comparator<IBinding> {
 		@Override
-		public int compare(IPackageBinding o1, IPackageBinding o2) {
-			return o1.getKey().compareTo(o2.getKey());
-		}
-	}
-
-	public final static class TypeBindingComparator implements
-			Comparator<ITypeBinding> {
-		@Override
-		public int compare(ITypeBinding o1, ITypeBinding o2) {
+		public int compare(IBinding o1, IBinding o2) {
 			return o1.getKey().compareTo(o2.getKey());
 		}
 	}
@@ -70,26 +62,23 @@ public class Transformer {
 	}
 
 	Set<IPackageBinding> packages = new TreeSet<IPackageBinding>(
-			new PackageBindingComparator());
+			new BindingComparator());
 	Set<ITypeBinding> headers = new TreeSet<ITypeBinding>(
-			new TypeBindingComparator());
-	Set<ITypeBinding> impls = new TreeSet<ITypeBinding>(
-			new TypeBindingComparator());
-	Set<ITypeBinding> stubs = new TreeSet<ITypeBinding>(
-			new TypeBindingComparator());
+			new BindingComparator());
+	Set<ITypeBinding> impls = new TreeSet<ITypeBinding>(new BindingComparator());
+	Set<ITypeBinding> stubs = new TreeSet<ITypeBinding>(new BindingComparator());
 	Set<ITypeBinding> natives = new TreeSet<ITypeBinding>(
-			new TypeBindingComparator());
+			new BindingComparator());
 	private Set<ITypeBinding> hardDeps = new TreeSet<ITypeBinding>(
-			new TypeBindingComparator());
+			new BindingComparator());
 	private Set<ITypeBinding> softDeps = new TreeSet<ITypeBinding>(
-			new TypeBindingComparator());
+			new BindingComparator());
 	private Set<ITypeBinding> done = new TreeSet<ITypeBinding>(
-			new TypeBindingComparator());
+			new BindingComparator());
 
 	public List<Snippet> snippets = new ArrayList<Snippet>();
 
-	Set<ITypeBinding> mains = new TreeSet<ITypeBinding>(
-			new TypeBindingComparator());
+	Set<ITypeBinding> mains = new TreeSet<ITypeBinding>(new BindingComparator());
 
 	public void process(final IPath root, ICompilationUnit... units)
 			throws Exception {
@@ -186,6 +175,8 @@ public class Transformer {
 				HeaderWriter hw = new HeaderWriter(root, this,
 						type.resolveBinding());
 				hw.write(td, iw.nestedTypes);
+				done.add(iw.type);
+				done.addAll(iw.nestedTypes);
 			} else if (type instanceof EnumDeclaration) {
 				EnumDeclaration td = (EnumDeclaration) type;
 
@@ -196,6 +187,8 @@ public class Transformer {
 				HeaderWriter hw = new HeaderWriter(root, this,
 						type.resolveBinding());
 				hw.write(td, iw.nestedTypes);
+				done.add(iw.type);
+				done.addAll(iw.nestedTypes);
 			}
 		}
 	}

@@ -11,12 +11,14 @@ import org.eclipse.jdt.core.dom.IMethodBinding;
 import org.eclipse.jdt.core.dom.ITypeBinding;
 import org.eclipse.jdt.core.dom.IVariableBinding;
 
+import se.arnetheduck.j2c.transform.Transformer.BindingComparator;
+
 public class StubWriter {
 	private final IPath root;
 	private final ITypeBinding type;
 	private final Transformer ctx;
 	private Set<ITypeBinding> hardDeps = new TreeSet<ITypeBinding>(
-			new Transformer.TypeBindingComparator());
+			new BindingComparator());
 
 	private PrintWriter pw;
 
