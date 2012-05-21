@@ -655,7 +655,7 @@ public final class TransformUtil {
 			ITypeBinding pb = mb.getParameterTypes()[i];
 			ctx.softDep(pb);
 
-			out.print(relativeCName(pb, tb, false));
+			out.print(relativeCName(pb, tb, true));
 			out.print(" ");
 			out.print(ref(pb));
 			out.print("a" + i);

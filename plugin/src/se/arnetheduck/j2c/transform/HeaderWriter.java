@@ -187,6 +187,8 @@ public class HeaderWriter extends TransformWriter {
 			}
 
 			makeBaseCalls();
+
+			makeEnumMethods();
 		}
 
 		indent--;
@@ -314,6 +316,34 @@ public class HeaderWriter extends TransformWriter {
 				sep = ", ";
 			}
 			println("); }");
+		}
+	}
+
+	/** Generate implicit enum methods */
+	private void makeEnumMethods() {
+		if (!type.isEnum()) {
+			return;
+		}
+
+		lastAccess = TransformUtil
+				.printAccess(out, Modifier.PUBLIC, lastAccess);
+
+		for (IMethodBinding mb : type.getDeclaredMethods()) {
+			if (type.createArrayType(1).isEqualTo(mb.getReturnType())
+					&& mb.getName().equals("values")
+					&& mb.getParameterTypes().length == 0) {
+				printi();
+				TransformUtil.printSignature(out, type, mb, ctx, false);
+				println(" { return nullptr; /* TODO */ }");
+			} else if (type.isEqualTo(mb.getReturnType())
+					&& mb.getName().equals("valueOf")
+					&& mb.getParameterTypes().length == 1
+					&& mb.getParameterTypes()[0].getQualifiedName().equals(
+							String.class.getName())) {
+				printi();
+				TransformUtil.printSignature(out, type, mb, ctx, false);
+				println(" { return nullptr; /* TODO */ }");
+			}
 		}
 	}
 
