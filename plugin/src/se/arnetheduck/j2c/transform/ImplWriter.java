@@ -10,7 +10,6 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.TreeMap;
-import java.util.TreeSet;
 
 import org.eclipse.core.runtime.IPath;
 import org.eclipse.jdt.core.dom.ASTNode;
@@ -90,9 +89,6 @@ public class ImplWriter extends TransformWriter {
 	private StringWriter initializer;
 	private List<MethodDeclaration> constructors = new ArrayList<MethodDeclaration>();
 	private List<FieldDeclaration> fields = new ArrayList<FieldDeclaration>();
-	private final List<ImportDeclaration> imports;
-	public final Set<ITypeBinding> nestedTypes = new TreeSet<ITypeBinding>(
-			new BindingComparator());
 	public final Map<ITypeBinding, ImplWriter> localTypes = new TreeMap<ITypeBinding, ImplWriter>(
 			new BindingComparator());
 
@@ -102,14 +98,13 @@ public class ImplWriter extends TransformWriter {
 	private boolean hasNatives;
 
 	public ImplWriter(IPath root, Transformer ctx, ITypeBinding type,
-			List<ImportDeclaration> imports) {
-		super(ctx, type);
+			UnitInfo unitInfo) {
+		super(ctx, type, unitInfo);
 		this.root = root;
-		this.imports = imports;
 
 		closures = type.isLocal() ? new HashSet<IVariableBinding>() : null;
 
-		for (ImportDeclaration id : imports) {
+		for (ImportDeclaration id : unitInfo.imports) {
 			IBinding b = id.resolveBinding();
 			if (b instanceof IPackageBinding) {
 				ctx.packages.add((IPackageBinding) b);
@@ -178,7 +173,7 @@ public class ImplWriter extends TransformWriter {
 			println();
 			println("using namespace java::lang;");
 
-			for (ImportDeclaration node : imports) {
+			for (ImportDeclaration node : unitInfo.imports) {
 				if (node.isStatic()) {
 					continue; // We qualify references to static imports
 				}
@@ -490,15 +485,12 @@ public class ImplWriter extends TransformWriter {
 	@Override
 	public boolean visit(AnonymousClassDeclaration node) {
 		ITypeBinding tb = node.resolveBinding();
-		ImplWriter iw = new ImplWriter(root, ctx, tb, imports);
+		ImplWriter iw = new ImplWriter(root, ctx, tb, unitInfo);
 		try {
 			iw.write(node);
 		} catch (Exception e) {
 			throw new Error(e);
 		}
-
-		nestedTypes.add(tb);
-		nestedTypes.addAll(iw.nestedTypes);
 
 		localTypes.put(tb, iw);
 
@@ -511,10 +503,10 @@ public class ImplWriter extends TransformWriter {
 			}
 		}
 
-		HeaderWriter hw = new HeaderWriter(root, ctx, tb);
+		HeaderWriter hw = new HeaderWriter(root, ctx, tb, unitInfo);
 
 		hw.writeType(node.getAST(), new ArrayList<EnumConstantDeclaration>(),
-				node.bodyDeclarations(), iw.closures, iw.nestedTypes);
+				node.bodyDeclarations(), iw.closures);
 		return false;
 	}
 
@@ -923,20 +915,17 @@ public class ImplWriter extends TransformWriter {
 	@Override
 	public boolean visit(EnumDeclaration node) {
 		ITypeBinding tb = node.resolveBinding();
-		ImplWriter iw = new ImplWriter(root, ctx, tb, imports);
+		ImplWriter iw = new ImplWriter(root, ctx, tb, unitInfo);
 		try {
 			iw.write(node);
 		} catch (Exception e) {
 			throw new Error(e);
 		}
 
-		nestedTypes.add(tb);
-		nestedTypes.addAll(iw.nestedTypes);
-
-		HeaderWriter hw = new HeaderWriter(root, ctx, tb);
+		HeaderWriter hw = new HeaderWriter(root, ctx, tb, unitInfo);
 
 		hw.writeType(node.getAST(), node.enumConstants(),
-				node.bodyDeclarations(), iw.closures, iw.nestedTypes);
+				node.bodyDeclarations(), iw.closures);
 
 		if (tb.isLocal()) {
 			localTypes.put(tb, iw);
@@ -1874,20 +1863,17 @@ public class ImplWriter extends TransformWriter {
 	@Override
 	public boolean visit(TypeDeclaration node) {
 		ITypeBinding tb = node.resolveBinding();
-		ImplWriter iw = new ImplWriter(root, ctx, tb, imports);
+		ImplWriter iw = new ImplWriter(root, ctx, tb, unitInfo);
 		try {
 			iw.write(node);
 		} catch (Exception e) {
 			throw new Error(e);
 		}
 
-		nestedTypes.add(tb);
-		nestedTypes.addAll(iw.nestedTypes);
-
-		HeaderWriter hw = new HeaderWriter(root, ctx, tb);
+		HeaderWriter hw = new HeaderWriter(root, ctx, tb, unitInfo);
 
 		hw.writeType(node.getAST(), new ArrayList<EnumConstantDeclaration>(),
-				node.bodyDeclarations(), iw.closures, iw.nestedTypes);
+				node.bodyDeclarations(), iw.closures);
 
 		if (tb.isLocal()) {
 			localTypes.put(tb, iw);

@@ -50,34 +50,31 @@ public class HeaderWriter extends TransformWriter {
 
 	private Set<String> usings = new HashSet<String>();
 
-	public HeaderWriter(IPath root, Transformer ctx, ITypeBinding type) {
-		super(ctx, type);
+	public HeaderWriter(IPath root, Transformer ctx, ITypeBinding type,
+			UnitInfo unitInfo) {
+		super(ctx, type, unitInfo);
 		this.root = root;
 	}
 
-	public void write(TypeDeclaration node, Collection<ITypeBinding> nested)
-			throws Exception {
+	public void write(TypeDeclaration node) throws Exception {
 		writeType(node.getAST(), new ArrayList<EnumConstantDeclaration>(),
-				node.bodyDeclarations(), new ArrayList<IVariableBinding>(),
-				nested);
+				node.bodyDeclarations(), new ArrayList<IVariableBinding>());
 	}
 
-	public void write(EnumDeclaration node, Collection<ITypeBinding> nested)
-			throws Exception {
+	public void write(EnumDeclaration node) throws Exception {
 		writeType(node.getAST(), node.enumConstants(), node.bodyDeclarations(),
-				new ArrayList<IVariableBinding>(), nested);
+				new ArrayList<IVariableBinding>());
 	}
 
 	public void writeType(AST ast, List<EnumConstantDeclaration> enums,
 			List<BodyDeclaration> declarations,
-			Collection<IVariableBinding> closures,
-			Collection<ITypeBinding> nested) {
+			Collection<IVariableBinding> closures) {
 
 		ctx.headers.add(type);
 		try {
 			out = TransformUtil.openHeader(root, type);
 
-			String body = getBody(ast, enums, declarations, closures, nested);
+			String body = getBody(ast, enums, declarations, closures);
 			for (ITypeBinding tb : hardDeps) {
 				out.println(TransformUtil.include(tb));
 			}
@@ -92,8 +89,7 @@ public class HeaderWriter extends TransformWriter {
 
 	private String getBody(AST ast, List<EnumConstantDeclaration> enums,
 			List<BodyDeclaration> declarations,
-			Collection<IVariableBinding> closures,
-			Collection<ITypeBinding> nested) {
+			Collection<IVariableBinding> closures) {
 
 		PrintWriter old = out;
 		StringWriter sw = new StringWriter();
@@ -143,13 +139,10 @@ public class HeaderWriter extends TransformWriter {
 			println(" super;");
 		}
 
-		for (ITypeBinding nb : nested) {
-			printlni("friend class ", TransformUtil.name(nb), ";");
-		}
-
-		for (ITypeBinding pb = type.getDeclaringClass(); pb != null; pb = pb
-				.getDeclaringClass()) {
-			printlni("friend class ", TransformUtil.name(pb), ";");
+		for (ITypeBinding nb : unitInfo.types) {
+			if (!nb.isEqualTo(type)) {
+				printlni("friend class ", TransformUtil.name(nb), ";");
+			}
 		}
 
 		lastAccess = TransformUtil

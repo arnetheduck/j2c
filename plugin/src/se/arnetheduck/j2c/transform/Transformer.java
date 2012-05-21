@@ -164,33 +164,35 @@ public class Transformer {
 	}
 
 	private void writeImpl(IPath root, CompilationUnit cu) throws Exception {
+		UnitInfo ui = new UnitInfo();
+		cu.accept(ui);
+
 		for (AbstractTypeDeclaration type : (Iterable<AbstractTypeDeclaration>) cu
 				.types()) {
 			if (type instanceof TypeDeclaration) {
 				TypeDeclaration td = (TypeDeclaration) type;
 				ImplWriter iw = new ImplWriter(root, this,
-						type.resolveBinding(), cu.imports());
+						type.resolveBinding(), ui);
 
 				iw.write(td);
 				HeaderWriter hw = new HeaderWriter(root, this,
-						type.resolveBinding());
-				hw.write(td, iw.nestedTypes);
-				done.add(iw.type);
-				done.addAll(iw.nestedTypes);
+						type.resolveBinding(), ui);
+				hw.write(td);
 			} else if (type instanceof EnumDeclaration) {
 				EnumDeclaration td = (EnumDeclaration) type;
 
 				ImplWriter iw = new ImplWriter(root, this,
-						type.resolveBinding(), cu.imports());
+						type.resolveBinding(), ui);
 
 				iw.write(td);
 				HeaderWriter hw = new HeaderWriter(root, this,
-						type.resolveBinding());
-				hw.write(td, iw.nestedTypes);
+						type.resolveBinding(), ui);
+				hw.write(td);
 				done.add(iw.type);
-				done.addAll(iw.nestedTypes);
 			}
 		}
+
+		done.addAll(ui.types);
 	}
 
 	public void processDeps(IPath root) {

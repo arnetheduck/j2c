@@ -56,8 +56,9 @@ import org.eclipse.jdt.core.dom.WildcardType;
 import se.arnetheduck.j2c.transform.Transformer.BindingComparator;
 
 public abstract class TransformWriter extends ASTVisitor {
-	protected final ITypeBinding type;
 	protected final Transformer ctx;
+	protected final ITypeBinding type;
+	protected final UnitInfo unitInfo;
 
 	protected int indent;
 
@@ -66,9 +67,11 @@ public abstract class TransformWriter extends ASTVisitor {
 	protected Set<ITypeBinding> hardDeps = new TreeSet<ITypeBinding>(
 			new BindingComparator());
 
-	protected TransformWriter(Transformer ctx, final ITypeBinding type) {
+	protected TransformWriter(Transformer ctx, final ITypeBinding type,
+			final UnitInfo unitInfo) {
 		this.type = type;
 		this.ctx = ctx;
+		this.unitInfo = unitInfo;
 	}
 
 	public Set<ITypeBinding> getHardDeps() {
