@@ -30,6 +30,9 @@ public class ForwardWriter {
 				.toFile());
 		PrintWriter pw = new PrintWriter(fos);
 
+		pw.println("#pragma once");
+		pw.println();
+
 		pw.println("#include <stdint.h>");
 
 		for (ITypeBinding t : types) {

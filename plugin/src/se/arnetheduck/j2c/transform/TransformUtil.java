@@ -8,7 +8,6 @@ import java.text.Annotation;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
-import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -351,22 +350,31 @@ public final class TransformUtil {
 		}
 	}
 
-	public static boolean addDep(ITypeBinding dep, Collection<ITypeBinding> deps) {
+	public static void addDep(ITypeBinding dep, Collection<ITypeBinding> deps) {
 		if (dep == null) {
-			return false;
+			return;
 		}
 
 		if (dep.isNullType()) {
-			return false;
+			return;
 		}
 
 		if (dep.isPrimitive()) {
-			return false;
+			return;
 		}
 
 		dep = dep.getErasure();
 
-		return deps.add(dep);
+		// This ensures that the new dep is always added last (useful when
+		// ordering bases)
+		for (ITypeBinding d : deps) {
+			if (d.isEqualTo(dep)) {
+				deps.remove(d);
+				break;
+			}
+		}
+
+		deps.add(dep);
 	}
 
 	public static String printAccess(PrintWriter out, int access,
@@ -521,31 +529,13 @@ public final class TransformUtil {
 
 	public static List<IMethodBinding> baseMethods(ITypeBinding tb, String name) {
 		List<IMethodBinding> ret = new ArrayList<IMethodBinding>();
-		ret.addAll(methods(tb.getSuperclass(), name));
-
-		for (ITypeBinding ib : tb.getInterfaces()) {
-			ret.addAll(methods(ib, name));
-		}
-
-		return ret;
-	}
-
-	public static List<IMethodBinding> methods(ITypeBinding tb, String name) {
-		if (tb == null) {
-			return Collections.emptyList();
-		}
-
-		List<IMethodBinding> ret = new ArrayList<IMethodBinding>();
-		for (IMethodBinding mb : tb.getDeclaredMethods()) {
-			if (mb.getName().equals(name)) {
-				ret.add(mb);
+		Collection<ITypeBinding> bases = getAllBases(tb);
+		for (ITypeBinding base : bases) {
+			for (IMethodBinding mb : base.getDeclaredMethods()) {
+				if (mb.getName().equals(name)) {
+					ret.add(mb);
+				}
 			}
-		}
-
-		ret.addAll(methods(tb.getSuperclass(), name));
-
-		for (ITypeBinding ib : tb.getInterfaces()) {
-			ret.addAll(methods(ib, name));
 		}
 
 		return ret;
@@ -614,7 +604,28 @@ public final class TransformUtil {
 
 		if (ret.isEmpty()
 				&& !tb.getQualifiedName().equals(Object.class.getName())) {
-			ret.add(object);
+			addDep(object, ret);
+		}
+
+		return ret;
+	}
+
+	public static List<ITypeBinding> getAllBases(ITypeBinding tb) {
+		List<ITypeBinding> ret = new ArrayList<ITypeBinding>();
+
+		addDep(tb.getSuperclass(), ret);
+		if (tb.getSuperclass() != null) {
+			for (ITypeBinding a : getAllBases(tb.getSuperclass())) {
+				addDep(a, ret);
+			}
+		}
+
+		for (ITypeBinding ib : tb.getInterfaces()) {
+			addDep(ib, ret);
+
+			for (ITypeBinding a : getAllBases(ib)) {
+				addDep(a, ret);
+			}
 		}
 
 		return ret;
