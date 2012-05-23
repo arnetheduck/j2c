@@ -42,6 +42,27 @@ public final class TransformUtil {
 	public static final String NATIVE = "-native";
 	public static final String STUB = "-stub";
 
+	/** Name of fake static initializer */
+	public static final String STATIC_INIT = "clinit";
+	/** Name of fake instance initializer */
+	public static final String INSTANCE_INIT = "init";
+	/** Name of fake constructor */
+	public static final String CTOR = "ctor";
+
+	/** C++ keywords + special method names - java keywords */
+	private static Collection<String> keywords = Arrays.asList("alignas",
+			"alignof", "and", "and_eq", "asm", "auto", "bitand", "bitor",
+			"bool", "char16_t", "char32_t", "compl", "const", "constexpre",
+			"const_cast", "decltype", "delete", "dynamic_cast", "explicit",
+			"export", "extern", "friend", "goto", "inline", "mutable",
+			"namespace", "noexcept", "not", "not_eq", "nullptr", "operator",
+			"or", "or_eq", "register", "reinterpret_cast", "signed", "sizeof",
+			"static_assert", "static_cast", "struct", "template",
+			"thread_local", "typedef", "typeid", "typename", "union",
+			"unsigned", "using", "wchar_t", "xor", "xor_eq",
+			TransformUtil.CTOR, TransformUtil.INSTANCE_INIT,
+			TransformUtil.STATIC_INIT);
+
 	public static final Map<String, String> primitives = new HashMap<String, String>() {
 		{
 			put("boolean", "java.lang.Boolean");
@@ -473,17 +494,6 @@ public final class TransformUtil {
 		return isStatic(tb.getDeclaringClass());
 	}
 
-	private static Collection<String> keywords = Arrays.asList("alignas",
-			"alignof", "and", "and_eq", "asm", "auto", "bitand", "bitor",
-			"bool", "char16_t", "char32_t", "compl", "const", "constexpre",
-			"const_cast", "decltype", "delete", "dynamic_cast", "explicit",
-			"export", "extern", "friend", "goto", "inline", "mutable",
-			"namespace", "noexcept", "not", "not_eq", "nullptr", "operator",
-			"or", "or_eq", "register", "reinterpret_cast", "signed", "sizeof",
-			"static_assert", "static_cast", "struct", "template",
-			"thread_local", "typedef", "typeid", "typename", "union",
-			"unsigned", "using", "wchar_t", "xor", "xor_eq");
-
 	/** Filter out C++ keywords */
 	public static String keywords(String name) {
 		if (keywords.contains(name)) {
@@ -529,6 +539,8 @@ public final class TransformUtil {
 
 	public static List<IMethodBinding> baseMethods(ITypeBinding tb, String name) {
 		List<IMethodBinding> ret = new ArrayList<IMethodBinding>();
+
+		// Order significant in case an interface is inherited multiple times
 		Collection<ITypeBinding> bases = getAllBases(tb);
 		for (ITypeBinding base : bases) {
 			for (IMethodBinding mb : base.getDeclaredMethods()) {

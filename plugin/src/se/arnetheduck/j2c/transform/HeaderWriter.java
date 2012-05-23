@@ -43,7 +43,8 @@ public class HeaderWriter extends TransformWriter {
 
 	private String lastAccess;
 
-	private boolean hasInitializer;
+	private boolean hasClinit;
+	private boolean hasInit;
 
 	private final List<MethodDeclaration> constructors = new ArrayList<MethodDeclaration>();
 	private final List<IMethodBinding> methods = new ArrayList<IMethodBinding>();
@@ -189,6 +190,9 @@ public class HeaderWriter extends TransformWriter {
 			makeBaseCalls();
 
 			makeEnumMethods();
+
+			makeClinit();
+			makeInit();
 		}
 
 		indent--;
@@ -201,6 +205,30 @@ public class HeaderWriter extends TransformWriter {
 
 		out = old;
 		return sw.toString();
+	}
+
+	private void makeClinit() {
+		if (!hasClinit) {
+			return;
+		}
+
+		lastAccess = TransformUtil.printAccess(out, Modifier.PRIVATE,
+				lastAccess);
+
+		printlni("static struct ", TransformUtil.STATIC_INIT, " { ",
+				TransformUtil.STATIC_INIT, "(); } ", TransformUtil.STATIC_INIT,
+				";");
+	}
+
+	public void makeInit() {
+		if (!hasInit) {
+			return;
+		}
+
+		lastAccess = TransformUtil.printAccess(out, Modifier.PRIVATE,
+				lastAccess);
+
+		printlni("void ", TransformUtil.INSTANCE_INIT, "();");
 	}
 
 	private void makeConstructors(Collection<IVariableBinding> closures) {
@@ -465,27 +493,11 @@ public class HeaderWriter extends TransformWriter {
 
 	@Override
 	public boolean visit(Initializer node) {
-		if (hasInitializer) {
-			return false;
+		if (Modifier.isStatic(node.getModifiers())) {
+			hasClinit = true;
+		} else {
+			hasInit = true;
 		}
-
-		hasInitializer = true;
-
-		lastAccess = TransformUtil.printAccess(out, Modifier.PRIVATE,
-				lastAccess);
-		println("private:");
-
-		String name = TransformUtil.name(type);
-		printlni("struct ", name, "Initializer {");
-
-		indent++;
-
-		printlni(name, "Initializer();");
-		indent--;
-
-		printlni("};");
-
-		printlni("static ", name, "Initializer staticInitializer;");
 
 		return false;
 	}
@@ -528,7 +540,7 @@ public class HeaderWriter extends TransformWriter {
 				println(lastAccess);
 			}
 
-			printi("void _construct");
+			printi("void ", TransformUtil.CTOR);
 		} else {
 			methods.add(mb);
 			lastAccess = TransformUtil.printAccess(out, node.getModifiers(),
@@ -652,6 +664,11 @@ public class HeaderWriter extends TransformWriter {
 		Object v = TransformUtil.constantValue(node);
 		if (v != null) {
 			print(" = ", v);
+		} else {
+			if (!Modifier.isStatic(node.resolveBinding().getModifiers())
+					&& node.getInitializer() != null) {
+				hasInit = true;
+			}
 		}
 
 		return false;

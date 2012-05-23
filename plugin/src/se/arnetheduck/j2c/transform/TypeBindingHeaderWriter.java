@@ -190,7 +190,9 @@ public class TypeBindingHeaderWriter {
 		}
 
 		if (mb.isConstructor()) {
-			pw.print(" { _construct(");
+			pw.print(" { ");
+			pw.print(TransformUtil.CTOR);
+			pw.print("(");
 			for (int i = 0; i < mb.getParameterTypes().length; ++i) {
 				if (i > 0)
 					pw.print(", ");
@@ -198,7 +200,8 @@ public class TypeBindingHeaderWriter {
 			}
 			pw.println("); }");
 			pw.print(TransformUtil.indent(1));
-			pw.print("void _construct");
+			pw.print("void ");
+			pw.print(TransformUtil.CTOR);
 			TransformUtil.printParams(pw, tb, mb, ctx);
 		}
 		pw.println(";");

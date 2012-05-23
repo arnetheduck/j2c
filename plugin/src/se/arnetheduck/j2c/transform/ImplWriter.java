@@ -86,9 +86,15 @@ public class ImplWriter extends TransformWriter {
 	private final IPath root;
 	private final Set<IVariableBinding> closures;
 
-	private StringWriter initializer;
+	/** Static initializers */
+	private StringWriter clinit;
+
+	/** Instance initializers */
+	private StringWriter init;
+
 	private List<MethodDeclaration> constructors = new ArrayList<MethodDeclaration>();
 	private List<FieldDeclaration> fields = new ArrayList<FieldDeclaration>();
+
 	public final Map<ITypeBinding, ImplWriter> localTypes = new TreeMap<ITypeBinding, ImplWriter>(
 			new BindingComparator());
 
@@ -206,13 +212,17 @@ public class ImplWriter extends TransformWriter {
 				makeSynchronized();
 			}
 
-			if (closeInitializer()) {
-				print(initializer.toString());
+			if (clinit != null) {
+				makeClinit();
 			}
 
-			print(body.toString());
+			if (init != null) {
+				makeInit();
+			}
 
 			println(cons);
+
+			print(body.toString());
 
 			out.close();
 			ctx.impls.add(type);
@@ -261,6 +271,73 @@ public class ImplWriter extends TransformWriter {
 		printlni("}");
 	}
 
+	private void makeClinit() {
+		if (clinit == null) {
+			return;
+		}
+
+		String cname = TransformUtil.qualifiedCName(type, false);
+		println("::", cname, "::", TransformUtil.STATIC_INIT, "::",
+				TransformUtil.STATIC_INIT, "()");
+		println("{");
+		print(clinit.toString());
+		println("}");
+		println();
+
+		println("struct ::", cname, "::", TransformUtil.STATIC_INIT, " ",
+				cname, "::", TransformUtil.STATIC_INIT, ";");
+		println();
+	}
+
+	private void makeInit() {
+		if (init == null) {
+			return;
+		}
+
+		String cname = TransformUtil.qualifiedCName(type, true);
+		println("void ", cname, "::", TransformUtil.INSTANCE_INIT, "()");
+		println("{");
+		print(init.toString());
+		println("}");
+		println();
+	}
+
+	private void addInit(boolean isStatic, Block body,
+			VariableDeclarationFragment field) {
+		PrintWriter old = out;
+		if (isStatic) {
+			if (clinit == null) {
+				clinit = new StringWriter();
+			}
+
+			out = new PrintWriter(clinit);
+		} else {
+			if (init == null) {
+				init = new StringWriter();
+			}
+
+			out = new PrintWriter(init);
+		}
+
+		indent++;
+		if (body != null) {
+			printi();
+			body.accept(this);
+			println();
+		} else {
+			assert (field != null);
+			printi();
+			field.getName().accept(this);
+			print(" = ");
+			field.getInitializer().accept(this);
+			println(";");
+		}
+		indent--;
+
+		out.close();
+		out = old;
+	}
+
 	private String makeConstructors() {
 		PrintWriter old = out;
 		StringWriter sw = new StringWriter();
@@ -290,7 +367,11 @@ public class ImplWriter extends TransformWriter {
 
 			println("{");
 			indent++;
-			printi("_construct(");
+			if (init != null) {
+				printlni(TransformUtil.INSTANCE_INIT, "();");
+			}
+
+			printi(TransformUtil.CTOR, "(");
 
 			printNames(md.parameters());
 
@@ -312,6 +393,11 @@ public class ImplWriter extends TransformWriter {
 			printFieldInit(": ");
 			indent--;
 			println("{");
+			if (init != null) {
+				indent++;
+				printlni(TransformUtil.INSTANCE_INIT, "();");
+				indent--;
+			}
 			println("}");
 			println();
 		}
@@ -341,11 +427,7 @@ public class ImplWriter extends TransformWriter {
 					.fragments()) {
 				printi(sep);
 				vd.getName().accept(this);
-				print("(");
-				if (vd.getInitializer() != null) {
-					vd.getInitializer().accept(this);
-				}
-				println(")");
+				println("()");
 				sep = ", ";
 			}
 		}
@@ -767,7 +849,7 @@ public class ImplWriter extends TransformWriter {
 	public boolean visit(ConstructorInvocation node) {
 		printi(TransformUtil.typeArguments(node.typeArguments()));
 
-		print("_construct");
+		print(TransformUtil.CTOR);
 
 		Iterable<Expression> arguments = node.arguments();
 		visitAllCSV(arguments, true);
@@ -951,7 +1033,7 @@ public class ImplWriter extends TransformWriter {
 			fields.add(node);
 			for (VariableDeclarationFragment f : fragments) {
 				if (f.getInitializer() != null) {
-					hardDep(f.getInitializer().resolveTypeBinding());
+					addInit(false, null, f);
 				}
 			}
 
@@ -1158,62 +1240,9 @@ public class ImplWriter extends TransformWriter {
 
 	@Override
 	public boolean visit(Initializer node) {
-		if (initializer != null) {
-			PrintWriter oldOut = out;
-			out = new PrintWriter(initializer);
-
-			node.getBody().accept(this);
-
-			out.close();
-			out = oldOut;
-
-			return false;
-		}
-
-		initializer = new StringWriter();
-		PrintWriter oldOut = out;
-		out = new PrintWriter(initializer);
-
-		if (node.getJavadoc() != null) {
-			node.getJavadoc().accept(this);
-		}
-
-		String name = TransformUtil.name(type);
-		String qcname = TransformUtil.qualifiedCName(type, true);
-
-		println(qcname, "::", name, "Initializer::", name, "Initializer() {");
-		indent++;
-
-		node.getBody().accept(this);
-
-		indent--;
-
-		out.close();
-		out = oldOut;
+		addInit(Modifier.isStatic(node.getModifiers()), node.getBody(), null);
 
 		return false;
-	}
-
-	private boolean closeInitializer() {
-		if (initializer == null) {
-			return false;
-		}
-
-		PrintWriter oldOut = out;
-
-		out = new PrintWriter(initializer);
-		printlni("}");
-		println();
-
-		String name = TransformUtil.name(type);
-		String cname = TransformUtil.qualifiedCName(type, false);
-		println(cname, "::", name, "Initializer ", cname,
-				"::staticInitializer;");
-
-		out.close();
-		out = oldOut;
-
-		return true;
 	}
 
 	@Override
@@ -1273,8 +1302,8 @@ public class ImplWriter extends TransformWriter {
 		if (node.isConstructor()) {
 			constructors.add(node);
 
-			printi("void ", TransformUtil.qualifiedCName(type, true),
-					"::_construct");
+			printi("void ", TransformUtil.qualifiedCName(type, true), "::",
+					TransformUtil.CTOR);
 		} else {
 			ITypeBinding rt = TransformUtil.returnType(node);
 			ctx.softDep(rt);
@@ -1573,7 +1602,7 @@ public class ImplWriter extends TransformWriter {
 
 		printi(TransformUtil.typeArguments(node.typeArguments()));
 
-		print("super::_construct");
+		print("super::", TransformUtil.CTOR);
 
 		Iterable<Expression> arguments = node.arguments();
 		visitAllCSV(arguments, true);
