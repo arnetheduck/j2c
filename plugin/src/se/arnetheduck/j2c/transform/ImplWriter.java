@@ -183,7 +183,8 @@ public class ImplWriter extends TransformWriter {
 					continue; // We qualify references to static imports
 				}
 
-				if (node.isOnDemand()) {
+				if (node.isOnDemand()
+						&& node.getName().resolveBinding() instanceof IPackageBinding) {
 					println("using namespace ::", TransformUtil.cname(node
 							.getName().getFullyQualifiedName()), ";");
 				} else {
