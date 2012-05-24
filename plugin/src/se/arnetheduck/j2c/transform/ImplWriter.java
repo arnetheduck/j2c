@@ -807,7 +807,9 @@ public class ImplWriter extends TransformWriter {
 
 		String sep = "";
 		if (TransformUtil.isInner(tb) && !TransformUtil.outerStatic(tb)) {
-			print("this");
+			print(tb.getDeclaringClass().getErasure()
+					.isEqualTo(type.getErasure()) ? "this" : TransformUtil
+					.outerThisName(tb));
 			sep = ", ";
 		}
 
