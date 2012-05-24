@@ -153,6 +153,12 @@ public final class TransformUtil {
 		return Modifier.isPrivate(mb.getModifiers()) ? "_" + name : name;
 	}
 
+	public static String name(IVariableBinding vb) {
+		// Methods and variables can have the same name so we postfix all
+		// variables
+		return vb.getName() + "_";
+	}
+
 	public static String[] packageName(ITypeBinding tb) {
 		IPackageBinding pkg = elementPackage(tb);
 		return pkg == null ? new String[0] : pkg.getNameComponents();

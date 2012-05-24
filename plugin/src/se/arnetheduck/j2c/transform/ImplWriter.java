@@ -56,7 +56,6 @@ import org.eclipse.jdt.core.dom.PostfixExpression;
 import org.eclipse.jdt.core.dom.PrefixExpression;
 import org.eclipse.jdt.core.dom.PrimitiveType;
 import org.eclipse.jdt.core.dom.PrimitiveType.Code;
-import org.eclipse.jdt.core.dom.QualifiedName;
 import org.eclipse.jdt.core.dom.ReturnStatement;
 import org.eclipse.jdt.core.dom.SimpleName;
 import org.eclipse.jdt.core.dom.SingleVariableDeclaration;
@@ -1374,24 +1373,6 @@ public class ImplWriter extends TransformWriter {
 
 		print(TransformUtil.typeArguments(node.typeArguments()));
 
-		ITypeBinding dc = b.getDeclaringClass() == null ? null : b
-				.getDeclaringClass().getErasure();
-
-		if (!(type.isNested() && Modifier.isStatic(b.getModifiers()))
-				&& TransformUtil.isInner(type) && expr == null
-				&& !Modifier.isStatic(b.getModifiers())) {
-			if (dc != null && !type.isSubTypeCompatible(dc)) {
-
-				for (ITypeBinding x = type; x.getDeclaringClass() != null
-						&& !x.isSubTypeCompatible(dc); x = x
-						.getDeclaringClass().getErasure()) {
-					hardDep(x.getDeclaringClass());
-
-					print(TransformUtil.outerThisName(x), "->");
-				}
-			}
-		}
-
 		node.getName().accept(this);
 
 		List<Expression> arguments = node.arguments();
@@ -1515,45 +1496,34 @@ public class ImplWriter extends TransformWriter {
 		IBinding b = node.resolveBinding();
 		if (b instanceof IVariableBinding) {
 			IVariableBinding vb = (IVariableBinding) b;
-			ctx.softDep(vb.getType());
 
-			ITypeBinding dc = vb.getDeclaringClass() == null ? null : vb
-					.getDeclaringClass().getErasure();
-
-			if (!(type.isNested() && Modifier.isStatic(vb.getModifiers()) && !type
-					.isSubTypeCompatible(dc)) && TransformUtil.isInner(type)) {
-				if (vb.isField() && dc != null && !dc.isSubTypeCompatible(type)) {
-					boolean pq = node.getParent() instanceof QualifiedName;
-					boolean hasThis = pq
-							&& ((QualifiedName) node.getParent()).getName()
-									.equals(node);
-
-					if (!hasThis && node.getParent() instanceof FieldAccess) {
-						FieldAccess fa = (FieldAccess) node.getParent();
-						hasThis = fa.getExpression() != null;
-					}
-
-					if (!hasThis) {
-						for (ITypeBinding x = type; x.getDeclaringClass() != null
-								&& !x.isSubTypeCompatible(dc); x = x
-								.getDeclaringClass().getErasure()) {
-							hardDep(x.getDeclaringClass());
-
-							print(TransformUtil.outerThisName(x), "->");
-						}
-					}
-				} else if (Modifier.isFinal(vb.getModifiers())) {
-					IMethodBinding pmb = parentMethod(node);
-
-					if (pmb != null && vb.getDeclaringMethod() != null
-							&& !pmb.isEqualTo(vb.getDeclaringMethod())) {
-						closures.add(vb);
-					}
-				}
+			if (isClosure(node, vb)) {
+				closures.add(vb);
 			}
 		}
 
 		return super.visit(node);
+	}
+
+	private boolean isClosure(SimpleName node, IVariableBinding vb) {
+		if (vb.isField()) {
+			return false;
+		}
+
+		if (vb.getDeclaringMethod() == null) {
+			return false;
+		}
+
+		if (!Modifier.isFinal(vb.getModifiers())) {
+			return false;
+		}
+
+		IMethodBinding pmb = parentMethod(node);
+		if (pmb.isEqualTo(vb.getDeclaringMethod())) {
+			return false;
+		}
+
+		return true;
 	}
 
 	private static IMethodBinding parentMethod(ASTNode node) {

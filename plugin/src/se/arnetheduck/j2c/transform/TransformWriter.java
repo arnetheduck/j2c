@@ -18,7 +18,9 @@ import org.eclipse.jdt.core.dom.CatchClause;
 import org.eclipse.jdt.core.dom.CharacterLiteral;
 import org.eclipse.jdt.core.dom.CompilationUnit;
 import org.eclipse.jdt.core.dom.EmptyStatement;
+import org.eclipse.jdt.core.dom.EnumConstantDeclaration;
 import org.eclipse.jdt.core.dom.ExpressionStatement;
+import org.eclipse.jdt.core.dom.FieldAccess;
 import org.eclipse.jdt.core.dom.IBinding;
 import org.eclipse.jdt.core.dom.IMethodBinding;
 import org.eclipse.jdt.core.dom.IPackageBinding;
@@ -379,27 +381,23 @@ public abstract class TransformWriter extends ASTVisitor {
 
 		if (b instanceof IVariableBinding) {
 			IVariableBinding vb = (IVariableBinding) b;
-			if (vb.isField() && TransformUtil.isStatic(vb)
-					&& needsQualification(node, vb.getDeclaringClass())) {
-				print(TransformUtil.relativeCName(vb.getDeclaringClass(), type,
-						true), "::");
-				hardDep(vb.getDeclaringClass());
-			}
-
 			ctx.softDep(vb.getType());
 
-			print(node.getIdentifier());
-			print("_");
+			if (needsQualification(node, vb.getDeclaringClass())) {
+				qualify(vb.getDeclaringClass().getErasure(),
+						TransformUtil.isStatic(vb));
+			}
+
+			print(TransformUtil.name(vb));
 		} else if (b instanceof ITypeBinding) {
 			print(TransformUtil.name((ITypeBinding) b));
 			ctx.softDep((ITypeBinding) b);
 		} else if (b instanceof IMethodBinding) {
 			IMethodBinding mb = (IMethodBinding) b;
-			if (TransformUtil.isStatic(mb)
-					&& needsQualification(node, mb.getDeclaringClass())) {
-				print(TransformUtil.relativeCName(mb.getDeclaringClass(), type,
-						true), "::");
-				hardDep(mb.getDeclaringClass());
+
+			if (needsQualification(node, mb.getDeclaringClass())) {
+				qualify(mb.getDeclaringClass().getErasure(),
+						TransformUtil.isStatic(mb));
 			}
 
 			print(TransformUtil.name(mb));
@@ -410,15 +408,73 @@ public abstract class TransformWriter extends ASTVisitor {
 		return false;
 	}
 
-	private boolean needsQualification(SimpleName node, ITypeBinding tb) {
+	private void qualify(ITypeBinding declaringClass, boolean isStatic) {
+		if (isStatic) {
+			print(TransformUtil.relativeCName(declaringClass, type, true), "::");
+			hardDep(declaringClass);
+		} else {
+			// We will be this-qualifying for each type along the nesting chain
+			for (ITypeBinding x = type; x.getDeclaringClass() != null
+					&& !x.isSubTypeCompatible(declaringClass); x = x
+					.getDeclaringClass().getErasure()) {
+				hardDep(x.getDeclaringClass());
+
+				print(TransformUtil.outerThisName(x), "->");
+			}
+		}
+	}
+
+	protected boolean needsQualification(SimpleName node,
+			ITypeBinding declaringClass) {
+		if (declaringClass == null) {
+			return false;
+		}
+
+		declaringClass = declaringClass.getErasure();
+
 		ASTNode parent = node.getParent();
-		return !(parent instanceof QualifiedName)
-				&& !(parent instanceof VariableDeclarationFragment && ((VariableDeclarationFragment) parent)
-						.getInitializer() != node)
-				&& !(parent instanceof MethodDeclaration)
-				&& !(parent instanceof MethodInvocation
-						&& ((MethodInvocation) parent).getExpression() != null && ((MethodInvocation) parent)
-						.getName() == node) && !type.isSubTypeCompatible(tb);
+
+		if (parent instanceof QualifiedName) {
+			if (((QualifiedName) parent).getQualifier() != node) {
+				return false;
+			}
+		}
+
+		if (parent instanceof FieldAccess) {
+			assert (((FieldAccess) parent).getExpression() != null);
+			return false;
+		}
+
+		if (parent instanceof VariableDeclarationFragment) {
+			return ((VariableDeclarationFragment) parent).getName() != node;
+		}
+
+		if (parent instanceof MethodDeclaration) {
+			return false;
+		}
+
+		if (parent instanceof EnumConstantDeclaration) {
+			return false;
+		}
+
+		if (parent instanceof MethodInvocation) {
+			MethodInvocation mi = (MethodInvocation) parent;
+			if (type.isSubTypeCompatible(declaringClass)) {
+				return false; // Method defined on a parent class
+			}
+
+			if (mi.getName() == node && mi.getExpression() != null) {
+				return false;
+			}
+		}
+
+		if (node.resolveBinding() instanceof IVariableBinding) {
+			if (!((IVariableBinding) node.resolveBinding()).isField()) {
+				return false;
+			}
+		}
+
+		return true;
 	}
 
 	@Override
