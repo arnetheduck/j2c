@@ -782,11 +782,6 @@ public class ImplWriter extends TransformWriter {
 
 	@Override
 	public boolean visit(ClassInstanceCreation node) {
-		if (node.getExpression() != null) {
-			node.getExpression().accept(this);
-			print(".");
-		}
-
 		print("(new ");
 
 		ITypeBinding tb = node.getType().resolveBinding();
@@ -806,7 +801,10 @@ public class ImplWriter extends TransformWriter {
 		print("(");
 
 		String sep = "";
-		if (TransformUtil.isInner(tb) && !TransformUtil.outerStatic(tb)) {
+		if (node.getExpression() != null) {
+			node.getExpression().accept(this);
+			sep = ", ";
+		} else if (TransformUtil.isInner(tb) && !TransformUtil.outerStatic(tb)) {
 			print(tb.getDeclaringClass().getErasure()
 					.isEqualTo(type.getErasure()) ? "this" : TransformUtil
 					.outerThisName(tb));
