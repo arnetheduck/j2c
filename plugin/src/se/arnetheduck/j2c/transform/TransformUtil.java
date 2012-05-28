@@ -129,18 +129,18 @@ public final class TransformUtil {
 
 		ITypeBinding tbe = tb.getErasure();
 
-		if (tb.isLocal()) {
+		if (tbe.isLocal()) {
 			Matcher match = lastBin.matcher(tbe.getBinaryName());
 			String extra = match.find() ? match.group(1) : "";
-			String c = tb.getDeclaringClass() == null ? "c" : name(tb
+			String c = tbe.getDeclaringClass() == null ? "c" : name(tbe
 					.getDeclaringClass());
-			String m = tb.getDeclaringMethod() == null ? "m" : tb
+			String m = tbe.getDeclaringMethod() == null ? "m" : tbe
 					.getDeclaringMethod().getName();
 			return c + "_" + m + extra;
 		}
 
-		if (tb.isNested()) {
-			return name(tb.getDeclaringClass()) + "_" + tbe.getName();
+		if (tbe.isNested()) {
+			return name(tbe.getDeclaringClass()) + "_" + tbe.getName();
 		}
 
 		return tbe.getName();
