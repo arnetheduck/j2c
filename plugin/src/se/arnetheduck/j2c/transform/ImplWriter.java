@@ -1518,13 +1518,31 @@ public class ImplWriter extends TransformWriter {
 		if (!Modifier.isFinal(vb.getModifiers())) {
 			return false;
 		}
-
-		IMethodBinding pmb = parentMethod(node);
-		if (pmb.isEqualTo(vb.getDeclaringMethod())) {
-			return false;
+		VariableDeclarationFragment vdf = initializer(node);
+		if (vdf != null) {
+		} else {
+			IMethodBinding pmb = parentMethod(node);
+			if (pmb.isEqualTo(vb.getDeclaringMethod())) {
+				return false;
+			}
 		}
 
 		return true;
+	}
+
+	private VariableDeclarationFragment initializer(ASTNode node) {
+		for (ASTNode n = node; n != null; n = n.getParent()) {
+			if (n.getParent() instanceof VariableDeclarationFragment) {
+				VariableDeclarationFragment vdf = (VariableDeclarationFragment) n
+						.getParent();
+				if (type.isEqualTo(vdf.resolveBinding().getDeclaringClass())
+						&& vdf.getInitializer() == n) {
+					return vdf;
+				}
+			}
+		}
+
+		return null;
 	}
 
 	private static IMethodBinding parentMethod(ASTNode node) {

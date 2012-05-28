@@ -8,4 +8,10 @@ public class FieldInit {
 			final int y = x;
 		};
 	}
+
+	static Object closure(final int z) {
+		return new Object() {
+			final int y = z;
+		};
+	}
 }
