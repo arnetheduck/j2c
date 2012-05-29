@@ -9,7 +9,21 @@ public class SuperTest extends ConstructorTest {
 		super(i);
 	}
 
-	static class X extends Exception {
+	static class S {
+	}
+
+	static class T extends S {
+		T() {
+			super();
+		}
+	}
+
+	static class Y {
+		Y(String x) {
+		}
+	}
+
+	static class X extends Y {
 		X() {
 			super("Test");
 		}

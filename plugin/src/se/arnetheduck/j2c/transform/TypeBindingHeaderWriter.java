@@ -126,6 +126,11 @@ public class TypeBindingHeaderWriter {
 			pw.print(TransformUtil.indent(1));
 			pw.print(TransformUtil.name(tb));
 			pw.println("() { }");
+
+			pw.print(TransformUtil.indent(1));
+			pw.print("void ");
+			pw.print(TransformUtil.CTOR);
+			pw.println("() { }");
 		}
 
 		pw.println("};");
@@ -204,6 +209,7 @@ public class TypeBindingHeaderWriter {
 			pw.print(TransformUtil.CTOR);
 			TransformUtil.printParams(pw, tb, mb, ctx);
 		}
+
 		pw.println(";");
 
 		TransformUtil.declareBridge(pw, tb, mb, ctx);

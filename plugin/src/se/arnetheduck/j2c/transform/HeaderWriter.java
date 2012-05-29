@@ -260,6 +260,8 @@ public class HeaderWriter extends TransformWriter {
 			String sep = printNestedParams(closures);
 
 			println(");");
+
+			printlni("void ", TransformUtil.CTOR, "() { }");
 		}
 	}
 
