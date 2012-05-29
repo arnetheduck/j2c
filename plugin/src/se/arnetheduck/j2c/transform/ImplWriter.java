@@ -1702,6 +1702,103 @@ public class ImplWriter extends TransformWriter {
 			}
 		}
 
+		if (node.getExpression().resolveTypeBinding().isEnum()) {
+			enumSwitch(node, statements);
+		} else {
+			nativeSwitch(node, statements);
+		}
+
+		if (!vdss.isEmpty()) {
+			indent--;
+			printlni("}");
+		}
+		println();
+
+		return false;
+	}
+
+	private void enumSwitch(SwitchStatement node, List<Statement> statements) {
+		// Enum constants as we translate them are not C++ constexpr:s so we
+		// have to rewrite the switch to if:s
+		printlni("{");
+		indent++;
+		printi("auto v = ");
+		node.getExpression().accept(this);
+		println(";");
+
+		List<SwitchCase> cases = new ArrayList<SwitchCase>();
+		List<SwitchCase> allCases = new ArrayList<SwitchCase>();
+
+		boolean wasCase = false;
+		boolean indented = false;
+		for (Statement s : statements) {
+			if (s instanceof SwitchCase) {
+				if (!wasCase && indented) {
+					indent--;
+					printlni("}");
+					indented = false;
+				}
+
+				SwitchCase sc = (SwitchCase) s;
+				if (!sc.isDefault()) {
+					cases.add(sc);
+				}
+
+				allCases.add(sc);
+				wasCase = true;
+			} else {
+				if (wasCase) {
+					printi("if(");
+					String sep = "";
+					for (SwitchCase x : cases) {
+						print(sep);
+						sep = " || ";
+						print("(v == ");
+						x.getExpression().accept(this);
+						print(")");
+					}
+
+					if (allCases.get(allCases.size() - 1).isDefault()) {
+						sep = sep.length() == 0 ? "" : " && ";
+						print("(");
+						for (SwitchCase x : allCases) {
+							if (!x.isDefault()) {
+								print(sep);
+								sep = " && ";
+								print("(v != ");
+								x.getExpression().accept(this);
+								print(")");
+							}
+						}
+						print(")");
+					}
+
+					println(") {");
+					indent++;
+					indented = true;
+				}
+
+				wasCase = false;
+				if (s instanceof BreakStatement || s instanceof ReturnStatement) {
+					cases.clear();
+				}
+				if (!(s instanceof BreakStatement)) {
+					s.accept(this);
+				}
+			}
+
+		}
+
+		if (indented) {
+			indent--;
+			printlni("}");
+		}
+
+		indent--;
+		printlni("}");
+	}
+
+	private void nativeSwitch(SwitchStatement node, List<Statement> statements) {
 		printi("switch (");
 		node.getExpression().accept(this);
 		println(") {");
@@ -1766,14 +1863,6 @@ public class ImplWriter extends TransformWriter {
 		}
 
 		printlni("}");
-
-		if (!vdss.isEmpty()) {
-			indent--;
-			printlni("}");
-		}
-		println();
-
-		return false;
 	}
 
 	private List<VariableDeclarationStatement> declarations(
