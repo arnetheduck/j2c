@@ -1095,7 +1095,16 @@ public class ImplWriter extends TransformWriter {
 		visitAllCSV(node.updaters(), false);
 
 		print(") ");
+		if (!(node.getBody() instanceof Block)) {
+			println();
+			indent++;
+		}
 		handleLabelBody(node.getParent(), node.getBody());
+
+		if (!(node.getBody() instanceof Block)) {
+			indent--;
+		}
+
 		println();
 		return false;
 	}

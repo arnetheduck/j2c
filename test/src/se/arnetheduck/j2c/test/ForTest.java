@@ -10,6 +10,11 @@ public class ForTest {
 		}
 	}
 
+	public void noBlock() {
+		for (int i = 0; i < 10; ++i)
+			i = i + 1;
+	}
+
 	public int enhancedArray() {
 		int ret = 0;
 		int[] x = new int[] { 0, 1, 2 };
