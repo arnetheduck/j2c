@@ -832,12 +832,7 @@ public class ImplWriter extends TransformWriter {
 
 		if (!node.arguments().isEmpty()) {
 			print(sep);
-			Iterable<Expression> arguments = node.arguments();
-			visitAllCSV(arguments, false);
-
-			for (Expression e : arguments) {
-				hardDep(e.resolveTypeBinding());
-			}
+			callArgs(node.resolveConstructorBinding(), node.arguments(), false);
 		}
 
 		print("))");
@@ -862,12 +857,7 @@ public class ImplWriter extends TransformWriter {
 
 		print(TransformUtil.CTOR);
 
-		Iterable<Expression> arguments = node.arguments();
-		visitAllCSV(arguments, true);
-
-		for (Expression e : arguments) {
-			hardDep(e.resolveTypeBinding());
-		}
+		callArgs(node.resolveConstructorBinding(), node.arguments(), true);
 
 		println(";");
 		return false;
@@ -994,7 +984,7 @@ public class ImplWriter extends TransformWriter {
 		 */
 		print(" = new ", qcn);
 
-		visitAllCSV(node.arguments(), true);
+		callArgs(node.resolveConstructorBinding(), node.arguments(), true);
 
 		println(";");
 
@@ -1375,7 +1365,19 @@ public class ImplWriter extends TransformWriter {
 
 		Expression expr = node.getExpression();
 		if (expr != null) {
+			IMethodBinding mb = b.getMethodDeclaration();
+			ITypeBinding etb = expr.resolveTypeBinding().getErasure();
+			boolean castExpr = !etb.isSubTypeCompatible(mb.getDeclaringClass());
+
+			if (castExpr) {
+				dynamicCast(mb.getDeclaringClass());
+			}
+
 			expr.accept(this);
+
+			if (castExpr) {
+				print(")");
+			}
 
 			if (expr instanceof Name) {
 				IBinding eb = ((Name) expr).resolveBinding();
@@ -1396,19 +1398,33 @@ public class ImplWriter extends TransformWriter {
 
 		node.getName().accept(this);
 
-		List<Expression> arguments = node.arguments();
-		print("(");
+		callArgs(b, node.arguments(), true);
 
+		if (erased) {
+			print(")");
+		}
+
+		return false;
+	}
+
+	private void callArgs(IMethodBinding b, List<Expression> arguments,
+			boolean parens) {
+		if (parens) {
+			print("(");
+		}
 		String s = "";
 		boolean isVarArg = false;
+		b = b.getMethodDeclaration();
+
 		for (int i = 0; i < arguments.size(); ++i) {
 			print(s);
 			s = ", ";
 			if (b.isVarargs() && i == b.getParameterTypes().length - 1) {
 				ITypeBinding tb = b.getParameterTypes()[b.getParameterTypes().length - 1]
 						.getErasure();
-				if (!arguments.get(i).resolveTypeBinding()
-						.isAssignmentCompatible(tb)) {
+				ITypeBinding ab = arguments.get(i).resolveTypeBinding();
+
+				if (!ab.isAssignmentCompatible(tb)) {
 					hardDep(tb);
 					print("new " + TransformUtil.relativeCName(tb, type, true),
 							"(");
@@ -1447,13 +1463,9 @@ public class ImplWriter extends TransformWriter {
 			print("new " + TransformUtil.relativeCName(tb, type, true), "(0)");
 		}
 
-		print(")");
-
-		if (erased) {
+		if (parens) {
 			print(")");
 		}
-
-		return false;
 	}
 
 	private boolean returnErased(IMethodBinding b) {
@@ -1474,7 +1486,8 @@ public class ImplWriter extends TransformWriter {
 		ITypeBinding tb = argument.resolveTypeBinding();
 		if (!tb.isEqualTo(pb)
 				&& !(argument.resolveBoxing() || argument.resolveUnboxing())) {
-			// Java has different implicit cast rules
+			// Java has different implicit cast rules when resolving overloads
+			// i e int -> double promotion, int vs pointer
 			hardDep(tb);
 			print("static_cast< ", TransformUtil.relativeCName(pb, type, true),
 					TransformUtil.ref(pb), " >(");
@@ -1613,12 +1626,7 @@ public class ImplWriter extends TransformWriter {
 
 		print("super::", TransformUtil.CTOR);
 
-		Iterable<Expression> arguments = node.arguments();
-		visitAllCSV(arguments, true);
-
-		for (Expression e : arguments) {
-			hardDep(e.resolveTypeBinding());
-		}
+		callArgs(node.resolveConstructorBinding(), node.arguments(), true);
 
 		println(";");
 		return false;
@@ -1657,12 +1665,7 @@ public class ImplWriter extends TransformWriter {
 
 		node.getName().accept(this);
 
-		Iterable<Expression> arguments = node.arguments();
-		visitAllCSV(arguments, true);
-
-		for (Expression e : arguments) {
-			hardDep(e.resolveTypeBinding());
-		}
+		callArgs(b, node.arguments(), true);
 
 		if (erased) {
 			print(")");
