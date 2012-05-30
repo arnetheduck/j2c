@@ -720,16 +720,8 @@ public class ImplWriter extends TransformWriter {
 
 		visitAll(node.statements());
 
-		if (parent instanceof LabeledStatement) {
-			LabeledStatement ls = (LabeledStatement) parent;
-			indent--;
-			printlni("}");
-			ls.getLabel().accept(this);
-			println("_break:;");
-		} else {
-			indent--;
-			printi("}");
-		}
+		indent--;
+		printi("}");
 
 		return false;
 	}
@@ -738,7 +730,7 @@ public class ImplWriter extends TransformWriter {
 	public boolean visit(BreakStatement node) {
 		if (node.getLabel() != null) {
 			printi("goto ");
-			node.getLabel().accept(this);
+			printLabelName(node.getLabel());
 			print("_break");
 		} else {
 			printi("break");
@@ -866,16 +858,49 @@ public class ImplWriter extends TransformWriter {
 	@Override
 	public boolean visit(ContinueStatement node) {
 		if (node.getLabel() != null) {
-			printi("goto ");
-			node.getLabel().accept(this);
-			print("_cont");
+			Statement loop = outerLoop(node);
+			if (isLabeled(loop, node.getLabel())) {
+				printlni("continue;");
+			} else {
+				printi("{ ");
+				printLabelName(node.getLabel());
+				println("_continue = true; break; }");
+			}
 		} else {
-			printi("continue");
+			printlni("continue;");
 		}
 
-		println(";");
-
 		return false;
+	}
+
+	private void printContinueVar(LabeledStatement s) {
+		printi("bool ");
+		printLabelName(s.getLabel());
+		println("_continue = false;");
+	}
+
+	private static final List<Class<? extends Statement>> loopStatements = Arrays
+			.asList(DoStatement.class, EnhancedForStatement.class,
+					ForStatement.class, WhileStatement.class);
+
+	private static boolean isLabeled(Statement s) {
+		return s.getParent() instanceof LabeledStatement;
+	}
+
+	private static boolean isLabeled(Statement s, SimpleName label) {
+		return isLabeled(s)
+				&& ((LabeledStatement) s.getParent()).getLabel()
+						.getIdentifier().equals(label.getIdentifier());
+	}
+
+	private static Statement outerLoop(ASTNode node) {
+		for (ASTNode n = node; n != null; n = n.getParent()) {
+			if (loopStatements.contains(n.getClass())) {
+				return (Statement) n;
+			}
+		}
+
+		throw new Error("Expected a loop");
 	}
 
 	@Override
@@ -908,19 +933,9 @@ public class ImplWriter extends TransformWriter {
 			node.getParameter().accept(this);
 			println(" = (*_a)[_i];");
 			printi();
-			node.getBody().accept(this);
-			if (label != null) {
-				println();
-				label.getLabel().accept(this);
-				println("_cont:;");
-			}
+			handleLoopBody(node, node.getBody());
 			indent--;
 			printlni("}");
-			if (label != null) {
-				println();
-				label.getLabel().accept(this);
-				println("_break:;");
-			}
 			indent--;
 			printlni("}");
 		} else {
@@ -936,21 +951,12 @@ public class ImplWriter extends TransformWriter {
 			dynamicCast(tb);
 			println("_i->next());");
 			printi();
-			node.getBody().accept(this);
-			if (label != null) {
-				println();
-				printlni(label.getLabel().getIdentifier() + "_cont:;");
-			}
+			handleLoopBody(node, node.getBody());
+
 			indent--;
 			printlni("}");
 
-			if (label != null) {
-				println();
-				printlni(label.getLabel().getIdentifier() + "_break:;");
-			}
-
-			ITypeBinding tb2 = eb;
-			hardDep(getIterator(tb2));
+			hardDep(getIterator(eb));
 		}
 
 		return false;
@@ -1096,17 +1102,9 @@ public class ImplWriter extends TransformWriter {
 		visitAllCSV(node.updaters(), false);
 
 		print(") ");
-		if (!(node.getBody() instanceof Block)) {
-			println();
-			indent++;
-		}
-		handleLabelBody(node.getParent(), node.getBody());
 
-		if (!(node.getBody() instanceof Block)) {
-			indent--;
-		}
+		handleLoopBody(node, node.getBody());
 
-		println();
 		return false;
 	}
 
@@ -1264,18 +1262,45 @@ public class ImplWriter extends TransformWriter {
 		return false;
 	}
 
+	private List<LabeledStatement> labels = new ArrayList<LabeledStatement>();
+	private Map<String, Integer> labelNames = new TreeMap<String, Integer>();
+
 	@Override
 	public boolean visit(LabeledStatement node) {
+		labels.add(node);
+		String id = node.getLabel().getIdentifier();
+		if (labelNames.containsKey(id)) {
+			labelNames.put(id, labelNames.get(id) + 1);
+		} else {
+			labelNames.put(id, 0);
+		}
+
 		node.getBody().accept(this);
+
+		labels.remove(labels.size() - 1);
+
+		// We put a break label after the body as this is where break <label>
+		// statements end up
+		println();
+		printLabelName(node.getLabel());
+		println("_break:;");
 
 		return false;
 	}
 
-	private void handleLabelBody(ASTNode parent, Statement body) {
-		if (parent instanceof LabeledStatement) {
-			LabeledStatement node = (LabeledStatement) parent;
+	private void printLabelName(SimpleName n) {
+		n.accept(this);
+		int i = labelNames.get(n.getIdentifier());
+		print(i);
+	}
+
+	private void handleLoopBody(Statement loop, Statement body) {
+		if (loop.getParent() instanceof LabeledStatement) {
+			LabeledStatement ls = (LabeledStatement) loop.getParent();
 			println("{");
 			indent++;
+
+			printContinueVar(ls);
 
 			if (body instanceof Block) {
 				visitAll(((Block) body).statements());
@@ -1284,14 +1309,39 @@ public class ImplWriter extends TransformWriter {
 			}
 
 			println();
-			node.getLabel().accept(this);
-			println("_cont:;");
+
+			handleLoopEnd(loop);
 			indent--;
 			printlni("}");
-			node.getLabel().accept(this);
-			println("_break:;");
 		} else {
-			body.accept(this);
+			if (body instanceof Block) {
+				body.accept(this);
+			} else {
+				println();
+				indent++;
+				printi();
+				body.accept(this);
+				indent--;
+			}
+
+			println();
+		}
+	}
+
+	private void handleLoopEnd(Statement loop) {
+		for (LabeledStatement ls : labels) {
+			if (!loopStatements.contains(ls.getBody())) {
+				continue;
+			}
+
+			printi("if(");
+			printLabelName(ls.getLabel());
+			print("_continue) ");
+			if (isLabeled(loop, ls.getLabel())) {
+				println("continue;");
+			} else {
+				println("break;");
+			}
 		}
 	}
 
@@ -2105,7 +2155,7 @@ public class ImplWriter extends TransformWriter {
 		printi("while (");
 		node.getExpression().accept(this);
 		print(") ");
-		handleLabelBody(node.getParent(), node.getBody());
+		handleLoopBody(node, node.getBody());
 
 		return false;
 	}
