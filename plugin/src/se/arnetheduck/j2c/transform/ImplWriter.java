@@ -805,9 +805,20 @@ public class ImplWriter extends TransformWriter {
 			node.getExpression().accept(this);
 			sep = ", ";
 		} else if (TransformUtil.isInner(tb) && !TransformUtil.outerStatic(tb)) {
-			print(tb.getDeclaringClass().getErasure()
-					.isEqualTo(type.getErasure()) ? "this" : TransformUtil
-					.outerThisName(tb));
+			ITypeBinding dce = tb.getDeclaringClass().getErasure();
+			if (type.isSubTypeCompatible(dce.getErasure())) {
+				print("this");
+			} else {
+				String sep2 = "";
+				for (ITypeBinding x = type; x.getDeclaringClass() != null
+						&& !x.isSubTypeCompatible(dce); x = x
+						.getDeclaringClass().getErasure()) {
+					hardDep(x.getDeclaringClass());
+
+					print(sep2, TransformUtil.outerThisName(x));
+					sep2 = "->";
+				}
+			}
 			sep = ", ";
 		}
 
