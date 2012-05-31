@@ -15,6 +15,7 @@ import org.eclipse.core.runtime.IPath;
 import org.eclipse.jdt.core.IJavaElement;
 import org.eclipse.jdt.core.IType;
 import org.eclipse.jdt.core.dom.ASTNode;
+import org.eclipse.jdt.core.dom.AnnotationTypeDeclaration;
 import org.eclipse.jdt.core.dom.AnonymousClassDeclaration;
 import org.eclipse.jdt.core.dom.ArrayAccess;
 import org.eclipse.jdt.core.dom.ArrayCreation;
@@ -141,6 +142,15 @@ public class ImplWriter extends TransformWriter {
 		StringWriter body = getBody(new ArrayList<EnumConstantDeclaration>(),
 				node.bodyDeclarations());
 		writeType(body);
+	}
+
+	public void write(AnnotationTypeDeclaration node) throws Exception {
+		for (BodyDeclaration bd : (Iterable<BodyDeclaration>) node
+				.bodyDeclarations()) {
+			if (bd instanceof TypeDeclaration) {
+				visit((TypeDeclaration) bd);
+			}
+		}
 	}
 
 	public void write(AnonymousClassDeclaration node) throws Exception {

@@ -17,6 +17,8 @@ import java.util.TreeSet;
 import org.eclipse.core.runtime.IPath;
 import org.eclipse.jdt.core.dom.AST;
 import org.eclipse.jdt.core.dom.ASTNode;
+import org.eclipse.jdt.core.dom.AnnotationTypeDeclaration;
+import org.eclipse.jdt.core.dom.AnnotationTypeMemberDeclaration;
 import org.eclipse.jdt.core.dom.Block;
 import org.eclipse.jdt.core.dom.BodyDeclaration;
 import org.eclipse.jdt.core.dom.EnumConstantDeclaration;
@@ -58,6 +60,11 @@ public class HeaderWriter extends TransformWriter {
 	}
 
 	public void write(TypeDeclaration node) throws Exception {
+		writeType(node.getAST(), new ArrayList<EnumConstantDeclaration>(),
+				node.bodyDeclarations(), new ArrayList<IVariableBinding>());
+	}
+
+	public void write(AnnotationTypeDeclaration node) throws Exception {
 		writeType(node.getAST(), new ArrayList<EnumConstantDeclaration>(),
 				node.bodyDeclarations(), new ArrayList<IVariableBinding>());
 	}
@@ -404,6 +411,16 @@ public class HeaderWriter extends TransformWriter {
 
 	private List<Class<?>> handledBlocks = new ArrayList<Class<?>>(
 			Arrays.asList(TypeDeclaration.class));
+
+	@Override
+	public boolean visit(AnnotationTypeMemberDeclaration node) {
+		printi();
+		TransformUtil.printSignature(out, type, node.resolveBinding(), ctx,
+				false);
+		// TODO defaults
+		println(" = 0;");
+		return false;
+	}
 
 	@Override
 	public boolean visit(Block node) {

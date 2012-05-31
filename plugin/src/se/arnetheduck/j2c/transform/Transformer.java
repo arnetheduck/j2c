@@ -19,6 +19,7 @@ import org.eclipse.jdt.core.dom.AST;
 import org.eclipse.jdt.core.dom.ASTParser;
 import org.eclipse.jdt.core.dom.ASTRequestor;
 import org.eclipse.jdt.core.dom.AbstractTypeDeclaration;
+import org.eclipse.jdt.core.dom.AnnotationTypeDeclaration;
 import org.eclipse.jdt.core.dom.CompilationUnit;
 import org.eclipse.jdt.core.dom.EnumDeclaration;
 import org.eclipse.jdt.core.dom.IBinding;
@@ -118,7 +119,8 @@ public class Transformer {
 						for (AbstractTypeDeclaration type : (List<AbstractTypeDeclaration>) ast
 								.types()) {
 							ITypeBinding tb = type.resolveBinding();
-							if (tb.isClass() || tb.isInterface() || tb.isEnum()) {
+							if (tb.isAnnotation() || tb.isClass()
+									|| tb.isInterface() || tb.isEnum()) {
 								writeHeader(root, tb);
 							}
 						}
@@ -171,6 +173,15 @@ public class Transformer {
 				.types()) {
 			if (type instanceof TypeDeclaration) {
 				TypeDeclaration td = (TypeDeclaration) type;
+				ImplWriter iw = new ImplWriter(root, this,
+						type.resolveBinding(), ui);
+
+				iw.write(td);
+				HeaderWriter hw = new HeaderWriter(root, this,
+						type.resolveBinding(), ui);
+				hw.write(td);
+			} else if (type instanceof AnnotationTypeDeclaration) {
+				AnnotationTypeDeclaration td = (AnnotationTypeDeclaration) type;
 				ImplWriter iw = new ImplWriter(root, this,
 						type.resolveBinding(), ui);
 
