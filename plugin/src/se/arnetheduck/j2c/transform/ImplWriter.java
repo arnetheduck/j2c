@@ -12,6 +12,8 @@ import java.util.Set;
 import java.util.TreeMap;
 
 import org.eclipse.core.runtime.IPath;
+import org.eclipse.jdt.core.IJavaElement;
+import org.eclipse.jdt.core.IType;
 import org.eclipse.jdt.core.dom.ASTNode;
 import org.eclipse.jdt.core.dom.AnonymousClassDeclaration;
 import org.eclipse.jdt.core.dom.ArrayAccess;
@@ -1595,7 +1597,16 @@ public class ImplWriter extends TransformWriter {
 		}
 
 		if (vb.getDeclaringMethod() == null) {
-			return false;
+			IJavaElement je = vb.getJavaElement().getAncestor(
+					IJavaElement.INITIALIZER);
+
+			// Could be a variable in an initializer block
+			if (je == null
+					|| (((IType) je.getAncestor(IJavaElement.TYPE))
+							.getFullyQualifiedName().equals(((IType) type
+							.getJavaElement()).getFullyQualifiedName()))) {
+				return false;
+			}
 		}
 
 		if (!Modifier.isFinal(vb.getModifiers())) {
@@ -1603,7 +1614,7 @@ public class ImplWriter extends TransformWriter {
 		}
 		VariableDeclarationFragment vdf = initializer(node);
 		if (vdf != null) {
-		} else {
+		} else if (vb.getDeclaringMethod() != null) {
 			IMethodBinding pmb = parentMethod(node);
 			if (pmb.isEqualTo(vb.getDeclaringMethod())) {
 				return false;
