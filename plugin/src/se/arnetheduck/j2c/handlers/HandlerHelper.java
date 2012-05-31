@@ -9,6 +9,7 @@ import org.eclipse.jdt.core.ICompilationUnit;
 import org.eclipse.jdt.core.IJavaProject;
 import org.eclipse.jdt.core.IPackageFragment;
 import org.eclipse.jdt.core.IPackageFragmentRoot;
+import org.eclipse.jface.dialogs.MessageDialog;
 
 import se.arnetheduck.j2c.transform.Transformer;
 
@@ -58,7 +59,16 @@ public class HandlerHelper {
 				.append("c" + project.getProject().getLocation().lastSegment())
 				.addTrailingSeparator();
 
-		t.process(p, units.toArray(new ICompilationUnit[0]));
+		if (!p.toFile().exists()) {
+			MessageDialog
+					.openError(
+							null,
+							"Output directory missing",
+							p.toFile().getAbsolutePath()
+									+ " does not exist, create it before running plugin\nAnything in this folder will be wiped each time you run!");
+		} else {
+			t.process(p, units.toArray(new ICompilationUnit[0]));
+		}
 	}
 
 	public static void process(ICompilationUnit unit) throws Exception {
