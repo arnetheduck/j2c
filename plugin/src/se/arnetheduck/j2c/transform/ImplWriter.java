@@ -849,9 +849,9 @@ public class ImplWriter extends TransformWriter {
 		ITypeBinding tb = node.resolveTypeBinding();
 		node.getExpression().accept(this);
 		print(" ? ");
-		cast(node.getThenExpression(), tb);
+		cast(node.getThenExpression(), tb, true);
 		print(" : ");
-		cast(node.getElseExpression(), tb);
+		cast(node.getElseExpression(), tb, true);
 		return false;
 	}
 
@@ -1211,9 +1211,9 @@ public class ImplWriter extends TransformWriter {
 			if (tb.getName().equals("float") || tb.getName().equals("double")) {
 				fmod = true;
 				print("std::fmod(");
-				cast(node.getLeftOperand(), tb);
+				cast(node.getLeftOperand(), tb, true);
 				print(", ");
-				cast(node.getRightOperand(), tb);
+				cast(node.getRightOperand(), tb, true);
 				print(")");
 
 				return false;
@@ -1478,6 +1478,7 @@ public class ImplWriter extends TransformWriter {
 		boolean isVarArg = false;
 		b = b.getMethodDeclaration();
 
+		boolean hasOverloads = isOverloaded(b);
 		for (int i = 0; i < arguments.size(); ++i) {
 			print(s);
 			s = ", ";
@@ -1507,7 +1508,7 @@ public class ImplWriter extends TransformWriter {
 			}
 
 			Expression argument = arguments.get(i);
-			cast(argument, pb);
+			cast(argument, pb, hasOverloads);
 
 			if (isVarArg && i == arguments.size() - 1
 					&& i >= b.getParameterTypes().length - 1) {
@@ -1530,6 +1531,11 @@ public class ImplWriter extends TransformWriter {
 		}
 	}
 
+	private boolean isOverloaded(IMethodBinding b) {
+		return TransformUtil.allMethods(b.getDeclaringClass(), b.getName())
+				.size() > 1;
+	}
+
 	private boolean returnErased(IMethodBinding b) {
 		return !b
 				.getMethodDeclaration()
@@ -1544,17 +1550,22 @@ public class ImplWriter extends TransformWriter {
 				"* >(");
 	}
 
-	private void cast(Expression argument, ITypeBinding pb) {
+	private void cast(Expression argument, ITypeBinding pb, boolean hasOverloads) {
 		ITypeBinding tb = argument.resolveTypeBinding();
 		if (!tb.isEqualTo(pb)
 				&& !(argument.resolveBoxing() || argument.resolveUnboxing())) {
 			// Java has different implicit cast rules when resolving overloads
 			// i e int -> double promotion, int vs pointer
 			hardDep(tb);
-			print("static_cast< ", TransformUtil.relativeCName(pb, type, true),
-					TransformUtil.ref(pb), " >(");
-			argument.accept(this);
-			print(")");
+			if (hasOverloads || true) {
+				print("static_cast< ",
+						TransformUtil.relativeCName(pb, type, true),
+						TransformUtil.ref(pb), " >(");
+				argument.accept(this);
+				print(")");
+			} else {
+				argument.accept(this);
+			}
 		} else {
 			argument.accept(this);
 		}

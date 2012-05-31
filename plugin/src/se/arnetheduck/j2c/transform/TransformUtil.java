@@ -11,6 +11,8 @@ import java.util.Collection;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
+import java.util.TreeSet;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
@@ -548,20 +550,36 @@ public final class TransformUtil {
 		return null;
 	}
 
+	public static Set<IMethodBinding> allMethods(ITypeBinding tb, String name) {
+		Set<IMethodBinding> ret = new TreeSet<IMethodBinding>(
+				new Transformer.BindingComparator());
+
+		methods(tb, name, ret);
+
+		ret.addAll(baseMethods(tb, name));
+
+		return ret;
+	}
+
 	public static List<IMethodBinding> baseMethods(ITypeBinding tb, String name) {
 		List<IMethodBinding> ret = new ArrayList<IMethodBinding>();
 
 		// Order significant in case an interface is inherited multiple times
 		Collection<ITypeBinding> bases = getAllBases(tb);
 		for (ITypeBinding base : bases) {
-			for (IMethodBinding mb : base.getDeclaredMethods()) {
-				if (mb.getName().equals(name)) {
-					ret.add(mb);
-				}
-			}
+			methods(base, name, ret);
 		}
 
 		return ret;
+	}
+
+	private static void methods(ITypeBinding tb, String name,
+			Collection<IMethodBinding> ret) {
+		for (IMethodBinding mb : tb.getDeclaredMethods()) {
+			if (mb.getName().equals(name)) {
+				ret.add(mb);
+			}
+		}
 	}
 
 	public static String indent(int n) {
