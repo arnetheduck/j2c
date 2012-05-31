@@ -217,11 +217,10 @@ public final class TransformUtil {
 	}
 
 	public static Object checkConstant(Object cv) {
-		if (cv instanceof Character) {
+		if (cv instanceof Byte) {
+			return "int8_t(" + cv + ")";
+		} else if (cv instanceof Character) {
 			char ch = (char) cv;
-			if ((ch < ' ')) {
-				return (int) ch;
-			}
 
 			if (ch == '\'') {
 				return "u'\\''";
@@ -231,11 +230,15 @@ public final class TransformUtil {
 				return "u'\\\\'";
 			}
 
-			if (ch >= 0xd800 && ch <= 0xdfff) {
-				return (int) ch;
+			if (ch >= 0xd800 && ch <= 0xdfff || ch == 0xffff) {
+				// These are not valid for the \\u syntax
+				// 0xffff is a G++ bug:
+				// http://gcc.gnu.org/bugzilla/show_bug.cgi?id=41698
+				return String.format("char16_t(0x%04x)", (int) ch);
 			}
 
-			if (ch > 127) {
+			if (ch < ' ' || ch > 127) {
+				// These depend on source file charset, so play it safe
 				return String.format("u'\\u%04x'", (int) ch);
 			}
 
@@ -244,20 +247,22 @@ public final class TransformUtil {
 			if ((int) cv == Integer.MIN_VALUE) {
 				// In C++, the part after '-' is parsed first which overflows
 				// so we do a trick
-				return "(-0x7fffffff-1)";
+				return "int32_t(-0x7fffffff-1)";
 			}
 
-			return cv;
+			return "int32_t(" + cv + ")";
 		} else if (cv instanceof Long) {
 			if ((long) cv == Long.MIN_VALUE) {
 				// In C++, the part before '-' is parsed first which overflows
 				// so we do a trick
-				return "(-0x7fffffffffffffffLL-1)";
+				return "int64_t(-0x7fffffffffffffffLL-1)";
 			}
 
-			return cv + "ll";
+			return "int64_t(" + cv + "ll)";
 		} else if (cv instanceof Float) {
 			return cv + "f";
+		} else if (cv instanceof Short) {
+			return "int16_t(" + cv + ")";
 		}
 
 		return cv;
