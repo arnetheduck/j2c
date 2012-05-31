@@ -8,6 +8,7 @@ import java.util.Set;
 import java.util.TreeSet;
 
 import org.eclipse.core.runtime.IPath;
+import org.eclipse.core.runtime.IProgressMonitor;
 import org.eclipse.jdt.core.BindingKey;
 import org.eclipse.jdt.core.ICompilationUnit;
 import org.eclipse.jdt.core.IJavaElement;
@@ -36,6 +37,8 @@ public class Transformer {
 
 	private final String name;
 
+	private final IPath root;
+
 	public final static class BindingComparator implements Comparator<IBinding> {
 		@Override
 		public int compare(IBinding o1, IBinding o2) {
@@ -51,9 +54,11 @@ public class Transformer {
 		}
 	}
 
-	public Transformer(IJavaProject project, String name) throws Exception {
+	public Transformer(IJavaProject project, String name, IPath root)
+			throws Exception {
 		this.project = project;
 		this.name = name;
+		this.root = root;
 
 		parser.setProject(project);
 		parser.setKind(ASTParser.K_COMPILATION_UNIT);
@@ -81,8 +86,9 @@ public class Transformer {
 
 	Set<ITypeBinding> mains = new TreeSet<ITypeBinding>(new BindingComparator());
 
-	public void process(final IPath root, ICompilationUnit... units)
+	public void process(IProgressMonitor monitor, ICompilationUnit... units)
 			throws Exception {
+		monitor.subTask("Removing old files");
 		File[] files = root.toFile().listFiles();
 
 		for (File f : files) {
@@ -92,9 +98,9 @@ public class Transformer {
 			}
 		}
 
-		write(root, units);
+		write(monitor, units);
 
-		processDeps(root);
+		processDeps(monitor);
 
 		softDeps.addAll(headers);
 		ForwardWriter fw = new ForwardWriter(root);
@@ -110,7 +116,8 @@ public class Transformer {
 		System.out.println("Done.");
 	}
 
-	private void write(final IPath root, ICompilationUnit... units) {
+	private void write(final IProgressMonitor monitor,
+			ICompilationUnit... units) {
 		parse(units, new ASTRequestor() {
 			@Override
 			public void acceptAST(ICompilationUnit source, CompilationUnit ast) {
@@ -119,13 +126,10 @@ public class Transformer {
 						for (AbstractTypeDeclaration type : (List<AbstractTypeDeclaration>) ast
 								.types()) {
 							ITypeBinding tb = type.resolveBinding();
-							if (tb.isAnnotation() || tb.isClass()
-									|| tb.isInterface() || tb.isEnum()) {
-								writeHeader(root, tb);
-							}
+							writeHeader(root, tb);
 						}
 					} else {
-						writeImpl(root, ast);
+						writeImpl(monitor, root, ast);
 					}
 				} catch (Throwable e) {
 					e.printStackTrace();
@@ -165,7 +169,11 @@ public class Transformer {
 		hw.write();
 	}
 
-	private void writeImpl(IPath root, CompilationUnit cu) throws Exception {
+	private void writeImpl(IProgressMonitor monitor, IPath root,
+			CompilationUnit cu) throws Exception {
+		monitor.subTask("Processing " + cu.getJavaElement().getElementName()
+				+ " (" + done.size() + " done, " + hardDeps.size()
+				+ " dependencies pending)");
 		UnitInfo ui = new UnitInfo();
 		cu.accept(ui);
 
@@ -206,7 +214,7 @@ public class Transformer {
 		done.addAll(ui.types);
 	}
 
-	public void processDeps(IPath root) {
+	public void processDeps(IProgressMonitor monitor) {
 		while (!hardDeps.isEmpty()) {
 			softDeps.addAll(hardDeps);
 
@@ -261,13 +269,15 @@ public class Transformer {
 			}
 
 			if (!units.isEmpty()) {
-				write(root, units.toArray(new ICompilationUnit[0]));
+				write(monitor, units.toArray(new ICompilationUnit[0]));
 			}
 		}
 	}
 
 	void hardDep(ITypeBinding dep) {
-		TransformUtil.addDep(dep, hardDeps);
+		if (!done.contains(dep)) {
+			TransformUtil.addDep(dep, hardDeps);
+		}
 	}
 
 	void softDep(ITypeBinding dep) {

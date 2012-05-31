@@ -5,6 +5,10 @@ import java.util.Arrays;
 import java.util.List;
 
 import org.eclipse.core.runtime.IPath;
+import org.eclipse.core.runtime.IProgressMonitor;
+import org.eclipse.core.runtime.IStatus;
+import org.eclipse.core.runtime.Status;
+import org.eclipse.core.runtime.jobs.Job;
 import org.eclipse.jdt.core.ICompilationUnit;
 import org.eclipse.jdt.core.IJavaProject;
 import org.eclipse.jdt.core.IPackageFragment;
@@ -50,12 +54,11 @@ public class HandlerHelper {
 		process(project, units);
 	}
 
-	private static void process(IJavaProject project,
-			List<ICompilationUnit> units) throws Exception {
-		Transformer t = new Transformer(project, project.getProject().getName());
-
+	private static void process(final IJavaProject project,
+			final List<ICompilationUnit> units) throws Exception {
 		// We will write to the source folder prefixed with "c"
-		IPath p = project.getProject().getLocation().removeLastSegments(1)
+		final IPath p = project.getProject().getLocation()
+				.removeLastSegments(1)
 				.append("c" + project.getProject().getLocation().lastSegment())
 				.addTrailingSeparator();
 
@@ -67,7 +70,29 @@ public class HandlerHelper {
 							p.toFile().getAbsolutePath()
 									+ " does not exist, create it before running plugin\nAnything in this folder will be wiped each time you run!");
 		} else {
-			t.process(p, units.toArray(new ICompilationUnit[0]));
+			Job job = new Job("C++ translation") {
+				@Override
+				protected IStatus run(IProgressMonitor monitor) {
+					// Set total number of work units
+					monitor.beginTask("Translating to C++",
+							IProgressMonitor.UNKNOWN);
+					try {
+						Transformer t = new Transformer(project, project
+								.getProject().getName(), p);
+
+						t.process(monitor,
+								units.toArray(new ICompilationUnit[0]));
+					} catch (Exception e) {
+						e.printStackTrace();
+						return Status.CANCEL_STATUS;
+					}
+
+					return Status.OK_STATUS;
+				}
+			};
+
+			job.setPriority(Job.BUILD);
+			job.schedule();
 		}
 	}
 
