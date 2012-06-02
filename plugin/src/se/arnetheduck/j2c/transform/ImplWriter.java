@@ -420,15 +420,32 @@ public class ImplWriter extends TransformWriter {
 
 	private void printFieldInit(String sep) {
 		ITypeBinding sb = type.getSuperclass();
-		if (sb != null && TransformUtil.isInner(sb)
-				&& !TransformUtil.outerStatic(sb)) {
+		if (sb != null && TransformUtil.hasOuterThis(sb)) {
 			printi(sep);
 			print("super(");
-			print(TransformUtil.outerThisName(sb));
+			String sepx = "";
+			for (ITypeBinding tb = type; tb.getDeclaringClass() != null; tb = tb
+					.getDeclaringClass().getErasure()) {
+				print(sepx);
+				sepx = "->";
+				print(TransformUtil.outerThisName(tb));
+				if (tb.getDeclaringClass()
+						.getErasure()
+						.isSubTypeCompatible(
+								sb.getDeclaringClass().getErasure())) {
+					break;
+				}
+
+			}
+
 			println(")");
 			sep = ", ";
-		} else if (TransformUtil.isInner(type)
-				&& !TransformUtil.outerStatic(type)) {
+		}
+
+		if (TransformUtil.hasOuterThis(type)
+				&& (sb == null || sb.getDeclaringClass() == null || !type
+						.getDeclaringClass().getErasure()
+						.isEqualTo(sb.getDeclaringClass().getErasure()))) {
 			printi(sep);
 			printInit(TransformUtil.outerThisName(type));
 			sep = ", ";
@@ -808,7 +825,7 @@ public class ImplWriter extends TransformWriter {
 		if (node.getExpression() != null) {
 			node.getExpression().accept(this);
 			sep = ", ";
-		} else if (TransformUtil.isInner(tb) && !TransformUtil.outerStatic(tb)) {
+		} else if (TransformUtil.hasOuterThis(tb)) {
 			ITypeBinding dce = tb.getDeclaringClass().getErasure();
 			if (type.isSubTypeCompatible(dce.getErasure())) {
 				print("this");

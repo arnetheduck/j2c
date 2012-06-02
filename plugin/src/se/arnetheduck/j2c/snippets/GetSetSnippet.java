@@ -1,7 +1,5 @@
 package se.arnetheduck.j2c.snippets;
 
-import java.lang.reflect.Modifier;
-
 import org.eclipse.jdt.core.dom.IMethodBinding;
 import org.eclipse.jdt.core.dom.ITypeBinding;
 import org.eclipse.jdt.core.dom.IVariableBinding;
@@ -31,11 +29,10 @@ public class GetSetSnippet extends EmptySnippet {
 			return true;
 
 		String v = new String(vname);
-		boolean ms = Modifier.isStatic(mb.getModifiers());
+		boolean ms = TransformUtil.isStatic(mb);
 
 		for (IVariableBinding vb : tb.getDeclaredFields()) {
-			if (ms == Modifier.isStatic(vb.getModifiers())
-					&& vb.getName().equals(v)) {
+			if (ms == TransformUtil.isStatic(vb) && vb.getName().equals(v)) {
 				if (getter
 						&& mb.getReturnType().isAssignmentCompatible(
 								vb.getType())) {

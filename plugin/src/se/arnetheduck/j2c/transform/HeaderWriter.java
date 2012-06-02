@@ -179,11 +179,14 @@ public class HeaderWriter extends TransformWriter {
 			}
 
 			ITypeBinding sb = type.getSuperclass();
-			boolean superInner = sb != null && TransformUtil.isInner(sb)
-					&& !TransformUtil.outerStatic(sb);
-			if (!superInner && TransformUtil.isInner(type)
-					&& !TransformUtil.outerStatic(type)) {
-				printlni(TransformUtil.outerThis(type), ";");
+			boolean superInner = sb != null && TransformUtil.hasOuterThis(sb);
+			if (TransformUtil.hasOuterThis(type)) {
+				if (!superInner
+						|| sb.getDeclaringClass() != null
+						&& !type.getDeclaringClass().getErasure()
+								.isEqualTo(sb.getDeclaringClass().getErasure())) {
+					printlni(TransformUtil.outerThis(type), ";");
+				}
 			}
 
 			if (closures != null) {

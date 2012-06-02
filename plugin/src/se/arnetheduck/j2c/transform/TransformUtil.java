@@ -458,8 +458,40 @@ public final class TransformUtil {
 		return Modifier.isStatic(vb.getModifiers());
 	}
 
-	public static boolean isInner(ITypeBinding tb) {
-		return tb.isNested() && !isStatic(tb);
+	public static boolean hasOuterThis(ITypeBinding tb) {
+		if (tb.isLocal()) {
+			IMethodBinding mb = tb.getDeclaringMethod();
+			if (mb == null) {
+				IJavaElement je = tb.getJavaElement();
+
+				try {
+					while (je != null) {
+						if (je instanceof IInitializer) {
+							return !Flags.isStatic(((IInitializer) je)
+									.getFlags());
+						}
+
+						if (je instanceof IField) {
+							return !Flags.isStatic(((IField) je).getFlags());
+						}
+
+						je = je.getParent();
+					}
+				} catch (JavaModelException e) {
+					throw new Error(e);
+				}
+
+				return false;
+			}
+
+			return !isStatic(mb);
+		}
+
+		if (tb.isNested()) {
+			return !isStatic(tb);
+		}
+
+		return false;
 	}
 
 	public static String outerThis(ITypeBinding tb) {
@@ -473,38 +505,6 @@ public final class TransformUtil {
 
 	public static String thisName(ITypeBinding tb) {
 		return TransformUtil.name(tb) + "_this";
-	}
-
-	public static boolean outerStatic(ITypeBinding tb) {
-		if (tb.isLocal()) {
-			IMethodBinding mb = tb.getDeclaringMethod();
-			if (mb == null) {
-				IJavaElement je = tb.getJavaElement();
-
-				try {
-					while (je != null) {
-						if (je instanceof IInitializer) {
-							return Flags.isStatic(((IInitializer) je)
-									.getFlags());
-						}
-
-						if (je instanceof IField) {
-							return Flags.isStatic(((IField) je).getFlags());
-						}
-
-						je = je.getParent();
-					}
-				} catch (JavaModelException e) {
-					throw new Error(e);
-				}
-
-				return false;
-			}
-
-			return isStatic(mb);
-		}
-
-		return isStatic(tb.getDeclaringClass());
 	}
 
 	/** Filter out C++ keywords */

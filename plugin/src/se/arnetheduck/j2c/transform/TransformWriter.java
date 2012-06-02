@@ -153,11 +153,9 @@ public abstract class TransformWriter extends ASTVisitor {
 
 	protected String printNestedParams(Collection<IVariableBinding> closures) {
 		String sep = "";
-		if (TransformUtil.isInner(type)) {
-			if (!TransformUtil.outerStatic(type)) {
-				print(TransformUtil.outerThis(type));
-				sep = ", ";
-			}
+		if (TransformUtil.hasOuterThis(type)) {
+			print(TransformUtil.outerThis(type));
+			sep = ", ";
 		}
 
 		if (closures != null) {
