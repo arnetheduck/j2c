@@ -13,7 +13,6 @@ public class MakefileWriter {
 
 	public MakefileWriter(IPath root) {
 		this.root = root;
-
 	}
 
 	public void write(String name, Iterable<ITypeBinding> types,

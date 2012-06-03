@@ -55,7 +55,6 @@ import org.eclipse.jdt.core.dom.VariableDeclarationFragment;
 import org.eclipse.jdt.core.dom.VariableDeclarationStatement;
 import org.eclipse.jdt.core.dom.WildcardType;
 
-import se.arnetheduck.j2c.transform.Transformer.BindingComparator;
 
 public abstract class TransformWriter extends ASTVisitor {
 	protected final Transformer ctx;
@@ -81,8 +80,10 @@ public abstract class TransformWriter extends ASTVisitor {
 	}
 
 	protected void hardDep(ITypeBinding dep) {
-		TransformUtil.addDep(dep, hardDeps);
-		ctx.hardDep(dep);
+		if (dep != null) {
+			TransformUtil.addDep(dep, hardDeps);
+			ctx.hardDep(dep);
+		}
 	}
 
 	protected void hardDep(Type type, Collection<ITypeBinding> deps) {

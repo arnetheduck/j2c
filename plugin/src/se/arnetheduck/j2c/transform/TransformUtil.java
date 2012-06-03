@@ -552,7 +552,7 @@ public final class TransformUtil {
 
 	public static Set<IMethodBinding> allMethods(ITypeBinding tb, String name) {
 		Set<IMethodBinding> ret = new TreeSet<IMethodBinding>(
-				new Transformer.BindingComparator());
+				new BindingComparator());
 
 		methods(tb, name, ret);
 

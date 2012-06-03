@@ -19,6 +19,7 @@ import org.eclipse.jdt.core.dom.AST;
 import org.eclipse.jdt.core.dom.ASTNode;
 import org.eclipse.jdt.core.dom.AnnotationTypeDeclaration;
 import org.eclipse.jdt.core.dom.AnnotationTypeMemberDeclaration;
+import org.eclipse.jdt.core.dom.AnonymousClassDeclaration;
 import org.eclipse.jdt.core.dom.Block;
 import org.eclipse.jdt.core.dom.BodyDeclaration;
 import org.eclipse.jdt.core.dom.EnumConstantDeclaration;
@@ -42,41 +43,45 @@ import org.eclipse.jdt.core.dom.VariableDeclarationFragment;
 
 public class HeaderWriter extends TransformWriter {
 	private final IPath root;
+	private final Collection<IVariableBinding> closures;
+
+	private final Set<String> usings = new HashSet<String>();
+	private final List<MethodDeclaration> constructors = new ArrayList<MethodDeclaration>();
+	private final List<IMethodBinding> methods = new ArrayList<IMethodBinding>();
 
 	private String lastAccess;
 
 	private boolean hasClinit;
 	private boolean hasInit;
 
-	private final List<MethodDeclaration> constructors = new ArrayList<MethodDeclaration>();
-	private final List<IMethodBinding> methods = new ArrayList<IMethodBinding>();
-
-	private Set<String> usings = new HashSet<String>();
-
 	public HeaderWriter(IPath root, Transformer ctx, ITypeBinding type,
-			UnitInfo unitInfo) {
+			UnitInfo unitInfo, Collection<IVariableBinding> closures) {
 		super(ctx, type, unitInfo);
 		this.root = root;
-	}
-
-	public void write(TypeDeclaration node) throws Exception {
-		writeType(node.getAST(), new ArrayList<EnumConstantDeclaration>(),
-				node.bodyDeclarations(), new ArrayList<IVariableBinding>());
+		this.closures = closures;
 	}
 
 	public void write(AnnotationTypeDeclaration node) throws Exception {
 		writeType(node.getAST(), new ArrayList<EnumConstantDeclaration>(),
-				node.bodyDeclarations(), new ArrayList<IVariableBinding>());
+				node.bodyDeclarations());
+	}
+
+	public void write(AnonymousClassDeclaration node) throws Exception {
+		writeType(node.getAST(), new ArrayList<EnumConstantDeclaration>(),
+				node.bodyDeclarations());
 	}
 
 	public void write(EnumDeclaration node) throws Exception {
-		writeType(node.getAST(), node.enumConstants(), node.bodyDeclarations(),
-				new ArrayList<IVariableBinding>());
+		writeType(node.getAST(), node.enumConstants(), node.bodyDeclarations());
 	}
 
-	public void writeType(AST ast, List<EnumConstantDeclaration> enums,
-			List<BodyDeclaration> declarations,
-			Collection<IVariableBinding> closures) {
+	public void write(TypeDeclaration node) throws Exception {
+		writeType(node.getAST(), new ArrayList<EnumConstantDeclaration>(),
+				node.bodyDeclarations());
+	}
+
+	private void writeType(AST ast, List<EnumConstantDeclaration> enums,
+			List<BodyDeclaration> declarations) {
 
 		ctx.headers.add(type);
 		try {
@@ -317,7 +322,7 @@ public class HeaderWriter extends TransformWriter {
 		}
 
 		Set<IMethodBinding> im = new TreeSet<IMethodBinding>(
-				new Transformer.BindingComparator());
+				new BindingComparator());
 
 		for (ITypeBinding ib : interfaces(type)) {
 			im.addAll(Arrays.asList(ib.getDeclaredMethods()));

@@ -11,7 +11,6 @@ import org.eclipse.jdt.core.dom.IMethodBinding;
 import org.eclipse.jdt.core.dom.ITypeBinding;
 import org.eclipse.jdt.core.dom.IVariableBinding;
 
-import se.arnetheduck.j2c.transform.Transformer.BindingComparator;
 
 public class StubWriter {
 	private final IPath root;
@@ -61,8 +60,14 @@ public class StubWriter {
 		StringWriter ret = new StringWriter();
 		pw = new PrintWriter(ret);
 
-		for (IVariableBinding vb : type.getDeclaredFields()) {
-			printField(vb);
+		if (!natives) {
+			pw.print("::java::lang::Class *");
+			pw.print(TransformUtil.qualifiedCName(type, true));
+			pw.print("::class_ = 0;");
+
+			for (IVariableBinding vb : type.getDeclaredFields()) {
+				printField(vb);
+			}
 		}
 
 		pw.println();

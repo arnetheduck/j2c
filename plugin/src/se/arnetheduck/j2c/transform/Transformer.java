@@ -2,6 +2,7 @@ package se.arnetheduck.j2c.transform;
 
 import java.io.File;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Comparator;
 import java.util.List;
 import java.util.Set;
@@ -23,7 +24,6 @@ import org.eclipse.jdt.core.dom.AbstractTypeDeclaration;
 import org.eclipse.jdt.core.dom.AnnotationTypeDeclaration;
 import org.eclipse.jdt.core.dom.CompilationUnit;
 import org.eclipse.jdt.core.dom.EnumDeclaration;
-import org.eclipse.jdt.core.dom.IBinding;
 import org.eclipse.jdt.core.dom.IPackageBinding;
 import org.eclipse.jdt.core.dom.ITypeBinding;
 import org.eclipse.jdt.core.dom.TypeDeclaration;
@@ -38,13 +38,6 @@ public class Transformer {
 	private final String name;
 
 	private final IPath root;
-
-	public final static class BindingComparator implements Comparator<IBinding> {
-		@Override
-		public int compare(IBinding o1, IBinding o2) {
-			return o1.getKey().compareTo(o2.getKey());
-		}
-	}
 
 	public final static class ICUComparator implements
 			Comparator<ICompilationUnit> {
@@ -113,29 +106,51 @@ public class Transformer {
 
 		MakefileWriter mw = new MakefileWriter(root);
 		mw.write(name, impls, stubs, natives, mains);
+
+		monitor.done();
 		System.out.println("Done.");
 	}
 
 	private void write(final IProgressMonitor monitor,
 			ICompilationUnit... units) {
-		parse(units, new ASTRequestor() {
-			@Override
-			public void acceptAST(ICompilationUnit source, CompilationUnit ast) {
-				try {
-					if (hasError(ast)) {
-						for (AbstractTypeDeclaration type : (List<AbstractTypeDeclaration>) ast
-								.types()) {
-							ITypeBinding tb = type.resolveBinding();
-							writeHeader(root, tb);
+
+		for (ICompilationUnit[] u : split(units, 1024)) {
+			parse(units, new ASTRequestor() {
+				@Override
+				public void acceptAST(ICompilationUnit source,
+						CompilationUnit ast) {
+					try {
+						if (hasError(ast)) {
+							for (AbstractTypeDeclaration type : (List<AbstractTypeDeclaration>) ast
+									.types()) {
+								ITypeBinding tb = type.resolveBinding();
+								writeHeader(root, tb);
+							}
+						} else {
+							writeImpl(monitor, root, ast);
 						}
-					} else {
-						writeImpl(monitor, root, ast);
+					} catch (Throwable e) {
+						e.printStackTrace();
 					}
-				} catch (Throwable e) {
-					e.printStackTrace();
 				}
-			}
-		});
+			});
+		}
+	}
+
+	private static ICompilationUnit[][] split(ICompilationUnit[] units,
+			int chunksize) {
+		ICompilationUnit[][] ret = new ICompilationUnit[(int) Math
+				.ceil(units.length / (double) chunksize)][];
+
+		int start = 0;
+
+		for (int i = 0; i < ret.length; i++) {
+			ret[i] = Arrays.copyOfRange(units, start,
+					Math.min(units.length, start + chunksize));
+			start += chunksize;
+		}
+
+		return ret;
 	}
 
 	private static boolean hasError(CompilationUnit ast) {
@@ -148,19 +163,16 @@ public class Transformer {
 		return false;
 	}
 
-	private List<CompilationUnit> parse(ICompilationUnit[] units,
-			ASTRequestor requestor) {
+	private void parse(ICompilationUnit[] units, ASTRequestor requestor) {
 		System.out.println("Processing " + units.length + " units");
 		parser.setProject(project);
 		parser.setKind(ASTParser.K_COMPILATION_UNIT);
 		parser.setResolveBindings(true);
 
-		final List<CompilationUnit> ret = new ArrayList<CompilationUnit>();
 		String bogusKey = BindingKey.createTypeBindingKey("java.lang.Object"); //$NON-NLS-1$
 		String[] keys = new String[] { bogusKey }; // We need at least one here
 
 		parser.createASTs(units, keys, requestor, null);
-		return ret;
 	}
 
 	private void writeHeader(IPath root, ITypeBinding tb) throws Exception {
@@ -171,9 +183,10 @@ public class Transformer {
 
 	private void writeImpl(IProgressMonitor monitor, IPath root,
 			CompilationUnit cu) throws Exception {
-		monitor.subTask("Processing " + cu.getJavaElement().getElementName()
-				+ " (" + done.size() + " done, " + hardDeps.size()
-				+ " dependencies pending)");
+		monitor.subTask("Processing "
+				+ cu.getJavaElement().getResource().getProjectRelativePath()
+						.toString() + " (" + done.size() + " done, "
+				+ hardDeps.size() + " dependencies pending)");
 		UnitInfo ui = new UnitInfo();
 		cu.accept(ui);
 
@@ -185,18 +198,12 @@ public class Transformer {
 						type.resolveBinding(), ui);
 
 				iw.write(td);
-				HeaderWriter hw = new HeaderWriter(root, this,
-						type.resolveBinding(), ui);
-				hw.write(td);
 			} else if (type instanceof AnnotationTypeDeclaration) {
 				AnnotationTypeDeclaration td = (AnnotationTypeDeclaration) type;
 				ImplWriter iw = new ImplWriter(root, this,
 						type.resolveBinding(), ui);
 
 				iw.write(td);
-				HeaderWriter hw = new HeaderWriter(root, this,
-						type.resolveBinding(), ui);
-				hw.write(td);
 			} else if (type instanceof EnumDeclaration) {
 				EnumDeclaration td = (EnumDeclaration) type;
 
@@ -204,10 +211,6 @@ public class Transformer {
 						type.resolveBinding(), ui);
 
 				iw.write(td);
-				HeaderWriter hw = new HeaderWriter(root, this,
-						type.resolveBinding(), ui);
-				hw.write(td);
-				done.add(iw.type);
 			}
 		}
 

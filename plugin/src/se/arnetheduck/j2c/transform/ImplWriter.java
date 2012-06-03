@@ -82,8 +82,6 @@ import org.eclipse.jdt.core.dom.VariableDeclarationFragment;
 import org.eclipse.jdt.core.dom.VariableDeclarationStatement;
 import org.eclipse.jdt.core.dom.WhileStatement;
 
-import se.arnetheduck.j2c.transform.Transformer.BindingComparator;
-
 public class ImplWriter extends TransformWriter {
 	private final IPath root;
 	private final Set<IVariableBinding> closures;
@@ -122,41 +120,40 @@ public class ImplWriter extends TransformWriter {
 		}
 	}
 
-	public void write(EnumDeclaration node) throws Exception {
-		StringWriter body = getBody(node.enumConstants(),
-				node.bodyDeclarations());
-		writeType(body);
-	}
-
-	public void write(TypeDeclaration node) throws Exception {
-		if (node.isInterface()) {
-			for (BodyDeclaration bd : (Iterable<BodyDeclaration>) node
-					.bodyDeclarations()) {
-				if (bd instanceof TypeDeclaration) {
-					visit((TypeDeclaration) bd);
-				}
-			}
-			return;
-		}
-
+	public void write(AnnotationTypeDeclaration node) throws Exception {
 		StringWriter body = getBody(new ArrayList<EnumConstantDeclaration>(),
 				node.bodyDeclarations());
 		writeType(body);
-	}
 
-	public void write(AnnotationTypeDeclaration node) throws Exception {
-		for (BodyDeclaration bd : (Iterable<BodyDeclaration>) node
-				.bodyDeclarations()) {
-			if (bd instanceof TypeDeclaration) {
-				visit((TypeDeclaration) bd);
-			}
-		}
+		HeaderWriter hw = new HeaderWriter(root, ctx, type, unitInfo, closures);
+		hw.write(node);
 	}
 
 	public void write(AnonymousClassDeclaration node) throws Exception {
 		StringWriter body = getBody(new ArrayList<EnumConstantDeclaration>(),
 				node.bodyDeclarations());
 		writeType(body);
+
+		HeaderWriter hw = new HeaderWriter(root, ctx, type, unitInfo, closures);
+		hw.write(node);
+	}
+
+	public void write(EnumDeclaration node) throws Exception {
+		StringWriter body = getBody(node.enumConstants(),
+				node.bodyDeclarations());
+		writeType(body);
+
+		HeaderWriter hw = new HeaderWriter(root, ctx, type, unitInfo, closures);
+		hw.write(node);
+	}
+
+	public void write(TypeDeclaration node) throws Exception {
+		StringWriter body = getBody(new ArrayList<EnumConstantDeclaration>(),
+				node.bodyDeclarations());
+		writeType(body);
+
+		HeaderWriter hw = new HeaderWriter(root, ctx, type, unitInfo, closures);
+		hw.write(node);
 	}
 
 	private StringWriter getBody(List<EnumConstantDeclaration> enums,
@@ -187,56 +184,63 @@ public class ImplWriter extends TransformWriter {
 				println("#include <cmath>");
 			}
 
-			println();
-			println("using namespace java::lang;");
-
-			for (ImportDeclaration node : unitInfo.imports) {
-				if (node.isStatic()) {
-					continue; // We qualify references to static imports
-				}
-
-				if (node.isOnDemand()
-						&& node.getName().resolveBinding() instanceof IPackageBinding) {
-					println("using namespace ::", TransformUtil.cname(node
-							.getName().getFullyQualifiedName()), ";");
-				} else {
-					println("using ",
-							TransformUtil.qualifiedCName(
-									(ITypeBinding) node.resolveBinding(), true),
-							";");
-				}
-			}
-
+			println("::java::lang::Class *",
+					TransformUtil.qualifiedCName(type, true), "::class_ = 0;");
 			println();
 
-			if (type.getQualifiedName().equals("java.lang.Object")) {
-				out.println("java::lang::Object::~Object()");
-				out.println("{");
-				out.println("}");
-				out.println("");
+			if (!(type.isInterface() || type.isAnnotation())) {
+
+				println();
+				println("using namespace java::lang;");
+
+				for (ImportDeclaration node : unitInfo.imports) {
+					if (node.isStatic()) {
+						continue; // We qualify references to static imports
+					}
+
+					if (node.isOnDemand()
+							&& node.getName().resolveBinding() instanceof IPackageBinding) {
+						println("using namespace ::", TransformUtil.cname(node
+								.getName().getFullyQualifiedName()), ";");
+					} else {
+						println("using ", TransformUtil.qualifiedCName(
+								(ITypeBinding) node.resolveBinding(), true),
+								";");
+					}
+				}
+
+				println();
+
+				if (type.getQualifiedName().equals("java.lang.Object")) {
+					out.println("java::lang::Object::~Object()");
+					out.println("{");
+					out.println("}");
+					out.println("");
+				}
+
+				if (needsFinally) {
+					makeFinally();
+				}
+
+				if (needsSynchronized) {
+					makeSynchronized();
+				}
+
+				if (clinit != null) {
+					makeClinit();
+				}
+
+				if (init != null) {
+					makeInit();
+				}
+
+				println(cons);
+
+				print(body.toString());
 			}
-
-			if (needsFinally) {
-				makeFinally();
-			}
-
-			if (needsSynchronized) {
-				makeSynchronized();
-			}
-
-			if (clinit != null) {
-				makeClinit();
-			}
-
-			if (init != null) {
-				makeInit();
-			}
-
-			println(cons);
-
-			print(body.toString());
 
 			out.close();
+
 			ctx.impls.add(type);
 
 			if (hasNatives) {
@@ -614,10 +618,6 @@ public class ImplWriter extends TransformWriter {
 			}
 		}
 
-		HeaderWriter hw = new HeaderWriter(root, ctx, tb, unitInfo);
-
-		hw.writeType(node.getAST(), new ArrayList<EnumConstantDeclaration>(),
-				node.bodyDeclarations(), iw.closures);
 		return false;
 	}
 
@@ -1039,11 +1039,6 @@ public class ImplWriter extends TransformWriter {
 		} catch (Exception e) {
 			throw new Error(e);
 		}
-
-		HeaderWriter hw = new HeaderWriter(root, ctx, tb, unitInfo);
-
-		hw.writeType(node.getAST(), node.enumConstants(),
-				node.bodyDeclarations(), iw.closures);
 
 		if (tb.isLocal()) {
 			localTypes.put(tb, iw);
@@ -2102,11 +2097,6 @@ public class ImplWriter extends TransformWriter {
 		} catch (Exception e) {
 			throw new Error(e);
 		}
-
-		HeaderWriter hw = new HeaderWriter(root, ctx, tb, unitInfo);
-
-		hw.writeType(node.getAST(), new ArrayList<EnumConstantDeclaration>(),
-				node.bodyDeclarations(), iw.closures);
 
 		if (tb.isLocal()) {
 			localTypes.put(tb, iw);
