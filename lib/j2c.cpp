@@ -13,7 +13,7 @@ void lock(java::lang::Object *) { }
 
 void unlock(java::lang::Object *) { }
 
-java::lang::String *lit(const wchar_t *) { return 0; }
+java::lang::String *lit(const char16_t *) { return 0; }
 
 java::lang::String *join(java::lang::String *lhs, java::lang::String *rhs) { return 0; }
 java::lang::String *join(java::lang::String *lhs, java::lang::Object *rhs) { return 0; }
