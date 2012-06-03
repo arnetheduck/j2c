@@ -819,11 +819,21 @@ public class ImplWriter extends TransformWriter {
 
 		hardDep(tb);
 
+		consArgs(node.getExpression(), node.arguments(),
+				node.resolveConstructorBinding(), tb);
+
+		print(")");
+
+		return false;
+	}
+
+	private void consArgs(Expression expression, List<Expression> arguments,
+			IMethodBinding mb, ITypeBinding tb) {
 		print("(");
 
 		String sep = "";
-		if (node.getExpression() != null) {
-			node.getExpression().accept(this);
+		if (expression != null) {
+			expression.accept(this);
 			sep = ", ";
 		} else if (TransformUtil.hasOuterThis(tb)) {
 			ITypeBinding dce = tb.getDeclaringClass().getErasure();
@@ -851,14 +861,12 @@ public class ImplWriter extends TransformWriter {
 			}
 		}
 
-		if (!node.arguments().isEmpty()) {
+		if (!arguments.isEmpty()) {
 			print(sep);
-			callArgs(node.resolveConstructorBinding(), node.arguments(), false);
+			callArgs(mb, arguments, false);
 		}
 
-		print("))");
-
-		return false;
+		print(")");
 	}
 
 	@Override
@@ -1014,17 +1022,18 @@ public class ImplWriter extends TransformWriter {
 
 		node.getName().accept(this);
 
-		/*
-		 * TODO needs an initializer class
-		 */
-		print(" = new ", qcn);
+		ITypeBinding tb = node.getAnonymousClassDeclaration() == null ? type
+				: node.getAnonymousClassDeclaration().resolveBinding();
 
-		callArgs(node.resolveConstructorBinding(), node.arguments(), true);
+		hardDep(tb);
+		print(" = new ", TransformUtil.qualifiedCName(tb, true));
+
+		consArgs(null, node.arguments(), node.resolveConstructorBinding(), tb);
 
 		println(";");
 
 		if (node.getAnonymousClassDeclaration() != null) {
-			// TODO node.getAnonymousClassDeclaration().accept(this);
+			node.getAnonymousClassDeclaration().accept(this);
 		}
 
 		return false;

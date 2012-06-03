@@ -472,7 +472,9 @@ public final class TransformUtil {
 						}
 
 						if (je instanceof IField) {
-							return !Flags.isStatic(((IField) je).getFlags());
+							IField field = (IField) je;
+							return !Flags.isStatic(field.getFlags())
+									&& !Flags.isEnum(field.getFlags());
 						}
 
 						je = je.getParent();
