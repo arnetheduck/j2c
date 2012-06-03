@@ -139,12 +139,14 @@ public class HeaderWriter extends TransformWriter {
 
 		indent++;
 
-		if (!type.isInterface()) {
+		if (!type.isInterface()
+				&& !type.getQualifiedName().equals(Object.class.getName())) {
 			printi("typedef ");
 			if (type.getSuperclass() != null) {
 				print(TransformUtil.relativeCName(type.getSuperclass(), type,
 						true));
 			} else {
+				assert (false);
 				print("::java::lang::Object");
 			}
 
@@ -163,12 +165,6 @@ public class HeaderWriter extends TransformWriter {
 		visitAll(enums);
 
 		printlni("static ::java::lang::Class *class_;");
-
-		if (type.getQualifiedName().equals("java.lang.Object")) {
-			out.println("public:");
-			out.print(TransformUtil.indent(1));
-			out.println("virtual ~Object();");
-		}
 
 		visitAll(declarations); // This will gather constructors
 
@@ -206,7 +202,10 @@ public class HeaderWriter extends TransformWriter {
 			makeEnumMethods();
 
 			makeClinit();
+
 			makeInit();
+
+			makeDtor();
 		}
 
 		indent--;
@@ -219,6 +218,15 @@ public class HeaderWriter extends TransformWriter {
 
 		out = old;
 		return sw.toString();
+	}
+
+	private void makeDtor() {
+		if (type.getQualifiedName().equals(Object.class.getName())) {
+			lastAccess = TransformUtil.printAccess(out, Modifier.PUBLIC,
+					lastAccess);
+			out.print(TransformUtil.indent(1));
+			out.println("virtual ~Object();");
+		}
 	}
 
 	private void makeClinit() {
@@ -275,7 +283,7 @@ public class HeaderWriter extends TransformWriter {
 
 			println(");");
 
-			printlni("void ", TransformUtil.CTOR, "() { }");
+			printlni("void ", TransformUtil.CTOR, "();");
 		}
 	}
 
@@ -541,7 +549,7 @@ public class HeaderWriter extends TransformWriter {
 
 			ITypeBinding rt = TransformUtil.returnType(node);
 			ctx.softDep(rt);
-			print(TransformUtil.qualifiedCName(rt, true), " ",
+			print(TransformUtil.relativeCName(rt, type, true), " ",
 					TransformUtil.ref(rt));
 
 			node.getName().accept(this);

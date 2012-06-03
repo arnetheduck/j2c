@@ -22,8 +22,8 @@ java::lang::String *join(java::lang::String *lhs, bool rhs) { return 0; }
 java::lang::String *join(bool lhs, java::lang::String *rhs) { return 0; }
 java::lang::String *join(java::lang::String *lhs, int8_t rhs) { return 0; }
 java::lang::String *join(int8_t lhs, java::lang::String *rhs) { return 0; }
-java::lang::String *join(java::lang::String *lhs, wchar_t rhs) { return 0; }
-java::lang::String *join(wchar_t lhs, java::lang::String *rhs) { return 0; }
+java::lang::String *join(java::lang::String *lhs, char16_t rhs) { return 0; }
+java::lang::String *join(char16_t lhs, java::lang::String *rhs) { return 0; }
 java::lang::String *join(java::lang::String *lhs, double rhs) { return 0; }
 java::lang::String *join(double lhs, java::lang::String *rhs) { return 0; }
 java::lang::String *join(java::lang::String *lhs, float rhs) { return 0; }

@@ -16,6 +16,7 @@ import org.eclipse.jdt.core.IJavaElement;
 import org.eclipse.jdt.core.IType;
 import org.eclipse.jdt.core.dom.ASTNode;
 import org.eclipse.jdt.core.dom.AnnotationTypeDeclaration;
+import org.eclipse.jdt.core.dom.AnnotationTypeMemberDeclaration;
 import org.eclipse.jdt.core.dom.AnonymousClassDeclaration;
 import org.eclipse.jdt.core.dom.ArrayAccess;
 import org.eclipse.jdt.core.dom.ArrayCreation;
@@ -211,13 +212,6 @@ public class ImplWriter extends TransformWriter {
 
 				println();
 
-				if (type.getQualifiedName().equals("java.lang.Object")) {
-					out.println("java::lang::Object::~Object()");
-					out.println("{");
-					out.println("}");
-					out.println("");
-				}
-
 				if (needsFinally) {
 					makeFinally();
 				}
@@ -236,8 +230,10 @@ public class ImplWriter extends TransformWriter {
 
 				println(cons);
 
-				print(body.toString());
+				makeDtor();
 			}
+
+			print(body.toString());
 
 			out.close();
 
@@ -245,7 +241,7 @@ public class ImplWriter extends TransformWriter {
 
 			if (hasNatives) {
 				StubWriter sw = new StubWriter(root, ctx, type);
-				sw.write(true);
+				sw.write(true, true);
 			}
 		} finally {
 			out = null;
@@ -416,10 +412,24 @@ public class ImplWriter extends TransformWriter {
 			}
 			println("}");
 			println();
+
+			println("void ", qname, "::", TransformUtil.CTOR, "()");
+			println("{");
+			println("}");
 		}
+
 		out.close();
 		out = old;
 		return sw.toString();
+	}
+
+	private void makeDtor() {
+		if (type.getQualifiedName().equals(Object.class.getName())) {
+			println("::java::lang::Object::~Object()");
+			println("{");
+			println("}");
+			println();
+		}
 	}
 
 	private void printFieldInit(String sep) {
@@ -595,6 +605,11 @@ public class ImplWriter extends TransformWriter {
 					.resolveTypeBinding().getQualifiedName()), "Value()");
 			unboxes.remove(unboxes.size() - 1);
 		}
+	}
+
+	@Override
+	public boolean visit(AnnotationTypeMemberDeclaration node) {
+		return false;
 	}
 
 	@Override
@@ -1081,10 +1096,6 @@ public class ImplWriter extends TransformWriter {
 		}
 
 		for (VariableDeclarationFragment f : fragments) {
-			if (TransformUtil.constantValue(f) != null) {
-				continue;
-			}
-
 			printi(TransformUtil.fieldModifiers(type, node.getModifiers(),
 					false, hasInitilializer(fragments)));
 
@@ -1101,7 +1112,8 @@ public class ImplWriter extends TransformWriter {
 
 			f.getName().accept(this);
 
-			if (f.getInitializer() != null) {
+			if (f.getInitializer() != null
+					&& TransformUtil.constantValue(f) == null) {
 				print(" = ");
 
 				ITypeBinding ib = f.getInitializer().resolveTypeBinding();

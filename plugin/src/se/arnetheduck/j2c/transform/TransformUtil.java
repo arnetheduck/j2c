@@ -627,7 +627,11 @@ public final class TransformUtil {
 
 		PrintWriter pw = new PrintWriter(fos);
 
-		pw.println("// Generated from " + tb.getJavaElement().getPath());
+		if (tb.getJavaElement() != null) {
+			pw.println("// Generated from " + tb.getJavaElement().getPath());
+		} else {
+			pw.println("// Generated");
+		}
 
 		pw.println(include(tb));
 		pw.println();

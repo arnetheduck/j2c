@@ -11,7 +11,6 @@ import org.eclipse.jdt.core.dom.IMethodBinding;
 import org.eclipse.jdt.core.dom.ITypeBinding;
 import org.eclipse.jdt.core.dom.IVariableBinding;
 
-
 public class StubWriter {
 	private final IPath root;
 	private final ITypeBinding type;
@@ -36,7 +35,7 @@ public class StubWriter {
 		ctx.hardDep(dep);
 	}
 
-	public void write(boolean natives) throws Exception {
+	public void write(boolean natives, boolean privates) throws Exception {
 		if (natives) {
 			ctx.natives.add(type);
 			pw = TransformUtil.openImpl(root, type, TransformUtil.NATIVE);
@@ -45,16 +44,18 @@ public class StubWriter {
 			pw = TransformUtil.openImpl(root, type, TransformUtil.STUB);
 		}
 
+		String body = body(natives, privates);
+
 		for (ITypeBinding tb : hardDeps) {
 			pw.println(TransformUtil.include(tb));
 		}
 
-		pw.print(body(natives));
+		pw.print(body);
 
 		pw.close();
 	}
 
-	public String body(boolean natives) throws Exception {
+	public String body(boolean natives, boolean privates) throws Exception {
 		PrintWriter old = pw;
 
 		StringWriter ret = new StringWriter();
@@ -63,7 +64,7 @@ public class StubWriter {
 		if (!natives) {
 			pw.print("::java::lang::Class *");
 			pw.print(TransformUtil.qualifiedCName(type, true));
-			pw.print("::class_ = 0;");
+			pw.println("::class_ = 0;");
 
 			for (IVariableBinding vb : type.getDeclaredFields()) {
 				printField(vb);
@@ -74,7 +75,7 @@ public class StubWriter {
 
 		for (IMethodBinding mb : type.getDeclaredMethods()) {
 			if (Modifier.isNative(mb.getModifiers()) == natives) {
-				printMethod(type, mb);
+				printMethod(type, mb, privates);
 			}
 		}
 
@@ -105,14 +106,16 @@ public class StubWriter {
 		println("_;");
 	}
 
-	private void printMethod(ITypeBinding tb, IMethodBinding mb)
-			throws Exception {
+	private void printMethod(ITypeBinding tb, IMethodBinding mb,
+			boolean privates) throws Exception {
 		if (Modifier.isAbstract(mb.getModifiers())) {
 			return;
 		}
 
-		if (Modifier.isPrivate(mb.getModifiers())) {
-			println("/* private: xxx " + mb.getName() + "(...) */");
+		if (Modifier.isPrivate(mb.getModifiers()) && !privates) {
+			print("/* private: ");
+			TransformUtil.printSignature(pw, tb, mb, ctx, true);
+			println(" */");
 			return;
 		}
 

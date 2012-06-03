@@ -1,5 +1,6 @@
 package se.arnetheduck.j2c.transform;
 
+import java.io.FileNotFoundException;
 import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.PrintWriter;
@@ -47,6 +48,11 @@ public class ArrayWriter {
 	}
 
 	public void write() throws IOException {
+		writeHeader();
+		writeImpl();
+	}
+
+	public void writeHeader() throws FileNotFoundException {
 		ctx.headers.add(type);
 
 		FileOutputStream fos = new FileOutputStream(root.append(
@@ -140,6 +146,17 @@ public class ArrayWriter {
 		pw.println("    void init(int i, T first, TRest... rest) { (*this)[i] = first; init(i+1, rest...); }");
 
 		pw.println("};");
+
+		pw.close();
+	}
+
+	private void writeImpl() throws IOException {
+		ctx.impls.add(type);
+		PrintWriter pw = TransformUtil.openImpl(root, type, "");
+
+		pw.print("::java::lang::Class *");
+		pw.print(TransformUtil.qualifiedCName(type, false));
+		pw.println("::class_ = 0;");
 
 		pw.close();
 	}
