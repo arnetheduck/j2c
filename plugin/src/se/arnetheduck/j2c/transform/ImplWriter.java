@@ -343,6 +343,11 @@ public class ImplWriter extends TransformWriter {
 			print(" = ");
 			field.getInitializer().accept(this);
 			println(";");
+
+			ITypeBinding ib = field.getInitializer().resolveTypeBinding();
+			if (!ib.isEqualTo(field.resolveBinding().getType())) {
+				hardDep(ib);
+			}
 		}
 		indent--;
 
@@ -1099,14 +1104,17 @@ public class ImplWriter extends TransformWriter {
 	public boolean visit(FieldDeclaration node) {
 		Iterable<VariableDeclarationFragment> fragments = node.fragments();
 
-		if (!Modifier.isStatic(node.getModifiers())) {
-			fields.add(node);
-			for (VariableDeclarationFragment f : fragments) {
-				if (f.getInitializer() != null) {
-					addInit(false, null, f);
-				}
-			}
+		boolean isStatic = Modifier.isStatic(node.getModifiers());
 
+		for (VariableDeclarationFragment f : fragments) {
+			if (f.getInitializer() != null
+					&& TransformUtil.constantValue(f) == null) {
+				addInit(isStatic, null, f);
+			}
+		}
+
+		if (!isStatic) {
+			fields.add(node);
 			return false;
 		}
 
@@ -1126,18 +1134,6 @@ public class ImplWriter extends TransformWriter {
 			print(TransformUtil.qualifiedCName(type, false), "::");
 
 			f.getName().accept(this);
-
-			if (f.getInitializer() != null
-					&& TransformUtil.constantValue(f) == null) {
-				print(" = ");
-
-				ITypeBinding ib = f.getInitializer().resolveTypeBinding();
-				if (!ib.isEqualTo(tb)) {
-					hardDep(ib);
-				}
-
-				f.getInitializer().accept(this);
-			}
 
 			println(";");
 		}

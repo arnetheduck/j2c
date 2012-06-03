@@ -662,9 +662,12 @@ public class HeaderWriter extends TransformWriter {
 		if (v != null) {
 			print(" = ", v);
 		} else {
-			if (!Modifier.isStatic(node.resolveBinding().getModifiers())
-					&& node.getInitializer() != null) {
-				hasInit = true;
+			if (node.getInitializer() != null) {
+				if (Modifier.isStatic(node.resolveBinding().getModifiers())) {
+					hasClinit = true;
+				} else {
+					hasInit = true;
+				}
 			}
 		}
 
