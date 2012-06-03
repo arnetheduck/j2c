@@ -10,6 +10,7 @@ public class Classes {
 
 	Object[] x() {
 		Empty[] ee = h2;
+		ee[0] = ee[1];
 		return ee;
 	}
 

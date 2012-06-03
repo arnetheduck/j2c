@@ -22,7 +22,7 @@ public class MakefileWriter {
 				.toFile());
 		PrintWriter pw = new PrintWriter(fos);
 
-		pw.println("CXXFLAGS = -std=gnu++0x");
+		pw.println("CXXFLAGS = -g -std=gnu++0x");
 		pw.println("SRCS = \\");
 
 		for (ITypeBinding tb : types) {

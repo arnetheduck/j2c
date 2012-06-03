@@ -733,11 +733,26 @@ public class ImplWriter extends TransformWriter {
 			return false;
 		}
 
-		node.getLeftHandSide().accept(this);
+		Expression lhs = node.getLeftHandSide();
+		if (node.getOperator() == Operator.ASSIGN
+				&& lhs instanceof ArrayAccess
+				&& !((ArrayAccess) lhs).getArray().resolveTypeBinding()
+						.getComponentType().isPrimitive()) {
+			ArrayAccess aa = (ArrayAccess) node.getLeftHandSide();
+			hardDep(aa.getArray().resolveTypeBinding());
+			aa.getArray().accept(this);
+			print("->set(");
+			aa.getIndex().accept(this);
+			print(", ");
+			node.getRightHandSide().accept(this);
+			print(")");
+		} else {
+			node.getLeftHandSide().accept(this);
 
-		print(" ", node.getOperator(), " ");
+			print(" ", node.getOperator(), " ");
 
-		node.getRightHandSide().accept(this);
+			node.getRightHandSide().accept(this);
+		}
 
 		return false;
 	}

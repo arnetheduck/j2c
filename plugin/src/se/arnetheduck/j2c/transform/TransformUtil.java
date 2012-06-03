@@ -977,7 +977,7 @@ public final class TransformUtil {
 					+ "lhs, java::lang::String *rhs);");
 		}
 
-		pw.println("java::lang::String *lit(const char16_t *chars);");
+		pw.println("java::lang::String *lit(const char16_t *chars, int n);");
 		pw.println();
 	}
 

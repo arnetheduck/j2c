@@ -55,7 +55,6 @@ import org.eclipse.jdt.core.dom.VariableDeclarationFragment;
 import org.eclipse.jdt.core.dom.VariableDeclarationStatement;
 import org.eclipse.jdt.core.dom.WildcardType;
 
-
 public abstract class TransformWriter extends ASTVisitor {
 	protected final Transformer ctx;
 	protected final ITypeBinding type;
@@ -504,7 +503,8 @@ public abstract class TransformWriter extends ASTVisitor {
 
 	@Override
 	public boolean visit(StringLiteral node) {
-		print("lit(u", node.getEscapedValue(), ")");
+		print("lit(u", node.getEscapedValue(), ", ", node.getLiteralValue()
+				.length(), ")");
 
 		hardDep(node.getAST().resolveWellKnownType(String.class.getName()));
 
