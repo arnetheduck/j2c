@@ -12,7 +12,6 @@ import java.util.HashSet;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Set;
-import java.util.TreeSet;
 
 import org.eclipse.core.runtime.IPath;
 import org.eclipse.jdt.core.dom.AST;
@@ -313,54 +312,19 @@ public class HeaderWriter extends TransformWriter {
 		}
 	}
 
-	// In java, if a super class implements the method of an interface, it
-	// doesn't
-	// have to be reimplemented on the class implementing the interface
 	private void makeBaseCalls() {
 		if (Modifier.isAbstract(type.getModifiers())) {
 			return;
 		}
 
-		Set<IMethodBinding> im = new TreeSet<IMethodBinding>(
-				new BindingComparator());
-
-		for (ITypeBinding ib : interfaces(type)) {
-			im.addAll(Arrays.asList(ib.getDeclaredMethods()));
-		}
-
-		List<IMethodBinding> missing = new ArrayList<IMethodBinding>(im);
-
-		for (IMethodBinding imb : im) {
-			for (IMethodBinding mb : methods) {
-				if (mb.isSubsignature(imb)) {
-					missing.remove(imb);
-					break;
-				}
-			}
-
-			// Same method in two interfaces
-			for (IMethodBinding mb : missing) {
-				if (!mb.isEqualTo(imb) && mb.isSubsignature(imb)) {
-					missing.remove(imb);
-					break;
-				}
-			}
-		}
+		List<IMethodBinding> missing = TransformUtil.baseCallMethods(type);
 
 		for (IMethodBinding mb : missing) {
 			lastAccess = TransformUtil.printAccess(out, Modifier.PUBLIC,
 					lastAccess);
 
-			// These should be declared on a base type if the java code is valid
 			printi();
-			TransformUtil.printSignature(out, type, mb, ctx, false);
-			print(" { return super::", TransformUtil.name(mb), "(");
-			String sep = "";
-			for (int i = 0; i < mb.getParameterTypes().length; ++i) {
-				print(sep, "a", i);
-				sep = ", ";
-			}
-			println("); }");
+			TransformUtil.printSuperCall(out, type, mb, ctx);
 		}
 	}
 
@@ -392,7 +356,7 @@ public class HeaderWriter extends TransformWriter {
 		}
 	}
 
-	private static List<ITypeBinding> interfaces(ITypeBinding tb) {
+	static List<ITypeBinding> interfaces(ITypeBinding tb) {
 		if (tb.getInterfaces().length == 0) {
 			return Collections.emptyList();
 		}
@@ -496,8 +460,6 @@ public class HeaderWriter extends TransformWriter {
 					true, hasInitilializer(fragments)));
 
 			print(TransformUtil.relativeCName(tb, type, true), " ");
-
-			print(" ");
 
 			visitAllCSV(fragments, false);
 

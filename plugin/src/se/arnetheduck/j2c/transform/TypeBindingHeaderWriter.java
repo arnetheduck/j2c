@@ -16,6 +16,8 @@ public class TypeBindingHeaderWriter {
 	private final ITypeBinding type;
 	private final Transformer ctx;
 
+	private String lastAccess;
+
 	public TypeBindingHeaderWriter(IPath root, Transformer ctx,
 			ITypeBinding type) {
 		this.root = root;
@@ -54,8 +56,6 @@ public class TypeBindingHeaderWriter {
 
 		pw.println();
 
-		String lastAccess;
-
 		if (type.isInterface()) {
 			lastAccess = TransformUtil.PUBLIC;
 			pw.print("struct ");
@@ -89,7 +89,7 @@ public class TypeBindingHeaderWriter {
 		lastAccess = TransformUtil.printAccess(pw, Modifier.PUBLIC, lastAccess);
 
 		pw.print(TransformUtil.indent(1));
-		pw.println("static java::lang::Class *class_;");
+		pw.println("static ::java::lang::Class *class_;");
 
 		for (IVariableBinding vb : tb.getDeclaredFields()) {
 			lastAccess = TransformUtil.printAccess(pw, vb.getModifiers(),
@@ -104,8 +104,6 @@ public class TypeBindingHeaderWriter {
 		boolean hasEmptyConstructor = false;
 		boolean hasConstructor = false;
 		for (IMethodBinding mb : tb.getDeclaredMethods()) {
-			lastAccess = TransformUtil.printAccess(pw, mb.getModifiers(),
-					lastAccess);
 			printMethod(pw, tb, mb, usings);
 
 			hasConstructor |= mb.isConstructor();
@@ -132,6 +130,8 @@ public class TypeBindingHeaderWriter {
 			pw.print(TransformUtil.CTOR);
 			pw.println("() { }");
 		}
+
+		makeBaseCalls(pw);
 
 		pw.println("};");
 
@@ -167,6 +167,8 @@ public class TypeBindingHeaderWriter {
 
 	private void printMethod(PrintWriter pw, ITypeBinding tb,
 			IMethodBinding mb, Set<String> usings) throws Exception {
+		lastAccess = TransformUtil.printAccess(pw, mb.getModifiers(),
+				lastAccess);
 		if ((Modifier.isAbstract(mb.getModifiers()) || tb.isInterface())
 				&& TransformUtil.baseHasSame(mb, tb, ctx)) {
 			// Defining once more will lead to virtual inheritance issues
@@ -204,6 +206,10 @@ public class TypeBindingHeaderWriter {
 				pw.print("a" + i);
 			}
 			pw.println("); }");
+
+			lastAccess = TransformUtil.printAccess(pw, Modifier.PUBLIC,
+					lastAccess);
+
 			pw.print(TransformUtil.indent(1));
 			pw.print("void ");
 			pw.print(TransformUtil.CTOR);
@@ -220,6 +226,22 @@ public class TypeBindingHeaderWriter {
 				pw.print(TransformUtil.indent(1));
 				pw.println(using);
 			}
+		}
+	}
+
+	private void makeBaseCalls(PrintWriter pw) {
+		if (Modifier.isAbstract(type.getModifiers()) || !type.isClass()) {
+			return;
+		}
+
+		List<IMethodBinding> missing = TransformUtil.baseCallMethods(type);
+
+		for (IMethodBinding mb : missing) {
+			lastAccess = TransformUtil.printAccess(pw, Modifier.PUBLIC,
+					lastAccess);
+
+			pw.print(TransformUtil.indent(1));
+			TransformUtil.printSuperCall(pw, type, mb, ctx);
 		}
 	}
 }

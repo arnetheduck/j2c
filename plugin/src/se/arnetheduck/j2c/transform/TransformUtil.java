@@ -329,7 +329,7 @@ public final class TransformUtil {
 			return "";
 		}
 
-		return "/*  throws(" + toCSV(parameters) + ") */";
+		return " /* throws(" + toCSV(parameters) + ") */";
 	}
 
 	public static String annotations(Collection<Annotation> annotations) {
@@ -975,5 +975,54 @@ public final class TransformUtil {
 
 		pw.println("java::lang::String *lit(const char16_t *chars);");
 		pw.println();
+	}
+
+	/**
+	 * In java, if a super class implements the method of an interface, it
+	 * doesn't have to be re-implemented on the class implementing the
+	 * interface. In C++ we have to forward the call to the super method - this
+	 * method returns a list of methods needing such forwarding.
+	 */
+	public static List<IMethodBinding> baseCallMethods(ITypeBinding tb) {
+		Set<IMethodBinding> im = new TreeSet<IMethodBinding>(
+				new BindingComparator());
+
+		for (ITypeBinding ib : HeaderWriter.interfaces(tb)) {
+			im.addAll(Arrays.asList(ib.getDeclaredMethods()));
+		}
+
+		List<IMethodBinding> missing = new ArrayList<IMethodBinding>(im);
+
+		for (IMethodBinding imb : im) {
+			for (IMethodBinding mb : tb.getDeclaredMethods()) {
+				if (mb.isSubsignature(imb)) {
+					missing.remove(imb);
+					break;
+				}
+			}
+
+			// Same method in two interfaces
+			for (IMethodBinding mb : missing) {
+				if (!mb.isEqualTo(imb) && mb.isSubsignature(imb)) {
+					missing.remove(imb);
+					break;
+				}
+			}
+		}
+		return missing;
+	}
+
+	public static void printSuperCall(PrintWriter out, ITypeBinding type,
+			IMethodBinding mb, Transformer ctx) {
+		printSignature(out, type, mb, ctx, false);
+
+		out.print(" { return super::" + name(mb) + "(");
+		String sep = "";
+		for (int i = 0; i < mb.getParameterTypes().length; ++i) {
+			out.print(sep + "a" + i);
+			sep = ", ";
+		}
+
+		out.println("); }");
 	}
 }
