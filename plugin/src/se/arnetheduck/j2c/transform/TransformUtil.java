@@ -1029,4 +1029,21 @@ public final class TransformUtil {
 
 		out.println("); }");
 	}
+
+	public static void printClassLiteral(PrintWriter out, ITypeBinding type) {
+		out.println("extern ::java::lang::Class *class_(const char16_t *c, int n);");
+		out.println();
+		out.println("::java::lang::Class *" + qualifiedCName(type, false)
+				+ "::class_()");
+		out.println("{");
+		out.println("    static ::java::lang::Class *c = ::class_(u\""
+				+ type.getQualifiedName() + "\", "
+				+ type.getQualifiedName().length() + ");");
+		out.println("return c;");
+
+		out.println("}");
+		out.println();
+	}
+
+	public static final String CLASS_LITERAL = "static ::java::lang::Class *class_();";
 }

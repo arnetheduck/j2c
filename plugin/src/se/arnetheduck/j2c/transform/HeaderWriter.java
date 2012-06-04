@@ -164,7 +164,7 @@ public class HeaderWriter extends TransformWriter {
 
 		visitAll(enums);
 
-		printlni("static ::java::lang::Class *class_;");
+		printlni(TransformUtil.CLASS_LITERAL);
 
 		visitAll(declarations); // This will gather constructors
 

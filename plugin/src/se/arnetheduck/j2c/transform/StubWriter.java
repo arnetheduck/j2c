@@ -62,9 +62,7 @@ public class StubWriter {
 		pw = new PrintWriter(ret);
 
 		if (!natives) {
-			pw.print("::java::lang::Class *");
-			pw.print(TransformUtil.qualifiedCName(type, true));
-			pw.println("::class_ = 0;");
+			TransformUtil.printClassLiteral(pw, type);
 
 			for (IVariableBinding vb : type.getDeclaredFields()) {
 				printField(vb);

@@ -185,9 +185,7 @@ public class ImplWriter extends TransformWriter {
 				println("#include <cmath>");
 			}
 
-			println("::java::lang::Class *",
-					TransformUtil.qualifiedCName(type, true), "::class_ = 0;");
-			println();
+			TransformUtil.printClassLiteral(out, type);
 
 			if (!(type.isInterface() || type.isAnnotation())) {
 
@@ -264,6 +262,7 @@ public class ImplWriter extends TransformWriter {
 		printlni("template<typename F> finally_<F> finally(F f) { return finally_<F>(f); }");
 		indent--;
 		printlni("}");
+		println();
 	}
 
 	private void makeSynchronized() {
@@ -281,6 +280,7 @@ public class ImplWriter extends TransformWriter {
 		printlni("};");
 		indent--;
 		printlni("}");
+		println();
 	}
 
 	private void makeClinit() {
@@ -2173,7 +2173,7 @@ public class ImplWriter extends TransformWriter {
 		} else {
 			hardDep(node.getType().resolveBinding());
 			node.getType().accept(this);
-			print("::class_");
+			print("::class_()");
 		}
 		return false;
 	}

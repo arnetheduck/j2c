@@ -9,6 +9,9 @@
 #include <java.lang.Long.h>
 #include <java.lang.Short.h>
 
+#include <java.lang.Class.h>
+#include <java.lang.ClassLoader.h>
+
 #include <char16_tArray.h>
 #include <java.lang.String.h>
 
@@ -20,7 +23,13 @@ void unlock(Object *) { }
 
 String *lit(const char16_t * p, int n)
 {
-	return new String(new char16_tArray(p, n + 1)); 
+    return new String(new char16_tArray(p, n + 1)); 
+}
+
+Class *class_(const char16_t *c, int n)
+{
+    String *s = lit(c, n);
+    return Class::forName(s, false, ClassLoader::getCallerClassLoader());
 }
 
 static inline String *toString(Object *o) 

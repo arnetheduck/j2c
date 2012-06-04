@@ -116,13 +116,12 @@ public class ArrayWriter {
 
 		pw.println("{");
 		pw.println("public:");
-		pw.print(TransformUtil.indent(1));
-		pw.println("static ::java::lang::Class *class_;");
 
+		pw.println(TransformUtil.indent(1) + TransformUtil.CLASS_LITERAL);
 		pw.println();
+
 		pw.println("    " + name + "* clone() { return new " + name
 				+ "(*this); }");
-
 		pw.println();
 
 		if (ct.isPrimitive()) {
@@ -203,9 +202,7 @@ public class ArrayWriter {
 		ctx.impls.add(type);
 		PrintWriter pw = TransformUtil.openImpl(root, type, "");
 
-		pw.print("::java::lang::Class *");
-		pw.print(TransformUtil.qualifiedCName(type, false));
-		pw.println("::class_ = 0;");
+		TransformUtil.printClassLiteral(pw, type);
 
 		pw.close();
 	}
