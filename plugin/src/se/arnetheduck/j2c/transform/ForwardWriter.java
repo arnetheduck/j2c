@@ -34,6 +34,7 @@ public class ForwardWriter {
 		pw.println();
 
 		pw.println("#include <stdint.h>");
+		pw.println("#include <limits>");
 
 		for (ITypeBinding t : types) {
 			printType(pw, t);

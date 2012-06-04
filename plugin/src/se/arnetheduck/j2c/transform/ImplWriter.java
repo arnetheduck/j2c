@@ -94,7 +94,7 @@ public class ImplWriter extends TransformWriter {
 	private StringWriter init;
 
 	private List<MethodDeclaration> constructors = new ArrayList<MethodDeclaration>();
-	private List<FieldDeclaration> fields = new ArrayList<FieldDeclaration>();
+	private List<VariableDeclarationFragment> fields = new ArrayList<VariableDeclarationFragment>();
 
 	public final Map<ITypeBinding, ImplWriter> localTypes = new TreeMap<ITypeBinding, ImplWriter>(
 			new BindingComparator());
@@ -470,14 +470,11 @@ public class ImplWriter extends TransformWriter {
 			sep = ", ";
 		}
 
-		for (FieldDeclaration fd : fields) {
-			for (VariableDeclarationFragment vd : (List<VariableDeclarationFragment>) fd
-					.fragments()) {
-				printi(sep);
-				vd.getName().accept(this);
-				println("()");
-				sep = ", ";
-			}
+		for (VariableDeclarationFragment vd : fields) {
+			printi(sep);
+			vd.getName().accept(this);
+			println("()");
+			sep = ", ";
 		}
 
 		if (closures != null) {
@@ -1105,22 +1102,19 @@ public class ImplWriter extends TransformWriter {
 		Iterable<VariableDeclarationFragment> fragments = node.fragments();
 
 		boolean isStatic = Modifier.isStatic(node.getModifiers());
-
 		for (VariableDeclarationFragment f : fragments) {
-			if (f.getInitializer() != null
-					&& TransformUtil.constantValue(f) == null) {
+			boolean ce = TransformUtil.isConstExpr(f);
+			if (f.getInitializer() != null && !ce) {
 				addInit(isStatic, null, f);
 			}
-		}
 
-		if (!isStatic) {
-			fields.add(node);
-			return false;
-		}
+			if (!ce && !isStatic) {
+				fields.add(f);
+				continue;
+			}
 
-		for (VariableDeclarationFragment f : fragments) {
 			printi(TransformUtil.fieldModifiers(type, node.getModifiers(),
-					false, hasInitilializer(fragments)));
+					false, ce));
 
 			ITypeBinding tb = node.getType().resolveBinding();
 			tb = f.getExtraDimensions() > 0 ? tb.createArrayType(f

@@ -449,10 +449,10 @@ public class HeaderWriter extends TransformWriter {
 		List<VariableDeclarationFragment> fragments = node.fragments();
 
 		ITypeBinding tb = node.getType().resolveBinding();
-		if (isAnyArray(fragments)) {
+		if (isAnySpecial(fragments)) {
 			for (VariableDeclarationFragment f : fragments) {
 				printi(TransformUtil.fieldModifiers(type, node.getModifiers(),
-						true, hasInitilializer(fragments)));
+						true, TransformUtil.isConstExpr(f)));
 
 				ITypeBinding at = f.getExtraDimensions() > 0 ? tb
 						.createArrayType(f.getExtraDimensions()) : tb;
@@ -477,10 +477,14 @@ public class HeaderWriter extends TransformWriter {
 		return false;
 	}
 
-	private static boolean isAnyArray(
+	private static boolean isAnySpecial(
 			List<VariableDeclarationFragment> fragments) {
 		for (VariableDeclarationFragment f : fragments) {
 			if (f.getExtraDimensions() != 0) {
+				return true;
+			}
+
+			if (TransformUtil.isConstExpr(f)) {
 				return true;
 			}
 		}

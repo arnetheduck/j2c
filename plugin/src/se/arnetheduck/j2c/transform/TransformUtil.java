@@ -192,25 +192,36 @@ public final class TransformUtil {
 	}
 
 	public static Object constantValue(VariableDeclarationFragment node) {
-		IVariableBinding vb = node.resolveBinding();
-		ITypeBinding tb = vb.getType();
+		return isConstExpr(node) ? checkConstant(node.getInitializer()
+				.resolveConstantExpressionValue()) : null;
+	}
 
-		Expression initializer = node.getInitializer();
-		Object v = initializer == null ? null : initializer
-				.resolveConstantExpressionValue();
-		if (isConstExpr(tb) && isStatic(vb)
-				&& Modifier.isFinal(vb.getModifiers()) && v != null) {
-			return checkConstant(v);
+	protected static boolean isConstExpr(VariableDeclarationFragment vdf) {
+		Expression expr = vdf.getInitializer();
+		if (expr == null) {
+			return false;
 		}
 
-		return null;
+		if (!expr.resolveTypeBinding().isPrimitive()) {
+			return false;
+		}
+
+		if (expr.resolveConstantExpressionValue() == null) {
+			return false;
+		}
+
+		if (!TransformUtil.isFinal(vdf.resolveBinding())) {
+			return false;
+		}
+
+		return true;
 	}
 
 	public static Object constantValue(IVariableBinding vb) {
 		ITypeBinding tb = vb.getType();
 
 		Object v = vb.getConstantValue();
-		if (isConstExpr(tb) && isStatic(vb)
+		if (tb.isPrimitive() && isStatic(vb)
 				&& Modifier.isFinal(vb.getModifiers()) && v != null) {
 			return checkConstant(v);
 		}
@@ -262,7 +273,27 @@ public final class TransformUtil {
 
 			return "int64_t(" + cv + "ll)";
 		} else if (cv instanceof Float) {
+			float f = (Float) cv;
+			if (Float.isNaN(f)) {
+				return "std::numeric_limits<float>::quiet_NaN()";
+			} else if (f == Float.POSITIVE_INFINITY) {
+				return "std::numeric_limits<float>::infinity()";
+			} else if (f == Float.NEGATIVE_INFINITY) {
+				return "(-std::numeric_limits<float>::infinity())";
+			}
+
 			return cv + "f";
+		} else if (cv instanceof Double) {
+			double f = (Double) cv;
+			if (Double.isNaN(f)) {
+				return "std::numeric_limits<double>::quiet_NaN()";
+			} else if (f == Double.POSITIVE_INFINITY) {
+				return "std::numeric_limits<double>::infinity()";
+			} else if (f == Double.NEGATIVE_INFINITY) {
+				return "(-std::numeric_limits<double>::infinity())";
+			}
+
+			return cv;
 		} else if (cv instanceof Short) {
 			return "int16_t(" + cv + ")";
 		}
@@ -277,15 +308,15 @@ public final class TransformUtil {
 	}
 
 	public static String fieldModifiers(ITypeBinding type, int modifiers,
-			boolean header, boolean hasInitializer) {
+			boolean header, boolean isConstExpr) {
 		String ret = "";
-		if (header && (Modifier.isStatic(modifiers) || type.isInterface())) {
+		if (header
+				&& (Modifier.isStatic(modifiers) || type.isInterface() || isConstExpr)) {
 			ret += "static ";
 		}
 
-		if (hasInitializer
-				&& (Modifier.isFinal(modifiers) || type.isInterface())) {
-			ret += "const ";
+		if (isConstExpr && (Modifier.isFinal(modifiers) || type.isInterface())) {
+			ret += "constexpr ";
 		}
 
 		return ret;
@@ -444,6 +475,10 @@ public final class TransformUtil {
 
 	public static String ref(Type t) {
 		return t.isPrimitiveType() ? "" : "*";
+	}
+
+	public static boolean isFinal(IVariableBinding vb) {
+		return Modifier.isFinal(vb.getModifiers());
 	}
 
 	public static boolean isStatic(ITypeBinding tb) {
