@@ -230,16 +230,12 @@ public class HeaderWriter extends TransformWriter {
 	}
 
 	private void makeClinit() {
-		if (!hasClinit) {
-			return;
+		if (!lastAccess.equals("protected:")) {
+			lastAccess = "protected:";
+			println(lastAccess);
 		}
 
-		lastAccess = TransformUtil.printAccess(out, Modifier.PRIVATE,
-				lastAccess);
-
-		printlni("static struct ", TransformUtil.STATIC_INIT, " { ",
-				TransformUtil.STATIC_INIT, "(); } ", TransformUtil.STATIC_INIT,
-				";");
+		printlni(TransformUtil.STATIC_INIT_DECL);
 	}
 
 	public void makeInit() {
@@ -451,17 +447,31 @@ public class HeaderWriter extends TransformWriter {
 		ITypeBinding tb = node.getType().resolveBinding();
 		if (isAnySpecial(fragments)) {
 			for (VariableDeclarationFragment f : fragments) {
+				IVariableBinding vb = f.resolveBinding();
+				boolean asMethod = TransformUtil.asMethod(vb);
+				if (asMethod) {
+					lastAccess = TransformUtil.printAccess(out,
+							node.getModifiers(), lastAccess);
+					printi("static ", TransformUtil.relativeCName(vb.getType(),
+							type, true), " ");
+
+					print(TransformUtil.ref(vb.getType()), "&",
+							TransformUtil.name(vb));
+					println("();");
+
+					lastAccess = TransformUtil.printAccess(out,
+							Modifier.PRIVATE, lastAccess);
+				}
+
 				printi(TransformUtil.fieldModifiers(type, node.getModifiers(),
-						true, TransformUtil.isConstExpr(f)));
+						true, TransformUtil.constantValue(f) != null));
 
-				ITypeBinding at = f.getExtraDimensions() > 0 ? tb
-						.createArrayType(f.getExtraDimensions()) : tb;
-
-				print(TransformUtil.relativeCName(at, type, true), " ");
+				print(TransformUtil.relativeCName(vb.getType(), type, true),
+						" ");
 
 				f.accept(this);
 
-				println(";");
+				println(asMethod ? "_;" : ";");
 			}
 		} else {
 			printi(TransformUtil.fieldModifiers(type, node.getModifiers(),
@@ -477,6 +487,10 @@ public class HeaderWriter extends TransformWriter {
 		return false;
 	}
 
+	/**
+	 * Fields that for some reason cannot be declared together (different C++
+	 * type, implemented as methods, etc)
+	 */
 	private static boolean isAnySpecial(
 			List<VariableDeclarationFragment> fragments) {
 		for (VariableDeclarationFragment f : fragments) {
@@ -484,7 +498,11 @@ public class HeaderWriter extends TransformWriter {
 				return true;
 			}
 
-			if (TransformUtil.isConstExpr(f)) {
+			if (TransformUtil.constantValue(f) != null) {
+				return true;
+			}
+
+			if (TransformUtil.isStatic(f.resolveBinding())) {
 				return true;
 			}
 		}

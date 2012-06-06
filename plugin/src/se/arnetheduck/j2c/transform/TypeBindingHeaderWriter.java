@@ -130,6 +130,8 @@ public class TypeBindingHeaderWriter {
 
 		makeBaseCalls(pw);
 
+		makeClinit(pw);
+
 		makeDtor(pw);
 
 		pw.println("};");
@@ -142,11 +144,29 @@ public class TypeBindingHeaderWriter {
 	private void printField(PrintWriter pw, IVariableBinding vb) {
 		ctx.softDep(vb.getType());
 
+		boolean asMethod = TransformUtil.asMethod(vb);
+		if (asMethod) {
+			lastAccess = TransformUtil.printAccess(pw, vb.getModifiers(),
+					lastAccess);
+
+			pw.print(TransformUtil.indent(1));
+			pw.print("static "
+					+ TransformUtil.relativeCName(vb.getType(), type, true)
+					+ " ");
+
+			pw.print(TransformUtil.ref(vb.getType()));
+			pw.print("&" + TransformUtil.name(vb));
+			pw.println("();");
+
+			lastAccess = TransformUtil.printAccess(pw, Modifier.PRIVATE,
+					lastAccess);
+		}
+
 		pw.print(TransformUtil.indent(1));
 
-		Object constant = TransformUtil.constantValue(vb);
+		Object cv = TransformUtil.constantValue(vb);
 		pw.print(TransformUtil.fieldModifiers(type, vb.getModifiers(), true,
-				constant != null));
+				cv != null));
 
 		pw.print(TransformUtil.relativeCName(vb.getType(),
 				vb.getDeclaringClass(), true));
@@ -154,11 +174,11 @@ public class TypeBindingHeaderWriter {
 
 		pw.print(TransformUtil.ref(vb.getType()));
 		pw.print(vb.getName());
-		pw.print("_");
+		pw.print(asMethod ? "__" : "_");
 
-		if (constant != null) {
+		if (cv != null) {
 			pw.print(" = ");
-			pw.print(constant);
+			pw.print(cv);
 		}
 
 		pw.println(";");
@@ -234,6 +254,16 @@ public class TypeBindingHeaderWriter {
 			pw.print(TransformUtil.indent(1));
 			TransformUtil.printSuperCall(pw, type, mb, ctx);
 		}
+	}
+
+	private void makeClinit(PrintWriter pw) {
+		if (!lastAccess.equals("protected:")) {
+			lastAccess = "protected:";
+			pw.println();
+			pw.println(lastAccess);
+		}
+
+		pw.println(TransformUtil.indent(1) + TransformUtil.STATIC_INIT_DECL);
 	}
 
 	private void makeDtor(PrintWriter pw) {

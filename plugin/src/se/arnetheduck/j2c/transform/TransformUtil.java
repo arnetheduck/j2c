@@ -46,6 +46,9 @@ public final class TransformUtil {
 
 	/** Name of fake static initializer */
 	public static final String STATIC_INIT = "clinit";
+	public static final String STATIC_INIT_DECL = "static void " + STATIC_INIT
+			+ "();";
+
 	/** Name of fake instance initializer */
 	public static final String INSTANCE_INIT = "init";
 	/** Name of fake constructor */
@@ -192,41 +195,49 @@ public final class TransformUtil {
 	}
 
 	public static Object constantValue(VariableDeclarationFragment node) {
-		return isConstExpr(node) ? checkConstant(node.getInitializer()
-				.resolveConstantExpressionValue()) : null;
-	}
-
-	protected static boolean isConstExpr(VariableDeclarationFragment vdf) {
-		Expression expr = vdf.getInitializer();
+		Expression expr = node.getInitializer();
 		if (expr == null) {
-			return false;
+			return null;
 		}
 
 		if (!expr.resolveTypeBinding().isPrimitive()) {
-			return false;
+			return null;
 		}
 
 		if (expr.resolveConstantExpressionValue() == null) {
-			return false;
+			return null;
 		}
 
-		if (!TransformUtil.isFinal(vdf.resolveBinding())) {
-			return false;
+		if (!isFinal(node.resolveBinding())) {
+			return null;
 		}
 
-		return true;
+		return checkConstant(expr.resolveConstantExpressionValue());
 	}
 
 	public static Object constantValue(IVariableBinding vb) {
-		ITypeBinding tb = vb.getType();
-
-		Object v = vb.getConstantValue();
-		if (tb.isPrimitive() && isStatic(vb)
-				&& Modifier.isFinal(vb.getModifiers()) && v != null) {
-			return checkConstant(v);
+		if (!vb.getType().isPrimitive()) {
+			return null;
 		}
 
-		return null;
+		if (vb.getConstantValue() == null) {
+			return null;
+		}
+
+		if (!isFinal(vb)) {
+			return null;
+		}
+
+		return checkConstant(vb.getConstantValue());
+	}
+
+	/**
+	 * We make static methods out of static non-constexpr variables to get a
+	 * chance to initialize the class before variable access
+	 */
+	public static boolean asMethod(IVariableBinding vb) {
+		return vb.isField() && isStatic(vb) && constantValue(vb) == null
+				&& !vb.isEnumConstant();
 	}
 
 	public static Object checkConstant(Object cv) {
@@ -299,12 +310,6 @@ public final class TransformUtil {
 		}
 
 		return cv;
-	}
-
-	private static boolean isConstExpr(ITypeBinding tb) {
-		return tb.getName().equals("int") || tb.getName().equals("char")
-				|| tb.getName().equals("long") || tb.getName().equals("byte")
-				|| tb.getName().equals("short");
 	}
 
 	public static String fieldModifiers(ITypeBinding type, int modifiers,
@@ -447,21 +452,25 @@ public final class TransformUtil {
 		if ((access & Modifier.PRIVATE) > 0) {
 			if (!PRIVATE.equals(lastAccess)) {
 				lastAccess = PRIVATE;
+				out.println();
 				out.println(lastAccess);
 			}
 		} else if ((access & Modifier.PROTECTED) > 0) {
 			if (!PROTECTED.equals(lastAccess)) {
 				lastAccess = PROTECTED;
+				out.println();
 				out.println(lastAccess);
 			}
 		} else if ((access & Modifier.PUBLIC) > 0) {
 			if (!PUBLIC.equals(lastAccess)) {
 				lastAccess = PUBLIC;
+				out.println();
 				out.println(lastAccess);
 			}
 		} else {
 			if (!PACKAGE.equals(lastAccess)) {
 				lastAccess = PACKAGE;
+				out.println();
 				out.println(lastAccess);
 			}
 		}
@@ -478,7 +487,8 @@ public final class TransformUtil {
 	}
 
 	public static boolean isFinal(IVariableBinding vb) {
-		return Modifier.isFinal(vb.getModifiers());
+		return Modifier.isFinal(vb.getModifiers())
+				|| (vb.isField() && vb.getDeclaringClass().isInterface());
 	}
 
 	public static boolean isStatic(ITypeBinding tb) {
@@ -490,7 +500,9 @@ public final class TransformUtil {
 	}
 
 	public static boolean isStatic(IVariableBinding vb) {
-		return Modifier.isStatic(vb.getModifiers());
+		return Modifier.isStatic(vb.getModifiers())
+				|| (vb.isField() && vb.getDeclaringClass() != null && vb
+						.getDeclaringClass().isInterface());
 	}
 
 	public static boolean hasOuterThis(ITypeBinding tb) {

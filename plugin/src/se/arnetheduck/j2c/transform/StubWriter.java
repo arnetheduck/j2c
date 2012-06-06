@@ -64,6 +64,10 @@ public class StubWriter {
 		if (!natives) {
 			TransformUtil.printClassLiteral(pw, type);
 
+			pw.println("void " + TransformUtil.qualifiedCName(type, false)
+					+ "::" + TransformUtil.STATIC_INIT + "() { }");
+			pw.println();
+
 			for (IVariableBinding vb : type.getDeclaredFields()) {
 				printField(vb);
 			}
@@ -92,6 +96,29 @@ public class StubWriter {
 		ctx.softDep(vb.getType());
 
 		Object cv = TransformUtil.constantValue(vb);
+		boolean asMethod = TransformUtil.asMethod(vb);
+
+		if (asMethod) {
+			ITypeBinding tb = vb.getType();
+			print(TransformUtil.qualifiedCName(tb, true));
+
+			print(" ");
+
+			print(TransformUtil.ref(tb));
+
+			print("&" + TransformUtil.qualifiedCName(type, false) + "::");
+
+			print(TransformUtil.name(vb));
+
+			pw.println("()");
+			pw.println("{");
+			pw.println(TransformUtil.indent(1) + TransformUtil.STATIC_INIT
+					+ "();");
+			pw.println(TransformUtil.indent(1) + "return "
+					+ TransformUtil.name(vb) + "_;");
+			println("}");
+		}
+
 		print(TransformUtil.fieldModifiers(type, vb.getModifiers(), false,
 				cv != null));
 		print(TransformUtil.qualifiedCName(vb.getType(), true));
@@ -101,7 +128,7 @@ public class StubWriter {
 		print(TransformUtil.qualifiedCName(vb.getDeclaringClass(), true));
 		print("::");
 		print(vb.getName());
-		println("_;");
+		println(asMethod ? "__;" : "_;");
 	}
 
 	private void printMethod(ITypeBinding tb, IMethodBinding mb,

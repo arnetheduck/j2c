@@ -33,10 +33,12 @@ public class GetSetSnippet extends EmptySnippet {
 
 		for (IVariableBinding vb : tb.getDeclaredFields()) {
 			if (ms == TransformUtil.isStatic(vb) && vb.getName().equals(v)) {
+				boolean asMethod = TransformUtil.asMethod(vb);
 				if (getter
 						&& mb.getReturnType().isAssignmentCompatible(
 								vb.getType())) {
-					w.println("return " + v + "_; /* getter */");
+					w.println("return " + v + (asMethod ? "_()" : "_")
+							+ " ; /* getter */");
 				} else if (setter
 						&& mb.getReturnType().getName().equals("void")
 						&& mb.getParameterTypes().length == 1
@@ -49,7 +51,8 @@ public class GetSetSnippet extends EmptySnippet {
 						w.print("this->");
 					}
 
-					w.println(v + "_ = a0; /* setter */");
+					w.println(v + (asMethod ? "_()" : "_")
+							+ " = a0; /* setter */");
 				}
 
 				return false;
