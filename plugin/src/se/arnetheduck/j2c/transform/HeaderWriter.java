@@ -206,6 +206,8 @@ public class HeaderWriter extends TransformWriter {
 			makeInit();
 
 			makeDtor();
+
+			makeGetClass();
 		}
 
 		indent--;
@@ -226,6 +228,16 @@ public class HeaderWriter extends TransformWriter {
 					lastAccess);
 			out.print(TransformUtil.indent(1));
 			out.println("virtual ~Object();");
+		}
+	}
+
+	private void makeGetClass() {
+		if (type.isClass()) {
+			lastAccess = TransformUtil.printAccess(out, Modifier.PRIVATE,
+					lastAccess);
+			out.print(TransformUtil.indent(1));
+			out.println("virtual ::java::lang::Class* "
+					+ TransformUtil.GET_CLASS + "();");
 		}
 	}
 

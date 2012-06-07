@@ -68,6 +68,8 @@ public class StubWriter {
 					+ "::" + TransformUtil.STATIC_INIT + "() { }");
 			pw.println();
 
+			makeGetClass();
+
 			for (IVariableBinding vb : type.getDeclaredFields()) {
 				printField(vb);
 			}
@@ -86,6 +88,12 @@ public class StubWriter {
 		pw = old;
 
 		return ret.toString();
+	}
+
+	private void makeGetClass() {
+		if (type.isClass()) {
+			TransformUtil.printGetClass(pw, type);
+		}
 	}
 
 	private void printField(IVariableBinding vb) {

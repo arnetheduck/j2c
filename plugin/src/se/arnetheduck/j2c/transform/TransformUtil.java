@@ -51,8 +51,12 @@ public final class TransformUtil {
 
 	/** Name of fake instance initializer */
 	public static final String INSTANCE_INIT = "init";
+
 	/** Name of fake constructor */
 	public static final String CTOR = "ctor";
+
+	/** Virtual method that returns the dynamic class of the current object */
+	public static final String GET_CLASS = "getClass0";
 
 	/** C++ keywords + special method names - java keywords */
 	private static Collection<String> keywords = Arrays.asList("alignas",
@@ -64,9 +68,8 @@ public final class TransformUtil {
 			"or", "or_eq", "register", "reinterpret_cast", "signed", "sizeof",
 			"static_assert", "static_cast", "struct", "template",
 			"thread_local", "typedef", "typeid", "typename", "union",
-			"unsigned", "using", "wchar_t", "xor", "xor_eq",
-			TransformUtil.CTOR, TransformUtil.INSTANCE_INIT,
-			TransformUtil.STATIC_INIT);
+			"unsigned", "using", "wchar_t", "xor", "xor_eq", CTOR,
+			INSTANCE_INIT, STATIC_INIT, GET_CLASS);
 
 	public static final Map<String, String> primitives = new HashMap<String, String>() {
 		{
@@ -1093,4 +1096,14 @@ public final class TransformUtil {
 	}
 
 	public static final String CLASS_LITERAL = "static ::java::lang::Class *class_();";
+
+	public static void printGetClass(PrintWriter pw, ITypeBinding type) {
+		pw.println("::java::lang::Class *"
+				+ qualifiedCName(type, true) + "::"
+				+ GET_CLASS + "()");
+		pw.println("{");
+		pw.println(indent(1) + "return class_();");
+		pw.println("}");
+		pw.println();
+	}
 }

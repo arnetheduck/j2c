@@ -134,6 +134,8 @@ public class TypeBindingHeaderWriter {
 
 		makeDtor(pw);
 
+		makeGetClass(pw);
+
 		pw.println("};");
 
 		TransformUtil.printStringSupport(type, pw);
@@ -275,4 +277,13 @@ public class TypeBindingHeaderWriter {
 		}
 	}
 
+	private void makeGetClass(PrintWriter pw) {
+		if (type.isClass()) {
+			lastAccess = TransformUtil.printAccess(pw, Modifier.PRIVATE,
+					lastAccess);
+			pw.print(TransformUtil.indent(1));
+			pw.println("virtual ::java::lang::Class* "
+					+ TransformUtil.GET_CLASS + "();");
+		}
+	}
 }

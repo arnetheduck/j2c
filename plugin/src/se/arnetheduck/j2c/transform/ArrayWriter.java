@@ -193,6 +193,9 @@ public class ArrayWriter {
 		pw.println("    void init(int i) { }");
 		pw.println("    template<typename T, typename... TRest>");
 		pw.println("    void init(int i, T first, TRest... rest) { set(i, first); init(i+1, rest...); }");
+		pw.println();
+		pw.println("    ::java::lang::Class *" + TransformUtil.GET_CLASS
+				+ "();");
 
 		pw.println("};");
 
@@ -204,7 +207,9 @@ public class ArrayWriter {
 		PrintWriter pw = TransformUtil.openImpl(root, type, "");
 
 		TransformUtil.printClassLiteral(pw, type);
+		TransformUtil.printGetClass(pw, type);
 
 		pw.close();
 	}
+
 }

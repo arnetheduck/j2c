@@ -227,6 +227,8 @@ public class ImplWriter extends TransformWriter {
 				println(cons);
 
 				makeDtor();
+
+				makeGetClass();
 			}
 
 			print(body.toString());
@@ -447,6 +449,12 @@ public class ImplWriter extends TransformWriter {
 			println("{");
 			println("}");
 			println();
+		}
+	}
+
+	private void makeGetClass() {
+		if (type.isClass()) {
+			TransformUtil.printGetClass(out, type);
 		}
 	}
 
