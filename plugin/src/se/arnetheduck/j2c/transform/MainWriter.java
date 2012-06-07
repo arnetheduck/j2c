@@ -27,8 +27,11 @@ public class MainWriter {
 		pw.println(TransformUtil.include(type));
 		pw.println();
 
+		pw.println("extern void init_jvm();");
+
 		pw.println("int main(int, char**)");
 		pw.println("{");
+		pw.println(TransformUtil.indent(1) + "init_jvm();");
 		pw.print(TransformUtil.indent(1));
 		pw.print(TransformUtil.qualifiedCName(type, true));
 		pw.println("::main(0);");
