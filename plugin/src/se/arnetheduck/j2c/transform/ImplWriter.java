@@ -795,6 +795,12 @@ public class ImplWriter extends TransformWriter {
 
 		indent++;
 
+		if (parent instanceof MethodDeclaration
+				&& Modifier.isStatic(((MethodDeclaration) parent)
+						.getModifiers())) {
+			printlni("clinit();");
+		}
+
 		visitAll(node.statements());
 
 		indent--;

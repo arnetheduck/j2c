@@ -164,12 +164,15 @@ public class StubWriter {
 		pw.println();
 		print("{");
 		if (Modifier.isNative(mb.getModifiers())) {
-			print(" /* native */");
+			println(" /* native */");
 		} else {
-			print(" /* stub */");
+			println(" /* stub */");
 		}
 
-		pw.println();
+		if (TransformUtil.isStatic(mb)) {
+			println(TransformUtil.indent(1) + "clinit();");
+		}
+
 		boolean hasBody = false;
 		for (Snippet snippet : ctx.snippets) {
 			if (!snippet.body(ctx, this, mb)) {
