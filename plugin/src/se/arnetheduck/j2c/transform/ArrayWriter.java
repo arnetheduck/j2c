@@ -149,7 +149,8 @@ public class ArrayWriter {
 			pw.println("    template<typename... T>");
 			pw.println("    " + name + "(int n, T... args)");
 			pw.println("        : length_(n), p(new " + storage
-					+ "[n]) { init(0, args...); }");
+					+ "[n]) { memset(p, 0, n * sizeof(" + storage
+					+ ")); init(0, args...); }");
 			pw.println();
 			pw.println("    " + name + "(const " + name + " &rhs)");
 			pw.println("        : length_(rhs.length_), p(new " + storage
@@ -170,9 +171,9 @@ public class ArrayWriter {
 						+ ")); }");
 				pw.println("    " + storage + " *p;");
 			} else {
-				pw.println("    " + name + "(int length)");
-				pw.println("        : length_(length), p(new " + storage
-						+ "[length]) { }");
+				pw.println("    " + name + "(int n)");
+				pw.println("        : length_(n), p(new " + storage
+						+ "[n]) { memset(p, 0, n * sizeof(" + storage + ")); }");
 				pw.println();
 				pw.println("protected:");
 				pw.println("    " + storage + " *p;");
