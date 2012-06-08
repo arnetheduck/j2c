@@ -1089,7 +1089,7 @@ public final class TransformUtil {
 		out.println("    static ::java::lang::Class *c = ::class_(u\""
 				+ type.getQualifiedName() + "\", "
 				+ type.getQualifiedName().length() + ");");
-		out.println("return c;");
+		out.println("    return c;");
 
 		out.println("}");
 		out.println();
@@ -1098,8 +1098,7 @@ public final class TransformUtil {
 	public static final String CLASS_LITERAL = "static ::java::lang::Class *class_();";
 
 	public static void printGetClass(PrintWriter pw, ITypeBinding type) {
-		pw.println("::java::lang::Class *"
-				+ qualifiedCName(type, true) + "::"
+		pw.println("::java::lang::Class *" + qualifiedCName(type, true) + "::"
 				+ GET_CLASS + "()");
 		pw.println("{");
 		pw.println(indent(1) + "return class_();");

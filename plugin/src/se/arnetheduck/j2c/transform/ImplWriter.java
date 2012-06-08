@@ -1187,9 +1187,9 @@ public class ImplWriter extends TransformWriter {
 				f.getName().accept(this);
 				println(";");
 			}
-		}
 
-		println();
+			println();
+		}
 
 		return false;
 	}

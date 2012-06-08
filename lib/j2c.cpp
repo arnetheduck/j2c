@@ -23,7 +23,7 @@ void unlock(Object *) { }
 
 String *lit(const char16_t * p, int n)
 {
-    return (new String(new char16_tArray(p, n + 1)))->intern(); 
+    return (new String(new char16_tArray(p, n)))->intern(); 
 }
 
 Class *class_(const char16_t *c, int n)
