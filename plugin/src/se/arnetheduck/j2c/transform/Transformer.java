@@ -1,6 +1,10 @@
 package se.arnetheduck.j2c.transform;
 
 import java.io.File;
+import java.io.FileInputStream;
+import java.io.FileOutputStream;
+import java.io.IOException;
+import java.nio.channels.FileChannel;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Comparator;
@@ -81,15 +85,9 @@ public class Transformer {
 
 	public void process(IProgressMonitor monitor, ICompilationUnit... units)
 			throws Exception {
-		monitor.subTask("Removing old files");
-		File[] files = root.toFile().listFiles();
 
-		for (File f : files) {
-			if (f.getName().endsWith(".h") || f.getName().endsWith(".cpp")
-					|| f.getName().endsWith(".o")) {
-				f.delete();
-			}
-		}
+		monitor.subTask("Moving old files");
+		renameOld();
 
 		write(monitor, units);
 
@@ -109,6 +107,70 @@ public class Transformer {
 
 		monitor.done();
 		System.out.println("Done.");
+	}
+
+	private void renameOld() throws IOException {
+		File r = root.toFile();
+		File p = new File(System.getProperty("java.io.tmpdir"));
+
+		File from = new File(p, r.getName() + 5);
+		if (from.exists()) {
+			for (File f : from.listFiles()) {
+				f.delete();
+			}
+		}
+
+		for (int i = 4; i > 0; --i) {
+			from = new File(p, r.getName() + i);
+			File to = new File(p, r.getName() + (i + 1));
+			moveFiles(from, to);
+		}
+
+		moveFiles(r, new File(p, r.getName() + 1));
+	}
+
+	private void moveFiles(File from, File to) throws IOException {
+		if (from.exists()) {
+			to.mkdir();
+
+			for (File f : from.listFiles()) {
+				if (f.getName().endsWith(".o") || f.getName().endsWith(".a")) {
+					f.delete();
+				} else if (f.getName().equals("Makefile")
+						|| f.getName().endsWith(".h")
+						|| f.getName().endsWith(".cpp")) {
+					File tf = new File(to, f.getName());
+
+					if (!f.renameTo(tf)) {
+						copyFile(f, tf);
+						f.delete();
+					}
+				}
+			}
+		}
+	}
+
+	private static void copyFile(File sourceFile, File destFile)
+			throws IOException {
+		if (!destFile.exists()) {
+			destFile.createNewFile();
+		}
+
+		FileChannel source = null;
+		FileChannel destination = null;
+
+		try {
+			source = new FileInputStream(sourceFile).getChannel();
+			destination = new FileOutputStream(destFile).getChannel();
+			destination.transferFrom(source, 0, source.size());
+		} finally {
+			if (source != null) {
+				source.close();
+			}
+			if (destination != null) {
+				destination.close();
+			}
+		}
 	}
 
 	private void write(final IProgressMonitor monitor,
