@@ -4,6 +4,7 @@ import java.io.PrintWriter;
 import java.io.StringWriter;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Collection;
 import java.util.HashSet;
 import java.util.Iterator;
 import java.util.List;
@@ -528,7 +529,7 @@ public class ImplWriter extends TransformWriter {
 				ctx.softDep(pb);
 
 				print(sep, TransformUtil.relativeCName(pb, type, true), " ",
-						TransformUtil.ref(pb), "a" + i);
+						TransformUtil.ref(pb), TransformUtil.paramName(mb, i));
 				sep = ", ";
 			}
 
@@ -540,7 +541,7 @@ public class ImplWriter extends TransformWriter {
 
 			sep = "";
 			for (int i = 0; i < mb.getParameterTypes().length; ++i) {
-				print(sep, "a" + i);
+				print(sep, TransformUtil.paramName(mb, i));
 				sep = ", ";
 			}
 
@@ -1629,8 +1630,20 @@ public class ImplWriter extends TransformWriter {
 	}
 
 	private boolean isOverloaded(IMethodBinding b) {
-		return TransformUtil.allMethods(b.getDeclaringClass(), b.getName())
-				.size() > 1;
+		Collection<IMethodBinding> methods = TransformUtil.allMethods(
+				b.getDeclaringClass(), b.getName());
+		if (methods.size() < 2) {
+			return false;
+		}
+
+		for (IMethodBinding mb : methods) {
+			if (!mb.isEqualTo(b)
+					&& mb.getParameterTypes().length != b.getParameterTypes().length) {
+				return true;
+			}
+		}
+
+		return false;
 	}
 
 	private boolean returnErased(IMethodBinding b) {

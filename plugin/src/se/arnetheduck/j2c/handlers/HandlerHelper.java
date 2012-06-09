@@ -63,12 +63,9 @@ public class HandlerHelper {
 				.addTrailingSeparator();
 
 		if (!p.toFile().exists()) {
-			MessageDialog
-					.openError(
-							null,
-							"Output directory missing",
-							p.toFile().getAbsolutePath()
-									+ " does not exist, create it before running plugin\nAnything in this folder will be wiped each time you run!");
+			MessageDialog.openError(null, "Output directory missing", p
+					.toFile().getAbsolutePath()
+					+ " does not exist, create it before running plugin.!");
 		} else {
 			Job job = new Job("C++ translation") {
 				@Override

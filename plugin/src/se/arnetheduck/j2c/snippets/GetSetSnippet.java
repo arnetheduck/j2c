@@ -51,8 +51,8 @@ public class GetSetSnippet extends EmptySnippet {
 						w.print("this->");
 					}
 
-					w.println(v + (asMethod ? "_()" : "_")
-							+ " = a0; /* setter */");
+					w.println(v + (asMethod ? "_()" : "_") + " = "
+							+ TransformUtil.paramName(mb, 0) + "; /* setter */");
 				}
 
 				return false;

@@ -21,6 +21,7 @@ import org.eclipse.jdt.core.Flags;
 import org.eclipse.jdt.core.IField;
 import org.eclipse.jdt.core.IInitializer;
 import org.eclipse.jdt.core.IJavaElement;
+import org.eclipse.jdt.core.IMethod;
 import org.eclipse.jdt.core.JavaModelException;
 import org.eclipse.jdt.core.dom.AST;
 import org.eclipse.jdt.core.dom.Expression;
@@ -766,10 +767,20 @@ public final class TransformUtil {
 			out.print(relativeCName(pb, tb, true));
 			out.print(" ");
 			out.print(ref(pb));
-			out.print("a" + i);
+
+			out.print(paramName(mb, i));
 		}
 
 		out.print(")");
+	}
+
+	public static String paramName(IMethodBinding mb, int i) {
+		try {
+			IMethod md = (IMethod) mb.getJavaElement();
+			return md == null ? "a" + i : md.getParameterNames()[i] + "_";
+		} catch (JavaModelException e) {
+			return "a" + i;
+		}
 	}
 
 	public static IMethodBinding getSuperMethod(IMethodBinding mb,
@@ -896,10 +907,10 @@ public final class TransformUtil {
 						pw.print(relativeCName(pb, tb, false));
 						pw.print(ref(pb));
 						pw.print(" >(");
-						pw.print("a" + i);
+						pw.print(TransformUtil.paramName(mb2, i));
 						pw.print(")");
 					} else {
-						pw.print("a" + i);
+						pw.print(TransformUtil.paramName(mb2, i));
 					}
 				}
 
@@ -1073,7 +1084,7 @@ public final class TransformUtil {
 		out.print(" { return super::" + name(mb) + "(");
 		String sep = "";
 		for (int i = 0; i < mb.getParameterTypes().length; ++i) {
-			out.print(sep + "a" + i);
+			out.print(sep + paramName(mb, i));
 			sep = ", ";
 		}
 

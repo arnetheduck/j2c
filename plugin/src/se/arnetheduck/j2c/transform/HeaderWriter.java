@@ -314,7 +314,7 @@ public class HeaderWriter extends TransformWriter {
 				ctx.softDep(pb);
 
 				print(sep, TransformUtil.relativeCName(pb, type, true), " ",
-						TransformUtil.ref(pb), "a" + i);
+						TransformUtil.ref(pb), TransformUtil.paramName(mb, i));
 				sep = ", ";
 			}
 
