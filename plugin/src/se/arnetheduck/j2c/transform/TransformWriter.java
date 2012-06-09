@@ -57,7 +57,7 @@ import org.eclipse.jdt.core.dom.WildcardType;
 
 public abstract class TransformWriter extends ASTVisitor {
 	protected final Transformer ctx;
-	protected final ITypeBinding type;
+	public final ITypeBinding type;
 	protected final UnitInfo unitInfo;
 
 	protected int indent;
@@ -78,7 +78,7 @@ public abstract class TransformWriter extends ASTVisitor {
 		return hardDeps;
 	}
 
-	protected void hardDep(ITypeBinding dep) {
+	public void hardDep(ITypeBinding dep) {
 		if (dep != null) {
 			TransformUtil.addDep(dep, hardDeps);
 			ctx.hardDep(dep);
@@ -135,19 +135,19 @@ public abstract class TransformWriter extends ASTVisitor {
 		return false;
 	}
 
-	protected void print(Object... objects) {
+	public void print(Object... objects) {
 		TransformUtil.print(out, objects);
 	}
 
-	protected void println(Object... objects) {
+	public void println(Object... objects) {
 		TransformUtil.println(out, objects);
 	}
 
-	protected void printi(Object... objects) {
+	public void printi(Object... objects) {
 		TransformUtil.printi(out, indent, objects);
 	}
 
-	protected void printlni(Object... objects) {
+	public void printlni(Object... objects) {
 		TransformUtil.printlni(out, indent, objects);
 	}
 

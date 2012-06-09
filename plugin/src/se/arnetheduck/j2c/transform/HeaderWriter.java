@@ -242,10 +242,8 @@ public class HeaderWriter extends TransformWriter {
 	}
 
 	private void makeClinit() {
-		if (!lastAccess.equals("protected:")) {
-			lastAccess = "protected:";
-			println(lastAccess);
-		}
+		lastAccess = TransformUtil
+				.printAccess(out, Modifier.PUBLIC, lastAccess);
 
 		printlni(TransformUtil.STATIC_INIT_DECL);
 	}

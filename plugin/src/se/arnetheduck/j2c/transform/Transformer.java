@@ -33,6 +33,7 @@ import org.eclipse.jdt.core.dom.ITypeBinding;
 import org.eclipse.jdt.core.dom.TypeDeclaration;
 
 import se.arnetheduck.j2c.snippets.GetSetSnippet;
+import se.arnetheduck.j2c.snippets.ReplaceInvocation;
 
 public class Transformer {
 	private final IJavaProject project;
@@ -62,6 +63,7 @@ public class Transformer {
 		parser.setResolveBindings(true);
 
 		snippets.add(new GetSetSnippet());
+		snippets.add(new ReplaceInvocation());
 	}
 
 	Set<IPackageBinding> packages = new TreeSet<IPackageBinding>(

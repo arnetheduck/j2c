@@ -259,12 +259,7 @@ public class TypeBindingHeaderWriter {
 	}
 
 	private void makeClinit(PrintWriter pw) {
-		if (!lastAccess.equals("protected:")) {
-			lastAccess = "protected:";
-			pw.println();
-			pw.println(lastAccess);
-		}
-
+		lastAccess = TransformUtil.printAccess(pw, Modifier.PUBLIC, lastAccess);
 		pw.println(TransformUtil.indent(1) + TransformUtil.STATIC_INIT_DECL);
 	}
 

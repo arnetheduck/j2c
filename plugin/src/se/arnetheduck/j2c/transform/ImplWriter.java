@@ -5,8 +5,8 @@ import java.io.StringWriter;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
-import java.util.HashSet;
 import java.util.Iterator;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -110,7 +110,8 @@ public class ImplWriter extends TransformWriter {
 		super(ctx, type, unitInfo);
 		this.root = root;
 
-		closures = type.isLocal() ? new HashSet<IVariableBinding>() : null;
+		closures = type.isLocal() ? new LinkedHashSet<IVariableBinding>()
+				: null;
 
 		for (ImportDeclaration id : unitInfo.imports) {
 			IBinding b = id.resolveBinding();
@@ -1638,7 +1639,7 @@ public class ImplWriter extends TransformWriter {
 
 		for (IMethodBinding mb : methods) {
 			if (!mb.isEqualTo(b)
-					&& mb.getParameterTypes().length != b.getParameterTypes().length) {
+					&& mb.getParameterTypes().length == b.getParameterTypes().length) {
 				return true;
 			}
 		}
@@ -1667,7 +1668,7 @@ public class ImplWriter extends TransformWriter {
 			// Java has different implicit cast rules when resolving overloads
 			// i e int -> double promotion, int vs pointer
 			hardDep(tb);
-			if (hasOverloads || true) {
+			if (hasOverloads) {
 				print("static_cast< ",
 						TransformUtil.relativeCName(pb, type, true),
 						TransformUtil.ref(pb), " >(");
