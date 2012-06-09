@@ -45,7 +45,7 @@ String *join(String *lhs, String *rhs)
     }
 
     for(auto i = 0; i < rhs->length(); ++i) {
-        (*a)[i + lhs->length()] = lhs->charAt(i);
+        (*a)[i + lhs->length()] = rhs->charAt(i);
     }
     
     return new java::lang::String(a);
