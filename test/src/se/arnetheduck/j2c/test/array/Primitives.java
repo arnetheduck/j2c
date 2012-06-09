@@ -21,4 +21,8 @@ public class Primitives {
 	int aclone2()[] {
 		return a.clone();
 	}
+
+	char[] cc() {
+		return new char[] { 'a', 10 };
+	}
 }

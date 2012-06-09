@@ -1,0 +1,61 @@
+#pragma once
+
+%1$s
+#include "java.lang.Error.h"
+
+class %5$sArray
+%3$s
+{
+public:
+    static ::java::lang::Class *class_();
+    typedef %4$sArray super;
+
+    typedef %2$s *value_type;
+
+    %2$sArray() { }
+    %2$sArray(int n) : %4$sArray(n) { }
+
+    %2$sArray(const value_type *p, int n) : %4$sArray(n)
+    {
+    	std::copy(p, p+n, this->p);
+    }
+
+    template<typename T>
+    %2$sArray(std::initializer_list<T> l) : %4$sArray(l.size())
+    {
+    	std::copy(l.begin(), l.end(), p);
+    }
+
+    %2$sArray(const %2$sArray &rhs) : %4$sArray(rhs) { }
+    %2$sArray(%2$sArray &rhs) : %4$sArray(std::move(rhs)) { }
+
+    %2$sArray &operator=(const %2$sArray &rhs)
+    {
+    	%4$sArray::operator=(rhs);
+    	return *this;
+    }
+
+    %2$sArray &operator=(%2$sArray &&rhs)
+    {
+    	%4$sArray::operator=(std::move(rhs));
+    	return *this;
+    }
+
+    %2$sArray* clone() override { return new %2$sArray(*this); }
+
+    value_type operator[](size_type i) const { return get(i); }
+    value_type get(size_type i) const { return dynamic_cast<value_type>(p[i]); }
+
+private:
+    ::java::lang::Class *getClass0() override;
+     
+    void set0(size_type i, ::java::lang::Object *x) override
+    {
+        if(!dynamic_cast<value_type>(x)) {
+            // Should be arraystoreexception
+            throw new ::java::lang::Error();
+        }
+        
+        p[i] = x;
+    }
+};

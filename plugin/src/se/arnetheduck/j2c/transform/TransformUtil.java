@@ -187,6 +187,10 @@ public final class TransformUtil {
 	}
 
 	public static String headerName(ITypeBinding tb) {
+		if (tb.isArray() && tb.getComponentType().isPrimitive()) {
+			return "Array.h";
+		}
+
 		return qualifiedName(tb) + ".h";
 	}
 
@@ -1094,6 +1098,9 @@ public final class TransformUtil {
 	public static void printClassLiteral(PrintWriter out, ITypeBinding type) {
 		out.println("extern ::java::lang::Class *class_(const char16_t *c, int n);");
 		out.println();
+		if (type.isArray() && type.getComponentType().isPrimitive()) {
+			out.println("template<>");
+		}
 		out.println("::java::lang::Class *" + qualifiedCName(type, false)
 				+ "::class_()");
 		out.println("{");
@@ -1109,6 +1116,9 @@ public final class TransformUtil {
 	public static final String CLASS_LITERAL = "static ::java::lang::Class *class_();";
 
 	public static void printGetClass(PrintWriter pw, ITypeBinding type) {
+		if (type.isArray() && type.getComponentType().isPrimitive()) {
+			pw.println("template<>");
+		}
 		pw.println("::java::lang::Class *" + qualifiedCName(type, true) + "::"
 				+ GET_CLASS + "()");
 		pw.println("{");

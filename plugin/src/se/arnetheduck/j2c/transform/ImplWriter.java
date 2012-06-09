@@ -179,38 +179,25 @@ public class ImplWriter extends TransformWriter {
 
 			out = TransformUtil.openImpl(root, type, "");
 
+			boolean hasInc = false;
 			for (ITypeBinding dep : getHardDeps()) {
 				println(TransformUtil.include(dep));
+				hasInc = true;
 			}
 
 			if (fmod) {
 				println("#include <cmath>");
+				hasInc = true;
+			}
+
+			if (hasInc) {
+				println();
 			}
 
 			TransformUtil.printClassLiteral(out, type);
 
 			if (!(type.isInterface() || type.isAnnotation())) {
-
-				println();
-				println("using namespace java::lang;");
-
-				for (ImportDeclaration node : unitInfo.imports) {
-					if (node.isStatic()) {
-						continue; // We qualify references to static imports
-					}
-
-					if (node.isOnDemand()
-							&& node.getName().resolveBinding() instanceof IPackageBinding) {
-						println("using namespace ::", TransformUtil.cname(node
-								.getName().getFullyQualifiedName()), ";");
-					} else {
-						println("using ", TransformUtil.qualifiedCName(
-								(ITypeBinding) node.resolveBinding(), true),
-								";");
-					}
-				}
-
-				println();
+				makeImports();
 
 				if (needsFinally) {
 					makeFinally();
@@ -246,6 +233,28 @@ public class ImplWriter extends TransformWriter {
 		} finally {
 			out = null;
 		}
+	}
+
+	private void makeImports() {
+		println("using namespace java::lang;");
+
+		for (ImportDeclaration node : unitInfo.imports) {
+			if (node.isStatic()) {
+				continue; // We qualify references to static imports
+			}
+
+			if (node.isOnDemand()
+					&& node.getName().resolveBinding() instanceof IPackageBinding) {
+				println("using namespace ::", TransformUtil.cname(node
+						.getName().getFullyQualifiedName()), ";");
+			} else {
+				println("using ",
+						TransformUtil.qualifiedCName(
+								(ITypeBinding) node.resolveBinding(), true),
+						";");
+			}
+		}
+		println();
 	}
 
 	private void makeFinally() {
@@ -708,24 +717,48 @@ public class ImplWriter extends TransformWriter {
 			hardDep(at);
 		}
 
-		print("(");
-		print(node.expressions().size());
-
+		print("({");
 		if (!node.expressions().isEmpty()) {
-			print(", ");
-			visitAllCSV(node.expressions(), false);
+			String s = "";
+			ITypeBinding ct = node.resolveTypeBinding().getComponentType();
 			for (Expression e : (List<Expression>) node.expressions()) {
 				hardDep(e.resolveTypeBinding());
+				if (node.expressions().size() > 1) {
+					println();
+					printi(TransformUtil.indent(1));
+				}
+
+				print(s);
+				s = ", ";
+				arrayInitCast(ct, e);
 			}
 		}
 
-		print(")");
+		if (node.expressions().size() > 1) {
+			println();
+			printi();
+		}
+
+		print("})");
 
 		if (!(node.getParent() instanceof ArrayCreation)) {
 			print(")");
 		}
 
 		return false;
+	}
+
+	private void arrayInitCast(ITypeBinding ct, Expression e) {
+		boolean cast = e instanceof NullLiteral
+				|| !ct.isEqualTo(e.resolveTypeBinding());
+		if (cast) {
+			print("static_cast< ", TransformUtil.relativeCName(ct, type, true),
+					TransformUtil.ref(ct), " >(");
+		}
+		e.accept(this);
+		if (cast) {
+			print(")");
+		}
 	}
 
 	@Override
@@ -1589,9 +1622,7 @@ public class ImplWriter extends TransformWriter {
 				if (!ab.isAssignmentCompatible(tb)) {
 					hardDep(tb);
 					print("new " + TransformUtil.relativeCName(tb, type, true),
-							"(");
-					print(arguments.size() - b.getParameterTypes().length + 1,
-							", ");
+							"({");
 					isVarArg = true;
 				}
 			}
@@ -1607,11 +1638,16 @@ public class ImplWriter extends TransformWriter {
 			}
 
 			Expression argument = arguments.get(i);
-			cast(argument, pb, hasOverloads);
-
+			if (isVarArg) {
+				arrayInitCast(
+						b.getParameterTypes()[b.getParameterTypes().length - 1]
+								.getErasure().getComponentType(), argument);
+			} else {
+				cast(argument, pb, hasOverloads);
+			}
 			if (isVarArg && i == arguments.size() - 1
 					&& i >= b.getParameterTypes().length - 1) {
-				print(")");
+				print("})");
 			}
 		}
 
@@ -1622,7 +1658,7 @@ public class ImplWriter extends TransformWriter {
 
 			ITypeBinding tb = b.getParameterTypes()[b.getParameterTypes().length - 1];
 			hardDep(tb);
-			print("new " + TransformUtil.relativeCName(tb, type, true), "(0)");
+			print("new " + TransformUtil.relativeCName(tb, type, true), "()");
 		}
 
 		if (parens) {

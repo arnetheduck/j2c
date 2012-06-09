@@ -12,7 +12,7 @@
 #include <java.lang.Class.h>
 #include <java.lang.ClassLoader.h>
 
-#include <char16_tArray.h>
+#include <Array.h>
 #include <java.lang.String.h>
 
 using namespace java::lang;

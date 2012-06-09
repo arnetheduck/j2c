@@ -1,13 +1,16 @@
 package se.arnetheduck.j2c.transform;
 
-import java.io.FileNotFoundException;
+import java.io.File;
 import java.io.FileOutputStream;
 import java.io.IOException;
+import java.io.InputStream;
 import java.io.PrintWriter;
-import java.io.Serializable;
+import java.nio.file.Files;
+import java.nio.file.StandardCopyOption;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
+import java.util.Scanner;
 
 import org.eclipse.core.runtime.IPath;
 import org.eclipse.jdt.core.dom.ITypeBinding;
@@ -52,154 +55,64 @@ public class ArrayWriter {
 		writeImpl();
 	}
 
-	public void writeHeader() throws FileNotFoundException {
+	public void writeHeader() throws IOException {
 		ctx.headers.add(type);
 
-		FileOutputStream fos = new FileOutputStream(root.append(
-				TransformUtil.headerName(type)).toFile());
-		PrintWriter pw = new PrintWriter(fos);
-
-		pw.println("#pragma once");
-		pw.println();
-		pw.println(TransformUtil.include("forward.h"));
-		pw.println("#include <string.h>");
-
-		pw.println();
-
-		String name = TransformUtil.name(type);
 		ITypeBinding ct = type.getComponentType();
-		String ret = TransformUtil.cname(TransformUtil.name(ct));
+		if (ct.isPrimitive()) {
+			try (InputStream is = ArrayWriter.class
+					.getResourceAsStream("/se/arnetheduck/j2c/resources/Array.h")) {
+				Files.copy(is, root.append(TransformUtil.headerName(type))
+						.toFile().toPath(), StandardCopyOption.REPLACE_EXISTING);
+			}
+
+			return;
+		} else if (ct.getQualifiedName().equals(Object.class.getName())) {
+			try (InputStream is = ArrayWriter.class
+					.getResourceAsStream("/se/arnetheduck/j2c/resources/ObjectArray.h")) {
+				Files.copy(is, root.append(TransformUtil.headerName(type))
+						.toFile().toPath(), StandardCopyOption.REPLACE_EXISTING);
+			}
+
+			return;
+		}
+
+		File target = root.append(TransformUtil.headerName(type)).toFile();
 
 		List<ITypeBinding> types = getSuperTypes();
 
-		String storage = ct.isPrimitive() ? TransformUtil.cname(TransformUtil
-				.name(ct)) : "Object*";
+		StringBuilder includes = new StringBuilder();
 
-		if (types.isEmpty()) {
-			ITypeBinding object = ctx.resolve(Object.class);
-			ITypeBinding cln = ctx.resolve(Cloneable.class);
-			ITypeBinding ser = ctx.resolve(Serializable.class);
-			ctx.hardDep(object);
-			ctx.hardDep(cln);
-			ctx.hardDep(ser);
-			ctx.hardDep(object.createArrayType(1));
-			pw.println(TransformUtil.include(object));
-			pw.println(TransformUtil.include(cln));
-			pw.println(TransformUtil.include(ser));
-
-			pw.println();
-			pw.println("class " + TransformUtil.qualifiedCName(type, false));
-			pw.println("    : public virtual ::java::lang::Object");
-			pw.println("    , public virtual ::java::lang::Cloneable");
-			pw.println("    , public virtual ::java::io::Serializable");
-		} else {
-			for (ITypeBinding tb : types) {
-				ctx.hardDep(tb);
-				pw.println(TransformUtil.include(tb));
-			}
-
-			if (!ct.isPrimitive()) {
-				ctx.hardDep(ct);
-				pw.println(TransformUtil.include(ct));
-			}
-
-			pw.println();
-			pw.println("class " + TransformUtil.qualifiedCName(type, false));
-
-			String sep = "    : public virtual ";
-			for (ITypeBinding tb : types) {
-				pw.print(sep);
-				sep = "    , public virtual ";
-				pw.println(TransformUtil.relativeCName(tb, type, true));
-			}
+		for (ITypeBinding tb : types) {
+			ctx.hardDep(tb);
+			includes.append(TransformUtil.include(tb) + "\n");
 		}
 
-		pw.println("{");
-		pw.println("public:");
+		String name = TransformUtil.name(ct);
+		String qname = TransformUtil.qualifiedCName(ct, false);
+		String superName = ct.getSuperclass() == null ? "::java::lang::Object"
+				: TransformUtil.relativeCName(ct.getSuperclass(), ct, true);
+		ctx.hardDep(ct);
+		includes.append(TransformUtil.include(ct) + "\n");
 
-		pw.println(TransformUtil.indent(1) + TransformUtil.CLASS_LITERAL);
-		pw.println();
+		StringBuilder bases = new StringBuilder();
 
-		pw.println("    " + name + "* clone() { return new " + name
-				+ "(*this); }");
-		pw.println();
-
-		if (ct.isPrimitive()) {
-			pw.println("    " + ret + " &operator[](int i) { return p[i]; }");
-
-			pw.println("    " + ret + " get(int i) const { return p[i]; }");
-
-			pw.println("    " + ret + "& set(int i, " + ret
-					+ " x) { return (p[i] = x); }");
-		} else {
-			pw.println("    " + ret
-					+ "* operator[](int i) const { return get(i); }");
-
-			pw.println("    " + ret
-					+ "* get(int i) const { return dynamic_cast<" + ret
-					+ TransformUtil.ref(ct) + ">(p[i]); }");
-
-			pw.println("    " + ret + "* set(int i, " + ret
-					+ " *x) { p[i] = x; return x; }");
+		String sep = "    : public virtual ";
+		for (ITypeBinding tb : types) {
+			bases.append(sep);
+			sep = "    , public virtual ";
+			bases.append(TransformUtil.relativeCName(tb, type, true));
+			bases.append("\n");
 		}
 
-		pw.println();
+		try (InputStream is = ArrayWriter.class
+				.getResourceAsStream("/se/arnetheduck/j2c/resources/SubArray.h.tmpl")) {
+			String template = new Scanner(is).useDelimiter("\\A").next();
 
-		if (types.isEmpty()) {
-			pw.println("    template<typename... T>");
-			pw.println("    " + name + "(int n, T... args)");
-			pw.println("        : length_(n), p(new " + storage
-					+ "[n]) { memset(p, 0, n * sizeof(" + storage
-					+ ")); init(0, args...); }");
-			pw.println();
-			pw.println("    " + name + "(const " + name + " &rhs)");
-			pw.println("        : length_(rhs.length_), p(new " + storage
-					+ "[rhs.length_])");
-			pw.println("    { memcpy(p, rhs.p, length_ * sizeof(" + storage
-					+ ")); }");
-			pw.println();
-			pw.println("    virtual ~" + name + "() { delete [] p; }");
-			pw.println();
-
-			pw.println("    const int length_;");
-			pw.println();
-
-			if (ct.isPrimitive()) {
-				pw.println("    " + name + "(const " + storage + " *p, int n)");
-				pw.println("        : length_(n), p(new " + storage
-						+ "[n]) { memcpy(this->p, p, n * sizeof(" + storage
-						+ ")); }");
-				pw.println("    " + storage + " *p;");
-			} else {
-				pw.println("    " + name + "(int n)");
-				pw.println("        : length_(n), p(new " + storage
-						+ "[n]) { memset(p, 0, n * sizeof(" + storage + ")); }");
-				pw.println();
-				pw.println("protected:");
-				pw.println("    " + storage + " *p;");
+			try (PrintWriter pw = new PrintWriter(new FileOutputStream(target))) {
+				pw.format(template, includes, name, bases, superName, qname);
 			}
-		} else {
-			pw.println("    template<typename... T>");
-			pw.println("    " + name + "(int n, T... args)");
-			pw.println("        : ObjectArray(n) { init(0, args...); }");
-
-			pw.println("protected:");
-			pw.println("    " + name + "()");
-			pw.println("        : ObjectArray(0) { }");
 		}
-
-		pw.println();
-		pw.println("private:");
-		pw.println("    void init(int i) { }");
-		pw.println("    template<typename T, typename... TRest>");
-		pw.println("    void init(int i, T first, TRest... rest) { set(i, first); init(i+1, rest...); }");
-		pw.println();
-		pw.println("    ::java::lang::Class *" + TransformUtil.GET_CLASS
-				+ "();");
-
-		pw.println("};");
-
-		pw.close();
 	}
 
 	private void writeImpl() throws IOException {

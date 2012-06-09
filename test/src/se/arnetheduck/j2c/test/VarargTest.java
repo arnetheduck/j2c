@@ -27,4 +27,8 @@ public class VarargTest {
 		VA[] x = new VA[0];
 		m4(x);
 	}
+
+	public void m6(Object... x) {
+		m6(4, "rte");
+	}
 }

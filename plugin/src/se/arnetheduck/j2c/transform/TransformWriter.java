@@ -388,7 +388,7 @@ public abstract class TransformWriter extends ASTVisitor {
 
 			print(TransformUtil.name(vb));
 		} else if (b instanceof ITypeBinding) {
-			print(TransformUtil.name((ITypeBinding) b));
+			print(TransformUtil.relativeCName((ITypeBinding) b, type, true));
 			ctx.softDep((ITypeBinding) b);
 		} else if (b instanceof IMethodBinding) {
 			IMethodBinding mb = (IMethodBinding) b;

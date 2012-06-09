@@ -36,7 +36,22 @@ public class ForwardWriter {
 		pw.println("#include <stdint.h>");
 		pw.println("#include <limits>");
 
+		pw.println();
+		pw.println("template<typename T> class Array;");
+		pw.println("typedef Array<bool> boolArray;");
+		pw.println("typedef Array<char16_t> char16_tArray;");
+		pw.println("typedef Array<double> doubleArray;");
+		pw.println("typedef Array<float> floatArray;");
+		pw.println("typedef Array<int8_t> int8_tArray;");
+		pw.println("typedef Array<int16_t> int16_tArray;");
+		pw.println("typedef Array<int32_t> int32_tArray;");
+		pw.println("typedef Array<int64_t> int64_tArray;");
+
 		for (ITypeBinding t : types) {
+			if (t.isArray() && t.getComponentType().isPrimitive()) {
+				continue;
+			}
+
 			printType(pw, t);
 			p.remove(t.getPackage());
 		}

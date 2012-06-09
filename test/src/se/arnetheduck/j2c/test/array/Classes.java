@@ -17,4 +17,8 @@ public class Classes {
 	Empty[] hclone() {
 		return h.clone();
 	}
+
+	Empty[] hh() {
+		return new Empty[] { null, new Empty(), new Sub() };
+	}
 }
