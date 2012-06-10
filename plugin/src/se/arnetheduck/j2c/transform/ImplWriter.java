@@ -197,8 +197,6 @@ public class ImplWriter extends TransformWriter {
 			TransformUtil.printClassLiteral(out, type);
 
 			if (!(type.isInterface() || type.isAnnotation())) {
-				makeImports();
-
 				if (needsFinally) {
 					makeFinally();
 				}
@@ -233,28 +231,6 @@ public class ImplWriter extends TransformWriter {
 		} finally {
 			out = null;
 		}
-	}
-
-	private void makeImports() {
-		println("using namespace java::lang;");
-
-		for (ImportDeclaration node : unitInfo.imports) {
-			if (node.isStatic()) {
-				continue; // We qualify references to static imports
-			}
-
-			if (node.isOnDemand()
-					&& node.getName().resolveBinding() instanceof IPackageBinding) {
-				println("using namespace ::", TransformUtil.cname(node
-						.getName().getFullyQualifiedName()), ";");
-			} else {
-				println("using ",
-						TransformUtil.qualifiedCName(
-								(ITypeBinding) node.resolveBinding(), true),
-						";");
-			}
-		}
-		println();
 	}
 
 	private void makeFinally() {
