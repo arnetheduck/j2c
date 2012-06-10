@@ -1027,7 +1027,7 @@ public final class TransformUtil {
 	}
 
 	public static void printStringSupport(ITypeBinding tb, PrintWriter pw) {
-		if (!tb.getQualifiedName().equals("java.lang.String")) {
+		if (!tb.getQualifiedName().equals(String.class.getName())) {
 			return;
 		}
 
@@ -1042,7 +1042,8 @@ public final class TransformUtil {
 					+ "lhs, java::lang::String *rhs);");
 		}
 
-		pw.println("java::lang::String *lit(const char16_t *chars, int n);");
+		pw.println("namespace java { namespace lang { String *operator \"\" _j(const char16_t *p, size_t n); } }");
+		pw.println("using java::lang::operator \"\" _j;");
 		pw.println();
 	}
 

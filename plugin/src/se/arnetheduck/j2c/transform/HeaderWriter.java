@@ -91,6 +91,10 @@ public class HeaderWriter extends TransformWriter {
 				out.println(TransformUtil.include(tb));
 			}
 
+			if (type.getQualifiedName().equals(String.class.getName())) {
+				out.println("#include <stddef.h>");
+			}
+
 			out.print(body);
 
 			out.close();
@@ -208,6 +212,10 @@ public class HeaderWriter extends TransformWriter {
 			makeDtor();
 
 			makeGetClass();
+
+			if (type.getQualifiedName().equals(String.class.getName())) {
+				printlni("friend String *operator\"\" _j(const char16_t *s, size_t n);");
+			}
 		}
 
 		indent--;

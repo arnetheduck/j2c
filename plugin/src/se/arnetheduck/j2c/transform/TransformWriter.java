@@ -503,8 +503,7 @@ public abstract class TransformWriter extends ASTVisitor {
 
 	@Override
 	public boolean visit(StringLiteral node) {
-		print("lit(u", node.getEscapedValue(), ", ", node.getLiteralValue()
-				.length(), ")");
+		print("u", node.getEscapedValue(), "_j");
 
 		hardDep(node.getAST().resolveWellKnownType(String.class.getName()));
 

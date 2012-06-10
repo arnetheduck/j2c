@@ -56,6 +56,10 @@ public class TypeBindingHeaderWriter {
 			pw.println(TransformUtil.include(b));
 		}
 
+		if (type.getQualifiedName().equals(String.class.getName())) {
+			pw.println("#include <stddef.h>");
+		}
+
 		pw.println();
 
 		if (type.isInterface()) {
@@ -135,6 +139,10 @@ public class TypeBindingHeaderWriter {
 		makeDtor(pw);
 
 		makeGetClass(pw);
+
+		if (type.getQualifiedName().equals(String.class.getName())) {
+			pw.println("    friend String *operator\"\" _j(const char16_t *s, size_t n);");
+		}
 
 		pw.println("};");
 

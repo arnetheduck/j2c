@@ -21,20 +21,23 @@ void lock(Object *) { }
 
 void unlock(Object *) { }
 
-String *lit(const char16_t * p, int n)
+String *java::lang::operator "" _j(const char16_t * p, size_t n)
 {
-    return (new String(new char16_tArray(p, n)))->intern(); 
+    char16_tArray *x = new char16_tArray(p, n);
+	String *s = new String();
+	s->value_ = x;
+	s->count_ = n;
+    return s->intern(); 
 }
 
-Class *class_(const char16_t *c, int n)
+Class *class_(const char16_t *s, int n)
 {
-    String *s = lit(c, n);
-    return Class::forName(s, false, ClassLoader::getCallerClassLoader());
+    return Class::forName(operator "" _j(s, n), false, ClassLoader::getCallerClassLoader());
 }
 
 static inline String *toString(Object *o) 
 {
-    return o ? o->toString() : lit(u"null", 4);
+    return o ? o->toString() : u"null"_j;
 }
 
 String *join(String *lhs, String *rhs)
