@@ -81,7 +81,7 @@ public class HeaderWriter extends TransformWriter {
 			List<BodyDeclaration> declarations) {
 
 		try {
-			String body = getBody(enums, declarations, closures);
+			String body = getBody(enums, declarations);
 
 			PrintWriter pw = HeaderUtil.open(root, type, ctx, softDeps,
 					hardDeps);
@@ -99,8 +99,7 @@ public class HeaderWriter extends TransformWriter {
 	}
 
 	private String getBody(List<EnumConstantDeclaration> enums,
-			List<BodyDeclaration> declarations,
-			Collection<IVariableBinding> closures) {
+			List<BodyDeclaration> declarations) {
 		PrintWriter old = out;
 		StringWriter sw = new StringWriter();
 		out = new PrintWriter(sw);
@@ -139,7 +138,7 @@ public class HeaderWriter extends TransformWriter {
 				for (IVariableBinding closure : closures) {
 					softDep(closure.getType());
 					printlni(TransformUtil.relativeCName(closure.getType(),
-							type, false), " ", TransformUtil.ref(closure
+							type, true), " ", TransformUtil.ref(closure
 							.getType()), closure.getName(), "_;");
 				}
 			}
