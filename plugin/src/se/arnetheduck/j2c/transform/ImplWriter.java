@@ -497,7 +497,7 @@ public class ImplWriter extends TransformWriter {
 		if (closures != null) {
 			for (IVariableBinding closure : closures) {
 				printi(sep);
-				printInit(closure.getName() + "_");
+				printInit(TransformUtil.name(closure));
 				sep = ", ";
 			}
 		}
@@ -938,7 +938,7 @@ public class ImplWriter extends TransformWriter {
 		if (localTypes.containsKey(tb)) {
 			ImplWriter iw = localTypes.get(tb);
 			for (IVariableBinding closure : iw.closures) {
-				print(sep, closure.getName(), "_");
+				print(sep, TransformUtil.name(closure));
 				sep = ", ";
 			}
 		}
@@ -1084,8 +1084,7 @@ public class ImplWriter extends TransformWriter {
 	private ITypeBinding getIterator(ITypeBinding tb) {
 		for (IMethodBinding mb : tb.getDeclaredMethods()) {
 			if (mb.getName().equals("iterator")
-					&& mb.getReturnType().getErasure().getQualifiedName()
-							.equals(Iterator.class.getName())) {
+					&& TransformUtil.same(mb.getReturnType(), Iterator.class)) {
 				return mb.getReturnType();
 			}
 		}

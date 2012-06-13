@@ -66,7 +66,8 @@ public final class TransformUtil {
 			"static_assert", "static_cast", "struct", "template",
 			"thread_local", "typedef", "typeid", "typename", "union",
 			"unsigned", "using", "wchar_t", "xor", "xor_eq", CTOR,
-			INSTANCE_INIT, STATIC_INIT, GET_CLASS);
+			INSTANCE_INIT, STATIC_INIT, GET_CLASS, "int8_t", "int16_t",
+			"int32_t", "int64_t");
 
 	public static final Map<String, String> primitives = new HashMap<String, String>() {
 		{
@@ -96,8 +97,7 @@ public final class TransformUtil {
 	public static String qualifiedCName(ITypeBinding tb, boolean global) {
 		IPackageBinding pkg = elementPackage(tb);
 		return (global && !tb.isPrimitive() ? "::" : "")
-				+ cname(pkg == null ? name(tb)
-						: (pkg.getName() + "." + name(tb)));
+				+ cname(pkg == null ? name(tb) : (name(pkg) + "." + name(tb)));
 	}
 
 	public static String relativeCName(ITypeBinding tb, ITypeBinding root,
@@ -156,7 +156,7 @@ public final class TransformUtil {
 			return name(tbe.getDeclaringClass()) + "_" + tbe.getName();
 		}
 
-		return tbe.getName();
+		return keywords(tbe.getName());
 	}
 
 	public static String name(IMethodBinding mb) {
@@ -172,9 +172,22 @@ public final class TransformUtil {
 		return vb.getName() + "_";
 	}
 
+	public static String name(IPackageBinding pb) {
+		String[] n = pb.getNameComponents();
+		StringBuilder ret = new StringBuilder();
+		String sep = "";
+		for (int i = 0; i < n.length; ++i) {
+			ret.append(sep);
+			sep = ".";
+			ret.append(keywords(n[i]));
+		}
+
+		return ret.toString();
+	}
+
 	public static String packageName(ITypeBinding tb) {
 		IPackageBinding pkg = elementPackage(tb);
-		return pkg == null ? "" : pkg.getName();
+		return pkg == null ? "" : name(pkg);
 	}
 
 	public static String packageHeader(String packageName) {
@@ -184,7 +197,7 @@ public final class TransformUtil {
 
 	public static String qualifiedName(ITypeBinding tb) {
 		IPackageBinding pkg = elementPackage(tb);
-		return pkg == null ? name(tb) : (pkg.getName() + "." + name(tb));
+		return pkg == null ? name(tb) : (name(pkg) + "." + name(tb));
 	}
 
 	public static String include(ITypeBinding tb) {
@@ -462,6 +475,10 @@ public final class TransformUtil {
 
 	public static String ref(ITypeBinding tb) {
 		return tb.isPrimitive() ? "" : "*";
+	}
+
+	public static String refName(IVariableBinding vb) {
+		return ref(vb.getType()) + name(vb);
 	}
 
 	public static String ref(Type t) {
@@ -1053,6 +1070,6 @@ public final class TransformUtil {
 	}
 
 	public static boolean same(ITypeBinding type, Class<?> klazz) {
-		return type.getQualifiedName().equals(klazz.getName());
+		return type.getErasure().getQualifiedName().equals(klazz.getName());
 	}
 }

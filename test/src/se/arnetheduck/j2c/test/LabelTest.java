@@ -60,16 +60,16 @@ public class LabelTest {
 	}
 
 	public void breakEnhForIter(Iterable<?> i) {
-		outer: for (Object o : i) {
-			for (Object o2 : i) {
+		outer: for (java.lang.Object o : i) {
+			for (java.lang.Object o2 : i) {
 				break outer;
 			}
 		}
 	}
 
 	public void contEnhForIter(Iterable<?> i) {
-		outer: for (Object o : i) {
-			for (Object o2 : i) {
+		outer: for (java.lang.Object o : i) {
+			for (java.lang.Object o2 : i) {
 				continue outer;
 			}
 		}

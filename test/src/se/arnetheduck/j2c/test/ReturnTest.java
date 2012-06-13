@@ -8,7 +8,7 @@ public class ReturnTest {
 	}
 
 	public static class A {
-		public Object a() {
+		public java.lang.Object a() {
 			return null;
 		}
 	}

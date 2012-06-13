@@ -28,7 +28,7 @@ public class VarargTest {
 		m4(x);
 	}
 
-	public void m6(Object... x) {
+	public void m6(java.lang.Object... x) {
 		m6(4, "rte");
 	}
 }

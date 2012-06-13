@@ -138,8 +138,8 @@ public class HeaderWriter extends TransformWriter {
 				for (IVariableBinding closure : closures) {
 					softDep(closure.getType());
 					printlni(TransformUtil.relativeCName(closure.getType(),
-							type, true), " ", TransformUtil.ref(closure
-							.getType()), closure.getName(), "_;");
+							type, true), " ", TransformUtil.refName(closure),
+							";");
 				}
 			}
 

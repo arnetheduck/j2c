@@ -168,9 +168,8 @@ public class TypeBindingHeaderWriter {
 				vb.getDeclaringClass(), true));
 		pw.print(" ");
 
-		pw.print(TransformUtil.ref(vb.getType()));
-		pw.print(vb.getName());
-		pw.print(asMethod ? "__" : "_");
+		pw.print(TransformUtil.refName(vb));
+		pw.print(asMethod ? "_" : "");
 
 		if (cv != null) {
 			pw.print(" = ");

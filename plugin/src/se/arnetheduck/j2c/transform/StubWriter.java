@@ -135,8 +135,8 @@ public class StubWriter {
 		print(TransformUtil.ref(vb.getType()));
 		print(TransformUtil.qualifiedCName(vb.getDeclaringClass(), true));
 		print("::");
-		print(vb.getName());
-		println(asMethod ? "__;" : "_;");
+		print(TransformUtil.name(vb));
+		println(asMethod ? "_;" : ";");
 	}
 
 	private void printMethod(ITypeBinding tb, IMethodBinding mb,
@@ -190,7 +190,7 @@ public class StubWriter {
 
 		if (!hasBody) {
 			if (mb.getReturnType() != null
-					&& !mb.getReturnType().getName().equals("void")) {
+					&& !TransformUtil.isVoid(mb.getReturnType())) {
 				print(TransformUtil.indent(1));
 				println("return 0;");
 			}

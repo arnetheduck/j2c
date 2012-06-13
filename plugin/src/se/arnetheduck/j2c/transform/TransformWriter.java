@@ -167,8 +167,7 @@ public abstract class TransformWriter extends ASTVisitor {
 		if (closures != null) {
 			for (IVariableBinding closure : closures) {
 				print(sep, TransformUtil.relativeCName(closure.getType(), type,
-						true), " ", TransformUtil.ref(closure.getType()),
-						closure.getName(), "_");
+						true), " ", TransformUtil.refName(closure));
 				sep = ", ";
 			}
 		}

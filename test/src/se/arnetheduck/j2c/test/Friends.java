@@ -13,7 +13,7 @@ public class Friends {
 	}
 
 	private class B extends A {
-		public int m(Object o) {
+		public int m(java.lang.Object o) {
 			new A() {
 				int m() {
 					return A.C.e;
