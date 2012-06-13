@@ -1,9 +1,9 @@
 #pragma once
 
-#include "forward.h"
-
 #include <algorithm>
 #include <initializer_list>
+
+#include "fwd.h"
 
 #include "java.lang.Object.h"
 #include "java.lang.Cloneable.h"

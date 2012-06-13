@@ -1,16 +1,20 @@
 package se.arnetheduck.j2c.transform;
 
+import java.io.File;
 import java.io.FileOutputStream;
 import java.io.IOException;
+import java.io.InputStream;
 import java.io.PrintWriter;
 import java.lang.reflect.Modifier;
 import java.text.Annotation;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Scanner;
 import java.util.Set;
 import java.util.TreeSet;
 import java.util.regex.Matcher;
@@ -37,19 +41,12 @@ import org.eclipse.jdt.core.dom.TypeParameter;
 import org.eclipse.jdt.core.dom.VariableDeclarationFragment;
 
 public final class TransformUtil {
-	public static final String PUBLIC = "public:";
-	public static final String PROTECTED = "public: /* protected */";
-	public static final String PACKAGE = "public: /* package */";
-	public static final String PRIVATE = "private:";
 
 	public static final String NATIVE = "-native";
 	public static final String STUB = "-stub";
 
 	/** Name of fake static initializer */
 	public static final String STATIC_INIT = "clinit";
-	public static final String STATIC_INIT_DECL = "static void " + STATIC_INIT
-			+ "();";
-
 	/** Name of fake instance initializer */
 	public static final String INSTANCE_INIT = "init";
 
@@ -168,9 +165,14 @@ public final class TransformUtil {
 		return vb.getName() + "_";
 	}
 
-	public static String[] packageName(ITypeBinding tb) {
+	public static String packageName(ITypeBinding tb) {
 		IPackageBinding pkg = elementPackage(tb);
-		return pkg == null ? new String[0] : pkg.getNameComponents();
+		return pkg == null ? "" : pkg.getName();
+	}
+
+	public static String packageHeader(String packageName) {
+		return packageName == null || packageName.length() == 0 ? "fwd.h"
+				: packageName + ".fwd.h";
 	}
 
 	public static String qualifiedName(ITypeBinding tb) {
@@ -187,7 +189,7 @@ public final class TransformUtil {
 	}
 
 	public static String headerName(ITypeBinding tb) {
-		if (tb.isArray() && tb.getComponentType().isPrimitive()) {
+		if (isPrimitiveArray(tb)) {
 			return "Array.h";
 		}
 
@@ -437,10 +439,6 @@ public final class TransformUtil {
 			return;
 		}
 
-		if (dep.isPrimitive()) {
-			return;
-		}
-
 		dep = dep.getErasure();
 
 		// This ensures that the new dep is always added last (useful when
@@ -453,37 +451,6 @@ public final class TransformUtil {
 		}
 
 		deps.add(dep);
-	}
-
-	public static String printAccess(PrintWriter out, int access,
-			String lastAccess) {
-		if ((access & Modifier.PRIVATE) > 0) {
-			if (!PRIVATE.equals(lastAccess)) {
-				lastAccess = PRIVATE;
-				out.println();
-				out.println(lastAccess);
-			}
-		} else if ((access & Modifier.PROTECTED) > 0) {
-			if (!PROTECTED.equals(lastAccess)) {
-				lastAccess = PROTECTED;
-				out.println();
-				out.println(lastAccess);
-			}
-		} else if ((access & Modifier.PUBLIC) > 0) {
-			if (!PUBLIC.equals(lastAccess)) {
-				lastAccess = PUBLIC;
-				out.println();
-				out.println(lastAccess);
-			}
-		} else {
-			if (!PACKAGE.equals(lastAccess)) {
-				lastAccess = PACKAGE;
-				out.println();
-				out.println(lastAccess);
-			}
-		}
-
-		return lastAccess;
 	}
 
 	public static String ref(ITypeBinding tb) {
@@ -655,25 +622,6 @@ public final class TransformUtil {
 		return "";
 	}
 
-	public static PrintWriter openHeader(IPath root, ITypeBinding tb)
-			throws IOException {
-
-		FileOutputStream fos = new FileOutputStream(root.append(
-				TransformUtil.headerName(tb)).toFile());
-
-		PrintWriter pw = new PrintWriter(fos);
-
-		pw.println("// Generated from " + tb.getJavaElement().getPath());
-
-		pw.println("#pragma once");
-		pw.println();
-
-		pw.println(include("forward.h"));
-		pw.println();
-
-		return pw;
-	}
-
 	public static PrintWriter openImpl(IPath root, ITypeBinding tb,
 			String suffix) throws IOException {
 
@@ -759,14 +707,14 @@ public final class TransformUtil {
 	}
 
 	public static void printParams(PrintWriter out, ITypeBinding tb,
-			IMethodBinding mb, Transformer ctx) {
+			IMethodBinding mb, Collection<ITypeBinding> deps) {
 		out.print("(");
 		for (int i = 0; i < mb.getParameterTypes().length; ++i) {
 			if (i > 0)
 				out.print(", ");
 
 			ITypeBinding pb = mb.getParameterTypes()[i];
-			ctx.softDep(pb);
+			addDep(pb, deps);
 
 			out.print(relativeCName(pb, tb, true));
 			out.print(" ");
@@ -838,7 +786,7 @@ public final class TransformUtil {
 	}
 
 	public static IMethodBinding getSuperMethod(IMethodBinding mb) {
-		if (isStatic(mb)) {
+		if (isStatic(mb) || mb.isConstructor()) {
 			return null;
 		}
 
@@ -865,7 +813,7 @@ public final class TransformUtil {
 	}
 
 	public static void declareBridge(PrintWriter pw, ITypeBinding tb,
-			IMethodBinding mb, Transformer ctx) {
+			IMethodBinding mb, Collection<ITypeBinding> softDeps) {
 		if (!mb.isConstructor()) {
 			IMethodBinding mb2 = getSuperMethod(mb);
 			if (needsBridge(mb, mb2)) {
@@ -873,7 +821,7 @@ public final class TransformUtil {
 
 				pw.print(TransformUtil.indent(1));
 
-				TransformUtil.printSignature(pw, tb, mb2, ctx, false);
+				TransformUtil.printSignature(pw, tb, mb2, softDeps, false);
 
 				pw.println(";");
 			}
@@ -881,14 +829,15 @@ public final class TransformUtil {
 	}
 
 	public static List<ITypeBinding> defineBridge(PrintWriter pw,
-			ITypeBinding tb, IMethodBinding mb, Transformer ctx) {
+			ITypeBinding tb, IMethodBinding mb,
+			Collection<ITypeBinding> softDeps) {
 		List<ITypeBinding> deps = new ArrayList<ITypeBinding>();
 		if (!mb.isConstructor()) {
 			IMethodBinding mb2 = getSuperMethod(mb);
 			if (needsBridge(mb, mb2)) {
 				mb2 = mb2.getMethodDeclaration();
 
-				printSignature(pw, tb, mb2, ctx, true);
+				printSignature(pw, tb, mb2, softDeps, true);
 
 				pw.println();
 				pw.println("{ ");
@@ -974,12 +923,13 @@ public final class TransformUtil {
 	}
 
 	public static void printSignature(PrintWriter pw, ITypeBinding tb,
-			IMethodBinding mb, Transformer ctx, boolean qualified) {
+			IMethodBinding mb, Collection<ITypeBinding> softDeps,
+			boolean qualified) {
 		if (mb.isConstructor()) {
 			pw.print(name(tb));
 		} else {
 			ITypeBinding rt = mb.getReturnType();
-			ctx.softDep(rt);
+			addDep(rt, softDeps);
 
 			if (!qualified) {
 				pw.print(methodModifiers(mb.getModifiers(), tb.getModifiers()));
@@ -999,7 +949,7 @@ public final class TransformUtil {
 			pw.print(name(mb));
 		}
 
-		printParams(pw, tb, mb, ctx);
+		printParams(pw, tb, mb, softDeps);
 	}
 
 	public static boolean isVoid(ITypeBinding tb) {
@@ -1057,7 +1007,7 @@ public final class TransformUtil {
 		Set<IMethodBinding> im = new TreeSet<IMethodBinding>(
 				new BindingComparator());
 
-		for (ITypeBinding ib : HeaderWriter.interfaces(tb)) {
+		for (ITypeBinding ib : interfaces(tb)) {
 			im.addAll(Arrays.asList(ib.getDeclaredMethods()));
 		}
 
@@ -1082,9 +1032,23 @@ public final class TransformUtil {
 		return missing;
 	}
 
+	public static List<ITypeBinding> interfaces(ITypeBinding tb) {
+		if (tb.getInterfaces().length == 0) {
+			return Collections.emptyList();
+		}
+
+		List<ITypeBinding> ret = new ArrayList<ITypeBinding>();
+		for (ITypeBinding ib : tb.getInterfaces()) {
+			ret.add(ib);
+			ret.addAll(interfaces(ib));
+		}
+
+		return ret;
+	}
+
 	public static void printSuperCall(PrintWriter out, ITypeBinding type,
-			IMethodBinding mb, Transformer ctx) {
-		printSignature(out, type, mb, ctx, false);
+			IMethodBinding mb, Collection<ITypeBinding> softDeps) {
+		printSignature(out, type, mb, softDeps, false);
 
 		out.print(" { return super::" + name(mb) + "(");
 		String sep = "";
@@ -1114,8 +1078,6 @@ public final class TransformUtil {
 		out.println();
 	}
 
-	public static final String CLASS_LITERAL = "static ::java::lang::Class *class_();";
-
 	public static void printGetClass(PrintWriter pw, ITypeBinding type) {
 		if (type.isArray() && type.getComponentType().isPrimitive()) {
 			pw.println("template<>");
@@ -1126,5 +1088,22 @@ public final class TransformUtil {
 		pw.println(indent(1) + "return class_();");
 		pw.println("}");
 		pw.println();
+	}
+
+	public static void writeTemplate(InputStream template, File target,
+			Object... params) throws IOException {
+		String format = new Scanner(template).useDelimiter("\\A").next();
+
+		try (PrintWriter pw = new PrintWriter(new FileOutputStream(target))) {
+			pw.format(format, params);
+		}
+	}
+
+	public static boolean isPrimitiveArray(ITypeBinding tb) {
+		return tb.isArray() && tb.getComponentType().isPrimitive();
+	}
+
+	public static boolean same(ITypeBinding type, Class<?> klazz) {
+		return type.getQualifiedName().equals(klazz.getName());
 	}
 }

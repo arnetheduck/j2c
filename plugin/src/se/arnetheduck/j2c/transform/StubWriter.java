@@ -17,6 +17,8 @@ public class StubWriter {
 	private final Transformer ctx;
 	private Set<ITypeBinding> hardDeps = new TreeSet<ITypeBinding>(
 			new BindingComparator());
+	private Set<ITypeBinding> softDeps = new TreeSet<ITypeBinding>(
+			new BindingComparator());
 
 	private PrintWriter pw;
 
@@ -37,10 +39,10 @@ public class StubWriter {
 
 	public void write(boolean natives, boolean privates) throws Exception {
 		if (natives) {
-			ctx.natives.add(type);
+			ctx.natives.add(TransformUtil.implName(type, TransformUtil.NATIVE));
 			pw = TransformUtil.openImpl(root, type, TransformUtil.NATIVE);
 		} else {
-			ctx.stubs.add(type);
+			ctx.stubs.add(TransformUtil.implName(type, TransformUtil.STUB));
 			pw = TransformUtil.openImpl(root, type, TransformUtil.STUB);
 		}
 
@@ -101,8 +103,6 @@ public class StubWriter {
 			return;
 		}
 
-		ctx.softDep(vb.getType());
-
 		Object cv = TransformUtil.constantValue(vb);
 		boolean asMethod = TransformUtil.asMethod(vb);
 
@@ -147,14 +147,13 @@ public class StubWriter {
 
 		if (Modifier.isPrivate(mb.getModifiers()) && !privates) {
 			print("/* private: ");
-			TransformUtil.printSignature(pw, tb, mb, ctx, true);
+			TransformUtil.printSignature(pw, tb, mb, softDeps, true);
 			println(" */");
 			return;
 		}
 
 		if (!mb.isConstructor()) {
 			ITypeBinding rt = mb.getReturnType();
-			ctx.softDep(rt);
 
 			print(TransformUtil.qualifiedCName(rt, true));
 			print(" ");
@@ -168,7 +167,7 @@ public class StubWriter {
 
 		print(mb.isConstructor() ? TransformUtil.CTOR : TransformUtil.name(mb));
 
-		TransformUtil.printParams(pw, tb, mb, ctx);
+		TransformUtil.printParams(pw, tb, mb, softDeps);
 		pw.println();
 		print("{");
 		if (Modifier.isNative(mb.getModifiers())) {
@@ -200,7 +199,8 @@ public class StubWriter {
 		println("}");
 		pw.println();
 
-		for (ITypeBinding dep : TransformUtil.defineBridge(pw, type, mb, ctx)) {
+		for (ITypeBinding dep : TransformUtil.defineBridge(pw, type, mb,
+				softDeps)) {
 			hardDep(dep);
 		}
 	}

@@ -6,8 +6,14 @@ import java.nio.file.Files;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Comparator;
+import java.util.HashMap;
+import java.util.HashSet;
+import java.util.Iterator;
 import java.util.List;
+import java.util.Map;
+import java.util.Map.Entry;
 import java.util.Set;
+import java.util.TreeMap;
 import java.util.TreeSet;
 
 import org.eclipse.core.runtime.IPath;
@@ -26,7 +32,6 @@ import org.eclipse.jdt.core.dom.AbstractTypeDeclaration;
 import org.eclipse.jdt.core.dom.AnnotationTypeDeclaration;
 import org.eclipse.jdt.core.dom.CompilationUnit;
 import org.eclipse.jdt.core.dom.EnumDeclaration;
-import org.eclipse.jdt.core.dom.IPackageBinding;
 import org.eclipse.jdt.core.dom.ITypeBinding;
 import org.eclipse.jdt.core.dom.TypeDeclaration;
 
@@ -35,8 +40,6 @@ import se.arnetheduck.j2c.snippets.ReplaceInvocation;
 
 public class Transformer {
 	private final IJavaProject project;
-
-	private final ASTParser parser = ASTParser.newParser(AST.JLS4);
 
 	private final String name;
 
@@ -56,54 +59,48 @@ public class Transformer {
 		this.name = name;
 		this.root = root;
 
-		parser.setProject(project);
-		parser.setKind(ASTParser.K_COMPILATION_UNIT);
-		parser.setResolveBindings(true);
-
 		snippets.add(new GetSetSnippet());
 		snippets.add(new ReplaceInvocation());
 	}
 
-	Set<IPackageBinding> packages = new TreeSet<IPackageBinding>(
-			new BindingComparator());
-	Set<ITypeBinding> headers = new TreeSet<ITypeBinding>(
-			new BindingComparator());
-	Set<ITypeBinding> impls = new TreeSet<ITypeBinding>(new BindingComparator());
-	Set<ITypeBinding> stubs = new TreeSet<ITypeBinding>(new BindingComparator());
-	Set<ITypeBinding> natives = new TreeSet<ITypeBinding>(
-			new BindingComparator());
+	public final Set<String> impls = new TreeSet<String>();
+	public final Set<String> stubs = new TreeSet<String>();
+	public final Set<String> natives = new TreeSet<String>();
+
+	/** Compilation units that are scheduled for processing */
+	public final Set<ICompilationUnit> todo = new TreeSet<ICompilationUnit>(
+			new ICUComparator());
+
+	/** Type bindings that didn't have a corresponding compilation unit */
 	private Set<ITypeBinding> hardDeps = new TreeSet<ITypeBinding>(
 			new BindingComparator());
-	private Set<ITypeBinding> softDeps = new TreeSet<ITypeBinding>(
-			new BindingComparator());
-	private Set<ITypeBinding> done = new TreeSet<ITypeBinding>(
-			new BindingComparator());
+
+	private final Map<String, ForwardWriter.Info> softDeps = new HashMap<String, ForwardWriter.Info>();
+	private final Map<String, MainWriter.Info> mains = new TreeMap<String, MainWriter.Info>();
+
+	private final Set<String> done = new HashSet<String>();
 
 	public List<Snippet> snippets = new ArrayList<Snippet>();
 
-	Set<ITypeBinding> mains = new TreeSet<ITypeBinding>(new BindingComparator());
-
 	public void process(IProgressMonitor monitor, ICompilationUnit... units)
 			throws Exception {
-
 		monitor.subTask("Moving old files");
 		renameOld();
 
-		write(monitor, units);
+		todo.addAll(Arrays.asList(units));
 
-		processDeps(monitor);
+		while (!todo.isEmpty()) {
+			processSome(monitor);
+		}
 
-		softDeps.addAll(headers);
-		ForwardWriter fw = new ForwardWriter(root);
-		fw.writeForward(packages, softDeps);
+		new ForwardWriter(root).write(softDeps.values());
 
-		for (ITypeBinding tb : mains) {
-			MainWriter mw = new MainWriter(root, this, tb);
-			mw.write();
+		for (Entry<String, MainWriter.Info> tb : mains.entrySet()) {
+			MainWriter.write(root, tb.getValue());
 		}
 
 		MakefileWriter mw = new MakefileWriter(root);
-		mw.write(name, impls, stubs, natives, mains);
+		mw.write(name, impls, stubs, natives, mains.values());
 
 		monitor.done();
 		System.out.println("Done.");
@@ -150,46 +147,39 @@ public class Transformer {
 		}
 	}
 
-	private void write(final IProgressMonitor monitor,
-			ICompilationUnit... units) {
-
-		for (ICompilationUnit[] u : split(units, 1024)) {
-			parse(units, new ASTRequestor() {
-				@Override
-				public void acceptAST(ICompilationUnit source,
-						CompilationUnit ast) {
-					try {
-						if (hasError(ast)) {
-							for (AbstractTypeDeclaration type : (List<AbstractTypeDeclaration>) ast
-									.types()) {
-								ITypeBinding tb = type.resolveBinding();
-								writeHeader(root, tb);
-							}
-						} else {
-							writeImpl(monitor, root, ast);
-						}
-					} catch (Throwable e) {
-						e.printStackTrace();
-					}
-				}
-			});
+	private void processSome(IProgressMonitor monitor) {
+		ICompilationUnit[] units = new ICompilationUnit[Math.min(256,
+				todo.size())];
+		Iterator<ICompilationUnit> it = todo.iterator();
+		for (int n = 0; it.hasNext() && n < units.length; n++) {
+			units[n] = it.next();
+			it.remove();
 		}
+
+		write(monitor, units);
+		writeDeps(monitor);
 	}
 
-	private static ICompilationUnit[][] split(ICompilationUnit[] units,
-			int chunksize) {
-		ICompilationUnit[][] ret = new ICompilationUnit[(int) Math
-				.ceil(units.length / (double) chunksize)][];
-
-		int start = 0;
-
-		for (int i = 0; i < ret.length; i++) {
-			ret[i] = Arrays.copyOfRange(units, start,
-					Math.min(units.length, start + chunksize));
-			start += chunksize;
-		}
-
-		return ret;
+	private void write(final IProgressMonitor monitor,
+			ICompilationUnit... units) {
+		parse(units, new ASTRequestor() {
+			@Override
+			public void acceptAST(ICompilationUnit source, CompilationUnit ast) {
+				try {
+					if (hasError(ast)) {
+						for (AbstractTypeDeclaration type : (List<AbstractTypeDeclaration>) ast
+								.types()) {
+							ITypeBinding tb = type.resolveBinding();
+							writeHeader(root, tb);
+						}
+					} else {
+						writeImpl(monitor, root, ast);
+					}
+				} catch (Throwable e) {
+					e.printStackTrace();
+				}
+			}
+		});
 	}
 
 	private static boolean hasError(CompilationUnit ast) {
@@ -204,6 +194,7 @@ public class Transformer {
 
 	private void parse(ICompilationUnit[] units, ASTRequestor requestor) {
 		System.out.println("Processing " + units.length + " units");
+		ASTParser parser = ASTParser.newParser(AST.JLS4);
 		parser.setProject(project);
 		parser.setKind(ASTParser.K_COMPILATION_UNIT);
 		parser.setResolveBindings(true);
@@ -215,7 +206,7 @@ public class Transformer {
 	}
 
 	private void writeHeader(IPath root, ITypeBinding tb) throws Exception {
-		done.add(tb);
+		done.add(tb.getBinaryName());
 		TypeBindingHeaderWriter hw = new TypeBindingHeaderWriter(root, this, tb);
 		hw.write();
 	}
@@ -224,8 +215,9 @@ public class Transformer {
 			CompilationUnit cu) throws Exception {
 		monitor.subTask("Processing "
 				+ cu.getJavaElement().getResource().getProjectRelativePath()
-						.toString() + " (" + done.size() + " done, "
-				+ hardDeps.size() + " dependencies pending)");
+						.toString() + " (" + done.size() + " types done, "
+				+ todo.size() + " units and " + hardDeps.size()
+				+ " dependencies pending)");
 		UnitInfo ui = new UnitInfo();
 		cu.accept(ui);
 
@@ -253,24 +245,26 @@ public class Transformer {
 			}
 		}
 
-		done.addAll(ui.types);
+		for (ITypeBinding tb : ui.types) {
+			done.add(tb.getBinaryName());
+		}
 	}
 
-	public void processDeps(IProgressMonitor monitor) {
+	private void writeDeps(IProgressMonitor monitor) {
 		while (!hardDeps.isEmpty()) {
-			softDeps.addAll(hardDeps);
-
-			Set<ICompilationUnit> units = new TreeSet<ICompilationUnit>(
-					new ICUComparator());
 			final List<ITypeBinding> arrays = new ArrayList<ITypeBinding>();
 			final List<ITypeBinding> bindings = new ArrayList<ITypeBinding>();
 
 			for (ITypeBinding tb : hardDeps) {
-				if (done.contains(tb)) {
+				if (done.contains(tb.getBinaryName())) {
 					continue;
 				}
 
-				done.add(tb);
+				done.add(tb.getBinaryName());
+
+				if (tb.isPrimitive()) {
+					continue;
+				}
 
 				try {
 					if (tb.isArray()) {
@@ -283,7 +277,7 @@ public class Transformer {
 						if (type == null || type.getCompilationUnit() == null) {
 							bindings.add(tb);
 						} else {
-							units.add(type.getCompilationUnit());
+							todo.add(type.getCompilationUnit());
 						}
 					}
 				} catch (Exception e) {
@@ -309,25 +303,30 @@ public class Transformer {
 					e.printStackTrace();
 				}
 			}
-
-			if (!units.isEmpty()) {
-				write(monitor, units.toArray(new ICompilationUnit[0]));
-			}
 		}
 	}
 
-	void hardDep(ITypeBinding dep) {
-		if (!done.contains(dep)) {
+	public void hardDep(ITypeBinding dep) {
+		if (dep != null && !done.contains(dep.getBinaryName())) {
 			TransformUtil.addDep(dep, hardDeps);
 		}
 	}
 
-	void softDep(ITypeBinding dep) {
-		TransformUtil.addDep(dep, softDeps);
+	public void softDep(ITypeBinding dep) {
+		if (dep != null) {
+			ForwardWriter.Info info = new ForwardWriter.Info(dep);
+			softDeps.put(dep.getBinaryName(), info);
+		}
 	}
 
-	ITypeBinding resolve(Class<?> clazz) {
+	public void main(ITypeBinding tb) {
+		MainWriter.Info info = new MainWriter.Info(tb);
+		mains.put(info.qcname, info);
+	}
+
+	public ITypeBinding resolve(Class<?> clazz) {
 		try {
+			ASTParser parser = ASTParser.newParser(AST.JLS4);
 			parser.setProject(project);
 			parser.setKind(ASTParser.K_COMPILATION_UNIT);
 			parser.setResolveBindings(true);

@@ -43,11 +43,9 @@ import org.eclipse.jdt.core.dom.FieldDeclaration;
 import org.eclipse.jdt.core.dom.ForStatement;
 import org.eclipse.jdt.core.dom.IBinding;
 import org.eclipse.jdt.core.dom.IMethodBinding;
-import org.eclipse.jdt.core.dom.IPackageBinding;
 import org.eclipse.jdt.core.dom.ITypeBinding;
 import org.eclipse.jdt.core.dom.IVariableBinding;
 import org.eclipse.jdt.core.dom.IfStatement;
-import org.eclipse.jdt.core.dom.ImportDeclaration;
 import org.eclipse.jdt.core.dom.InfixExpression;
 import org.eclipse.jdt.core.dom.Initializer;
 import org.eclipse.jdt.core.dom.InstanceofExpression;
@@ -112,15 +110,6 @@ public class ImplWriter extends TransformWriter {
 
 		closures = type.isLocal() ? new LinkedHashSet<IVariableBinding>()
 				: null;
-
-		for (ImportDeclaration id : unitInfo.imports) {
-			IBinding b = id.resolveBinding();
-			if (b instanceof IPackageBinding) {
-				ctx.packages.add((IPackageBinding) b);
-			} else if (b instanceof ITypeBinding) {
-				ctx.softDep((ITypeBinding) b);
-			}
-		}
 	}
 
 	public void write(AnnotationTypeDeclaration node) throws Exception {
@@ -179,20 +168,7 @@ public class ImplWriter extends TransformWriter {
 
 			out = TransformUtil.openImpl(root, type, "");
 
-			boolean hasInc = false;
-			for (ITypeBinding dep : getHardDeps()) {
-				println(TransformUtil.include(dep));
-				hasInc = true;
-			}
-
-			if (fmod) {
-				println("#include <cmath>");
-				hasInc = true;
-			}
-
-			if (hasInc) {
-				println();
-			}
+			makeIncludes();
 
 			TransformUtil.printClassLiteral(out, type);
 
@@ -222,7 +198,7 @@ public class ImplWriter extends TransformWriter {
 
 			out.close();
 
-			ctx.impls.add(type);
+			ctx.impls.add(TransformUtil.implName(type, ""));
 
 			if (hasNatives) {
 				StubWriter sw = new StubWriter(root, ctx, type);
@@ -230,6 +206,39 @@ public class ImplWriter extends TransformWriter {
 			}
 		} finally {
 			out = null;
+		}
+
+		for (ITypeBinding tb : softDeps) {
+			ctx.softDep(tb);
+		}
+	}
+
+	private void makeIncludes() {
+		boolean hasInc = false;
+		boolean hasArray = false;
+
+		for (ITypeBinding dep : getHardDeps()) {
+			if (!dep.isPrimitive()) {
+				hasInc = true;
+				if (TransformUtil.isPrimitiveArray(dep)) {
+					if (hasArray) {
+						continue;
+					}
+
+					hasArray = true;
+				}
+
+				println(TransformUtil.include(dep));
+			}
+		}
+
+		if (fmod) {
+			println("#include <cmath>");
+			hasInc = true;
+		}
+
+		if (hasInc) {
+			println();
 		}
 	}
 
@@ -512,7 +521,7 @@ public class ImplWriter extends TransformWriter {
 
 			for (int i = 0; i < mb.getParameterTypes().length; ++i) {
 				ITypeBinding pb = mb.getParameterTypes()[i];
-				ctx.softDep(pb);
+				softDep(pb);
 
 				print(sep, TransformUtil.relativeCName(pb, type, true), " ",
 						TransformUtil.ref(pb), TransformUtil.paramName(mb, i));
@@ -1474,7 +1483,7 @@ public class ImplWriter extends TransformWriter {
 
 		IMethodBinding mb = node.resolveBinding();
 		if (TransformUtil.isMain(mb)) {
-			ctx.mains.add(type);
+			ctx.main(type);
 		}
 
 		printi(TransformUtil.typeParameters(node.typeParameters()));
@@ -1486,7 +1495,7 @@ public class ImplWriter extends TransformWriter {
 					TransformUtil.CTOR);
 		} else {
 			ITypeBinding rt = TransformUtil.returnType(node);
-			ctx.softDep(rt);
+			softDep(rt);
 			print(TransformUtil.qualifiedCName(rt, true), " ",
 					TransformUtil.ref(rt));
 
@@ -1504,7 +1513,8 @@ public class ImplWriter extends TransformWriter {
 		println();
 		println();
 
-		for (ITypeBinding dep : TransformUtil.defineBridge(out, type, mb, ctx)) {
+		for (ITypeBinding dep : TransformUtil.defineBridge(out, type, mb,
+				softDeps)) {
 			hardDep(dep);
 		}
 

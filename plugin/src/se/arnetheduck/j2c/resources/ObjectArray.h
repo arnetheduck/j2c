@@ -1,13 +1,19 @@
 #pragma once
 
-#include "forward.h"
-
 #include <algorithm>
 #include <initializer_list>
 
 #include "java.lang.Object.h"
 #include "java.lang.Cloneable.h"
 #include "java.io.Serializable.h"
+
+namespace java
+{
+	namespace lang
+	{
+		class ObjectArray;
+	}
+}
 
 class java::lang::ObjectArray
     : public virtual ::java::lang::Object

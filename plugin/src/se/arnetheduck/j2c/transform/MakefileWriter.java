@@ -6,7 +6,8 @@ import java.io.PrintWriter;
 import java.util.Collection;
 
 import org.eclipse.core.runtime.IPath;
-import org.eclipse.jdt.core.dom.ITypeBinding;
+
+import se.arnetheduck.j2c.transform.MainWriter.Info;
 
 public class MakefileWriter {
 	private final IPath root;
@@ -15,50 +16,34 @@ public class MakefileWriter {
 		this.root = root;
 	}
 
-	public void write(String name, Iterable<ITypeBinding> types,
-			Iterable<ITypeBinding> stubs, Iterable<ITypeBinding> natives,
-			Collection<ITypeBinding> mains) throws IOException {
+	public void write(String name, Iterable<String> impls,
+			Iterable<String> stubs, Iterable<String> natives,
+			Collection<MainWriter.Info> mains) throws IOException {
 		FileOutputStream fos = new FileOutputStream(root.append("Makefile")
 				.toFile());
 		PrintWriter pw = new PrintWriter(fos);
 
-		pw.println("CXXFLAGS = $(CFLAGS) -g -std=gnu++11");
+		pw.println("INCLUDES = ");
+		pw.println("CFLAGS = $(INCLUDES) -g");
+		pw.println("CXXFLAGS = $(CFLAGS) -std=gnu++11");
 		pw.println("SRCS = \\");
 
-		for (ITypeBinding tb : types) {
-			if (tb.isNullType()) {
-				continue;
-			}
-
-			pw.print("    ");
-			pw.print(TransformUtil.implName(tb, ""));
-			pw.println(" \\");
+		for (String impl : impls) {
+			pw.println("\t" + impl + " \\");
 		}
 
 		pw.println();
 		pw.println("STUB_SRCS = \\");
 
-		for (ITypeBinding tb : stubs) {
-			if (tb.isNullType()) {
-				continue;
-			}
-
-			pw.print("    ");
-			pw.print(TransformUtil.implName(tb, TransformUtil.STUB));
-			pw.println(" \\");
+		for (String stub : stubs) {
+			pw.println("\t" + stub + " \\");
 		}
 
 		pw.println();
 		pw.println("NATIVE_SRCS = \\");
 
-		for (ITypeBinding tb : natives) {
-			if (tb.isNullType()) {
-				continue;
-			}
-
-			pw.print("    ");
-			pw.print(TransformUtil.implName(tb, TransformUtil.NATIVE));
-			pw.println(" \\");
+		for (String n : natives) {
+			pw.println("\t" + n + " \\");
 		}
 
 		pw.println();
@@ -69,8 +54,8 @@ public class MakefileWriter {
 		pw.println();
 
 		pw.println("%.a:");
-		pw.println("	ar rcs $@ $^");
-		pw.println("	ranlib $@");
+		pw.println("\trm -f $@");
+		pw.println("\tar rcs $@ $^");
 		pw.println();
 
 		String libName = "lib" + name + ".a";
@@ -90,27 +75,27 @@ public class MakefileWriter {
 		pw.println();
 
 		if (!mains.isEmpty()) {
-			for (ITypeBinding main : mains) {
-				String mainName = TransformUtil.mainName(main);
-				pw.print(TransformUtil.qualifiedName(main) + ": ");
-				pw.println(mainName + " " + libName + " " + stubLibName);
-				pw.println("	g++ -o $@ $(EXTRA) " + mainName
-						+ " $(CFLAGS) -L. -l" + name + " $(LIBS) -l" + name
-						+ TransformUtil.STUB + " -l" + name
-						+ TransformUtil.NATIVE);
-				pw.println();
+			for (MainWriter.Info main : mains) {
+				String mainName = main.filename;
+				pw.format("%s: %s %s %s\n", main.qname, mainName, libName,
+						stubLibName);
+
+				pw.format(
+						"\tg++ -o $@ $(EXTRA) %1$s $(CFLAGS) -L. -l%2$s $(LIBS) -l%2$s%3$s -l%2$s%4$s\n",
+						mainName, name, TransformUtil.STUB,
+						TransformUtil.NATIVE);
 			}
 
 			pw.print("mains: ");
-			for (ITypeBinding main : mains) {
-				pw.print(TransformUtil.qualifiedName(main));
+			for (Info main : mains) {
+				pw.print(main.qname);
 				pw.print(" ");
 			}
 			pw.println();
 		}
 
 		pw.println();
-		pw.println(".PHONY: all");
+		pw.println(".PHONY: all mains");
 
 		pw.close();
 	}

@@ -1,45 +1,34 @@
 package se.arnetheduck.j2c.transform;
 
-import java.io.FileOutputStream;
+import java.io.File;
 import java.io.IOException;
-import java.io.PrintWriter;
+import java.io.InputStream;
 
 import org.eclipse.core.runtime.IPath;
 import org.eclipse.jdt.core.dom.ITypeBinding;
 
 public class MainWriter {
-	private final IPath root;
-	private final Transformer ctx;
-	private final ITypeBinding type;
+	private static final String MAIN_CPP_TMPL = "/se/arnetheduck/j2c/resources/Main.cpp.tmpl";
 
-	public MainWriter(IPath root, Transformer ctx, ITypeBinding type) {
-		this.ctx = ctx;
-		this.root = root;
-		this.type = type;
+	public static class Info {
+		public final String filename;
+		public final String include;
+		public final String qcname;
+		public final String qname;
+
+		public Info(ITypeBinding tb) {
+			filename = TransformUtil.mainName(tb);
+			include = TransformUtil.include(tb);
+			qcname = TransformUtil.qualifiedCName(tb, true);
+			qname = TransformUtil.qualifiedName(tb);
+		}
 	}
 
-	public void write() throws IOException {
-		FileOutputStream fos = new FileOutputStream(root.append(
-				TransformUtil.mainName(type)).toFile());
-
-		PrintWriter pw = new PrintWriter(fos);
-
-		pw.println(TransformUtil.include(type));
-		pw.println();
-
-		pw.println("extern void init_jvm();");
-
-		pw.println("int main(int, char**)");
-		pw.println("{");
-		pw.println(TransformUtil.indent(1) + "init_jvm();");
-		pw.print(TransformUtil.indent(1));
-		pw.print(TransformUtil.qualifiedCName(type, true));
-		pw.println("::main(0);");
-		pw.print(TransformUtil.indent(1));
-		pw.println("return 0;");
-		pw.print("}");
-		pw.println();
-
-		pw.close();
+	public static void write(IPath root, Info info) throws IOException {
+		try (InputStream is = MainWriter.class
+				.getResourceAsStream(MAIN_CPP_TMPL)) {
+			File target = root.append(info.filename).toFile();
+			TransformUtil.writeTemplate(is, target, info.include, info.qcname);
+		}
 	}
 }

@@ -1,10 +1,12 @@
 package se.arnetheduck.j2c.transform;
 
 import java.io.PrintWriter;
+import java.io.StringWriter;
 import java.lang.reflect.Modifier;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
+import java.util.TreeSet;
 
 import org.eclipse.core.runtime.IPath;
 import org.eclipse.jdt.core.dom.IMethodBinding;
@@ -18,15 +20,23 @@ public class TypeBindingHeaderWriter {
 
 	private String lastAccess;
 
+	protected final Set<ITypeBinding> hardDeps = new TreeSet<ITypeBinding>(
+			new BindingComparator());
+	protected final Set<ITypeBinding> softDeps = new TreeSet<ITypeBinding>(
+			new BindingComparator());
+
 	public TypeBindingHeaderWriter(IPath root, Transformer ctx,
 			ITypeBinding type) {
 		this.root = root;
 		this.ctx = ctx;
 		this.type = type;
+
+		lastAccess = HeaderUtil.initialAccess(type);
+		softDep(type);
 	}
 
 	public void write() throws Exception {
-		printClass();
+		writeType();
 
 		if (!type.isInterface()) {
 			StubWriter sw = new StubWriter(root, ctx, type);
@@ -36,82 +46,54 @@ public class TypeBindingHeaderWriter {
 				sw.write(true, false);
 			}
 		}
+
+		for (ITypeBinding tb : softDeps) {
+			ctx.softDep(tb);
+		}
 	}
 
-	private void printClass() throws Exception {
-		ctx.headers.add(type);
-
+	private void writeType() throws Exception {
 		for (ITypeBinding nb : type.getDeclaredTypes()) {
 			TypeBindingHeaderWriter hw = new TypeBindingHeaderWriter(root, ctx,
 					nb);
 			hw.write();
 		}
 
-		PrintWriter pw = TransformUtil.openHeader(root, type);
+		try {
+			String body = getBody();
 
-		List<ITypeBinding> bases = TransformUtil.getBases(type,
-				ctx.resolve(Object.class));
+			PrintWriter pw = HeaderUtil.open(root, type, ctx, softDeps,
+					hardDeps);
 
-		for (ITypeBinding b : bases) {
-			pw.println(TransformUtil.include(b));
+			pw.print(body);
+
+			pw.close();
+		} catch (Exception e) {
+			throw new Error(e);
 		}
+	}
 
-		if (type.getQualifiedName().equals(String.class.getName())) {
-			pw.println("#include <stddef.h>");
-		}
+	private String getBody() {
+		StringWriter sw = new StringWriter();
+		PrintWriter out = new PrintWriter(sw);
 
-		pw.println();
+		out.println("{");
 
-		if (type.isInterface()) {
-			lastAccess = TransformUtil.PUBLIC;
-			pw.print("struct ");
-		} else {
-			lastAccess = TransformUtil.PRIVATE;
-			pw.print("class ");
-		}
-
-		pw.println(TransformUtil.qualifiedCName(type, false));
-
-		String sep = ": public ";
-		for (ITypeBinding b : bases) {
-			ctx.hardDep(b);
-
-			pw.print(TransformUtil.indent(1));
-			pw.print(sep);
-			sep = ", public ";
-			pw.print(TransformUtil.virtual(b));
-			pw.println(TransformUtil.relativeCName(b, type, true));
-		}
-
-		pw.println("{");
-
-		if (type.getSuperclass() != null) {
-			pw.print(TransformUtil.indent(1));
-			pw.print("typedef ");
-			pw.print(TransformUtil.relativeCName(type.getSuperclass(), type,
-					true));
-			pw.println(" super;");
-		}
-
-		lastAccess = TransformUtil.printAccess(pw, Modifier.PUBLIC, lastAccess);
-
-		pw.print(TransformUtil.indent(1));
-		pw.println(TransformUtil.CLASS_LITERAL);
+		lastAccess = HeaderUtil.printSuper(out, type, lastAccess);
+		lastAccess = HeaderUtil.printClassLiteral(out, lastAccess);
 
 		for (IVariableBinding vb : type.getDeclaredFields()) {
-			lastAccess = TransformUtil.printAccess(pw, vb.getModifiers(),
-					lastAccess);
-			printField(pw, vb);
+			printField(out, vb);
 		}
 
-		pw.println();
+		out.println();
 
 		Set<String> usings = new HashSet<String>();
 
-		boolean hasEmptyConstructor = false;
 		boolean hasConstructor = false;
+		boolean hasEmptyConstructor = false;
 		for (IMethodBinding mb : type.getDeclaredMethods()) {
-			printMethod(pw, type, mb, usings);
+			printMethod(out, type, mb, usings);
 
 			hasConstructor |= mb.isConstructor();
 			hasEmptyConstructor |= mb.isConstructor()
@@ -119,46 +101,50 @@ public class TypeBindingHeaderWriter {
 		}
 
 		if (!hasEmptyConstructor) {
-			if (hasConstructor) {
-				pw.println("protected:");
+			if (!hasConstructor && !"protected:".equals(lastAccess)) {
+				lastAccess = "protected:";
+				out.println(lastAccess);
+			} else if (!hasConstructor) {
+				lastAccess = HeaderUtil.printAccess(out, Modifier.PUBLIC,
+						lastAccess);
 			}
-			pw.print(TransformUtil.indent(1));
-			pw.print(TransformUtil.name(type));
-			pw.println("();");
 
-			pw.print(TransformUtil.indent(1));
-			pw.print("void ");
-			pw.print(TransformUtil.CTOR);
-			pw.println("();");
+			out.print(TransformUtil.indent(1));
+			out.print(TransformUtil.name(type));
+			out.println("();");
+
+			out.print(TransformUtil.indent(1));
+			out.print("void ");
+			out.print(TransformUtil.CTOR);
+			out.println("();");
 		}
 
-		makeBaseCalls(pw);
+		makeBaseCalls(out);
 
-		makeClinit(pw);
+		lastAccess = HeaderUtil.printEnumMethods(out, type, softDeps,
+				lastAccess);
 
-		makeDtor(pw);
+		lastAccess = HeaderUtil.printClinit(out, lastAccess);
+		lastAccess = HeaderUtil.printDtor(out, type, lastAccess);
+		lastAccess = HeaderUtil.printGetClass(out, type, lastAccess);
 
-		makeGetClass(pw);
+		HeaderUtil.printStringOperator(out, type);
 
-		if (type.getQualifiedName().equals(String.class.getName())) {
-			pw.println("    friend String *operator\"\" _j(const char16_t *s, size_t n);");
-		}
+		out.println("};");
 
-		pw.println("};");
+		TransformUtil.printStringSupport(type, out);
 
-		TransformUtil.printStringSupport(type, pw);
+		out.close();
 
-		pw.close();
+		return sw.toString();
 	}
 
 	private void printField(PrintWriter pw, IVariableBinding vb) {
-		ctx.softDep(vb.getType());
+		lastAccess = HeaderUtil.printAccess(pw, vb.getModifiers(), lastAccess);
+		softDep(vb.getType());
 
 		boolean asMethod = TransformUtil.asMethod(vb);
 		if (asMethod) {
-			lastAccess = TransformUtil.printAccess(pw, vb.getModifiers(),
-					lastAccess);
-
 			pw.print(TransformUtil.indent(1));
 			pw.print("static "
 					+ TransformUtil.relativeCName(vb.getType(), type, true)
@@ -168,7 +154,7 @@ public class TypeBindingHeaderWriter {
 			pw.print("&" + TransformUtil.name(vb));
 			pw.println("();");
 
-			lastAccess = TransformUtil.printAccess(pw, Modifier.PRIVATE,
+			lastAccess = HeaderUtil.printAccess(pw, Modifier.PRIVATE,
 					lastAccess);
 		}
 
@@ -195,15 +181,22 @@ public class TypeBindingHeaderWriter {
 	}
 
 	private void printMethod(PrintWriter pw, ITypeBinding tb,
-			IMethodBinding mb, Set<String> usings) throws Exception {
-		lastAccess = TransformUtil.printAccess(pw, mb.getModifiers(),
-				lastAccess);
+			IMethodBinding mb, Set<String> usings) {
+		if (mb.isConstructor() && mb.getParameterTypes().length == 0
+				&& Modifier.isPrivate(mb.getModifiers())) {
+			lastAccess = "protected:";
+			pw.println(lastAccess);
+		} else {
+			lastAccess = HeaderUtil.printAccess(pw, mb.getModifiers(),
+					lastAccess);
+		}
+
 		if ((Modifier.isAbstract(mb.getModifiers()) || tb.isInterface())
 				&& TransformUtil.baseHasSame(mb, tb, ctx)) {
 			// Defining once more will lead to virtual inheritance issues
 			pw.print(TransformUtil.indent(1));
 			pw.print("/*");
-			TransformUtil.printSignature(pw, tb, mb, ctx, false);
+			TransformUtil.printSignature(pw, tb, mb, softDeps, false);
 			pw.println("; (already declared) */");
 			return;
 		}
@@ -212,14 +205,14 @@ public class TypeBindingHeaderWriter {
 			// Skip implementation details
 			pw.print(TransformUtil.indent(1));
 			pw.print("/*");
-			TransformUtil.printSignature(pw, tb, mb, ctx, false);
+			TransformUtil.printSignature(pw, tb, mb, softDeps, false);
 			pw.println("; (private) */");
 			return;
 		}
 
 		pw.print(TransformUtil.indent(1));
 
-		TransformUtil.printSignature(pw, tb, mb, ctx, false);
+		TransformUtil.printSignature(pw, tb, mb, softDeps, false);
 
 		if (Modifier.isAbstract(mb.getModifiers())) {
 			pw.print(" = 0");
@@ -228,18 +221,24 @@ public class TypeBindingHeaderWriter {
 		if (mb.isConstructor()) {
 			pw.println(";");
 
-			lastAccess = TransformUtil.printAccess(pw, Modifier.PUBLIC,
-					lastAccess);
+			lastAccess = HeaderUtil
+					.printAccess(pw, Modifier.PUBLIC, lastAccess);
 
 			pw.print(TransformUtil.indent(1));
 			pw.print("void ");
 			pw.print(TransformUtil.CTOR);
-			TransformUtil.printParams(pw, tb, mb, ctx);
+			TransformUtil.printParams(pw, tb, mb, softDeps);
 		}
 
 		pw.println(";");
 
-		TransformUtil.declareBridge(pw, tb, mb, ctx);
+		IMethodBinding mb2 = TransformUtil.getSuperMethod(mb);
+
+		if (mb2 != null && TransformUtil.returnCovariant(mb, mb2)) {
+			hardDep(mb.getReturnType());
+		}
+
+		TransformUtil.declareBridge(pw, tb, mb, softDeps);
 
 		String using = TransformUtil.methodUsing(mb);
 		if (using != null) {
@@ -258,35 +257,21 @@ public class TypeBindingHeaderWriter {
 		List<IMethodBinding> missing = TransformUtil.baseCallMethods(type);
 
 		for (IMethodBinding mb : missing) {
-			lastAccess = TransformUtil.printAccess(pw, Modifier.PUBLIC,
-					lastAccess);
+			lastAccess = HeaderUtil
+					.printAccess(pw, Modifier.PUBLIC, lastAccess);
 
 			pw.print(TransformUtil.indent(1));
-			TransformUtil.printSuperCall(pw, type, mb, ctx);
+			TransformUtil.printSuperCall(pw, type, mb, softDeps);
 		}
 	}
 
-	private void makeClinit(PrintWriter pw) {
-		lastAccess = TransformUtil.printAccess(pw, Modifier.PUBLIC, lastAccess);
-		pw.println(TransformUtil.indent(1) + TransformUtil.STATIC_INIT_DECL);
+	public void hardDep(ITypeBinding dep) {
+		TransformUtil.addDep(dep, hardDeps);
+		ctx.hardDep(dep);
 	}
 
-	private void makeDtor(PrintWriter pw) {
-		if (type.getQualifiedName().equals(Object.class.getName())) {
-			lastAccess = TransformUtil.printAccess(pw, Modifier.PUBLIC,
-					lastAccess);
-			pw.print(TransformUtil.indent(1));
-			pw.println("virtual ~Object();");
-		}
-	}
-
-	private void makeGetClass(PrintWriter pw) {
-		if (type.isClass()) {
-			lastAccess = TransformUtil.printAccess(pw, Modifier.PRIVATE,
-					lastAccess);
-			pw.print(TransformUtil.indent(1));
-			pw.println("virtual ::java::lang::Class* "
-					+ TransformUtil.GET_CLASS + "();");
-		}
+	public void softDep(ITypeBinding dep) {
+		TransformUtil.addDep(dep, softDeps);
+		ctx.softDep(dep);
 	}
 }

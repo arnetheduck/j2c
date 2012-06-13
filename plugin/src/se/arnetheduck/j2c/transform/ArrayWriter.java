@@ -1,7 +1,6 @@
 package se.arnetheduck.j2c.transform;
 
 import java.io.File;
-import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.PrintWriter;
@@ -10,13 +9,16 @@ import java.nio.file.StandardCopyOption;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
-import java.util.Scanner;
 
 import org.eclipse.core.runtime.IPath;
 import org.eclipse.jdt.core.dom.ITypeBinding;
 
 // TODO ArrayStoreException
 public class ArrayWriter {
+	private static final String ARRAY_H = "/se/arnetheduck/j2c/resources/Array.h";
+	private static final String OBJECT_ARRAY_H = "/se/arnetheduck/j2c/resources/ObjectArray.h";
+	private static final String SUB_ARRAY_H_TMPL = "/se/arnetheduck/j2c/resources/SubArray.h.tmpl";
+
 	private final IPath root;
 	private final Transformer ctx;
 	private final ITypeBinding type;
@@ -51,17 +53,16 @@ public class ArrayWriter {
 	}
 
 	public void write() throws IOException {
+		ctx.softDep(type);
 		writeHeader();
 		writeImpl();
 	}
 
 	public void writeHeader() throws IOException {
-		ctx.headers.add(type);
-
 		ITypeBinding ct = type.getComponentType();
 		if (ct.isPrimitive()) {
 			try (InputStream is = ArrayWriter.class
-					.getResourceAsStream("/se/arnetheduck/j2c/resources/Array.h")) {
+					.getResourceAsStream(ARRAY_H)) {
 				Files.copy(is, root.append(TransformUtil.headerName(type))
 						.toFile().toPath(), StandardCopyOption.REPLACE_EXISTING);
 			}
@@ -69,7 +70,7 @@ public class ArrayWriter {
 			return;
 		} else if (ct.getQualifiedName().equals(Object.class.getName())) {
 			try (InputStream is = ArrayWriter.class
-					.getResourceAsStream("/se/arnetheduck/j2c/resources/ObjectArray.h")) {
+					.getResourceAsStream(OBJECT_ARRAY_H)) {
 				Files.copy(is, root.append(TransformUtil.headerName(type))
 						.toFile().toPath(), StandardCopyOption.REPLACE_EXISTING);
 			}
@@ -106,17 +107,14 @@ public class ArrayWriter {
 		}
 
 		try (InputStream is = ArrayWriter.class
-				.getResourceAsStream("/se/arnetheduck/j2c/resources/SubArray.h.tmpl")) {
-			String template = new Scanner(is).useDelimiter("\\A").next();
-
-			try (PrintWriter pw = new PrintWriter(new FileOutputStream(target))) {
-				pw.format(template, includes, name, bases, superName, qname);
-			}
+				.getResourceAsStream(SUB_ARRAY_H_TMPL)) {
+			TransformUtil.writeTemplate(is, target, includes, name, bases,
+					superName, qname);
 		}
 	}
 
 	private void writeImpl() throws IOException {
-		ctx.impls.add(type);
+		ctx.impls.add(TransformUtil.implName(type, ""));
 		PrintWriter pw = TransformUtil.openImpl(root, type, "");
 
 		TransformUtil.printClassLiteral(pw, type);

@@ -64,7 +64,9 @@ public abstract class TransformWriter extends ASTVisitor {
 
 	protected PrintWriter out;
 
-	protected Set<ITypeBinding> hardDeps = new TreeSet<ITypeBinding>(
+	protected final Set<ITypeBinding> hardDeps = new TreeSet<ITypeBinding>(
+			new BindingComparator());
+	protected final Set<ITypeBinding> softDeps = new TreeSet<ITypeBinding>(
 			new BindingComparator());
 
 	protected TransformWriter(Transformer ctx, final ITypeBinding type,
@@ -72,17 +74,21 @@ public abstract class TransformWriter extends ASTVisitor {
 		this.type = type;
 		this.ctx = ctx;
 		this.unitInfo = unitInfo;
+
+		softDep(type);
 	}
 
 	public Set<ITypeBinding> getHardDeps() {
 		return hardDeps;
 	}
 
+	public void softDep(ITypeBinding dep) {
+		TransformUtil.addDep(dep, softDeps);
+	}
+
 	public void hardDep(ITypeBinding dep) {
-		if (dep != null) {
-			TransformUtil.addDep(dep, hardDeps);
-			ctx.hardDep(dep);
-		}
+		TransformUtil.addDep(dep, hardDeps);
+		ctx.hardDep(dep);
 	}
 
 	protected void hardDep(Type type, Collection<ITypeBinding> deps) {
@@ -179,7 +185,8 @@ public abstract class TransformWriter extends ASTVisitor {
 			print(TransformUtil.relativeCName(node.getComponentType()
 					.resolveBinding(), type, true));
 		}
-		ctx.softDep(node.resolveBinding());
+
+		softDep(node.resolveBinding());
 		print("Array");
 
 		return false;
@@ -237,7 +244,7 @@ public abstract class TransformWriter extends ASTVisitor {
 
 	@Override
 	public boolean visit(ImportDeclaration node) {
-		throw new UnsupportedOperationException();
+		return false;
 	}
 
 	@Override
@@ -379,7 +386,7 @@ public abstract class TransformWriter extends ASTVisitor {
 
 		if (b instanceof IVariableBinding) {
 			IVariableBinding vb = (IVariableBinding) b;
-			ctx.softDep(vb.getType());
+			softDep(vb.getType());
 
 			if (needsQualification(node, vb.getDeclaringClass())) {
 				qualify(vb.getDeclaringClass().getErasure(),
@@ -389,7 +396,7 @@ public abstract class TransformWriter extends ASTVisitor {
 			print(TransformUtil.name(vb));
 		} else if (b instanceof ITypeBinding) {
 			print(TransformUtil.relativeCName((ITypeBinding) b, type, true));
-			ctx.softDep((ITypeBinding) b);
+			softDep((ITypeBinding) b);
 		} else if (b instanceof IMethodBinding) {
 			IMethodBinding mb = (IMethodBinding) b;
 
@@ -481,7 +488,7 @@ public abstract class TransformWriter extends ASTVisitor {
 		if (tb.isNested()) {
 			hardDep(tb);
 		} else {
-			ctx.softDep(tb);
+			softDep(tb);
 		}
 
 		node.getName().accept(this);

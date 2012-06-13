@@ -1,0 +1,12 @@
+%1$s
+
+extern void init_jvm();
+
+int main(int, char**)
+{
+    init_jvm();
+    
+    %2$s::main(nullptr);
+    
+    return 0;
+}

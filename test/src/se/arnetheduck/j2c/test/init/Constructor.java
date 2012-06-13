@@ -30,4 +30,10 @@ public class Constructor {
 			super(5);
 		}
 	}
+
+	static class PrivateBase extends PrivateConstructor {
+		public PrivateBase(int x) {
+			super(x);
+		}
+	}
 }
