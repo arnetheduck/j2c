@@ -274,7 +274,7 @@ public class HeaderWriter extends TransformWriter {
 			return;
 		}
 
-		List<IMethodBinding> missing = TransformUtil.baseCallMethods(type);
+		List<IMethodBinding> missing = HeaderUtil.baseCallMethods(type);
 
 		for (IMethodBinding mb : missing) {
 			lastAccess = HeaderUtil.printAccess(out, Modifier.PUBLIC,
@@ -282,6 +282,13 @@ public class HeaderWriter extends TransformWriter {
 
 			printi();
 			TransformUtil.printSuperCall(out, type, mb, softDeps);
+
+			String using = TransformUtil.methodUsing(mb, type);
+			if (using != null) {
+				if (usings.add(using)) {
+					printlni(using);
+				}
+			}
 		}
 	}
 

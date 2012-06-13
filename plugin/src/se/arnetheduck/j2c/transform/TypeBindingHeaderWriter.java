@@ -119,7 +119,7 @@ public class TypeBindingHeaderWriter {
 			out.println("();");
 		}
 
-		makeBaseCalls(out);
+		makeBaseCalls(out, usings);
 
 		lastAccess = HeaderUtil.printEnumMethods(out, type, softDeps,
 				lastAccess);
@@ -249,12 +249,12 @@ public class TypeBindingHeaderWriter {
 		}
 	}
 
-	private void makeBaseCalls(PrintWriter pw) {
+	private void makeBaseCalls(PrintWriter pw, Set<String> usings) {
 		if (Modifier.isAbstract(type.getModifiers()) || !type.isClass()) {
 			return;
 		}
 
-		List<IMethodBinding> missing = TransformUtil.baseCallMethods(type);
+		List<IMethodBinding> missing = HeaderUtil.baseCallMethods(type);
 
 		for (IMethodBinding mb : missing) {
 			lastAccess = HeaderUtil
@@ -262,6 +262,13 @@ public class TypeBindingHeaderWriter {
 
 			pw.print(TransformUtil.indent(1));
 			TransformUtil.printSuperCall(pw, type, mb, softDeps);
+
+			String using = TransformUtil.methodUsing(mb, type);
+			if (using != null) {
+				if (usings.add(using)) {
+					pw.println(TransformUtil.indent(1) + using);
+				}
+			}
 		}
 	}
 

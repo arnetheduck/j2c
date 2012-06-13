@@ -10,7 +10,6 @@ import java.text.Annotation;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
-import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -113,7 +112,15 @@ public final class TransformUtil {
 			return qualifiedCName(tb, global);
 		}
 
-		return name(tb);
+		String tbn = name(tb);
+		for (ITypeBinding sb = root.getSuperclass(); sb != null; sb = sb
+				.getSuperclass()) {
+			if (name(sb).equals(tbn)) {
+				return qualifiedCName(tb, global);
+			}
+		}
+
+		return tbn;
 	}
 
 	private static IPackageBinding elementPackage(ITypeBinding tb) {
@@ -534,40 +541,31 @@ public final class TransformUtil {
 	/** Filter out C++ keywords */
 	public static String keywords(String name) {
 		if (keywords.contains(name)) {
-			return name + "_";
+			return "_" + name;
 		}
 
 		return name;
 	}
 
 	public static String methodUsing(IMethodBinding mb) {
+		return methodUsing(mb, mb.getDeclaringClass());
+	}
+
+	public static String methodUsing(IMethodBinding mb, ITypeBinding tb) {
 		if (Modifier.isPrivate(mb.getModifiers())) {
 			return null;
 		}
 
-		ITypeBinding tb = mb.getDeclaringClass();
-
 		ITypeBinding using = null;
 		for (IMethodBinding b : baseMethods(tb, mb.getName())) {
-			if (mb.getParameterTypes().length != b.getParameterTypes().length) {
+			if (!sameParameters(mb, b)) {
 				using = b.getDeclaringClass();
-				break;
-			}
-
-			for (int i = 0; i < mb.getParameterTypes().length && using == null; ++i) {
-				if (!mb.getParameterTypes()[i].getQualifiedName().equals(
-						b.getParameterTypes()[i].getQualifiedName())) {
-					using = b.getDeclaringClass();
-				}
-			}
-
-			if (using != null) {
 				break;
 			}
 		}
 
 		if (using != null) {
-			return "using " + relativeCName(using, tb, false) + "::" + name(mb)
+			return "using " + relativeCName(using, tb, true) + "::" + name(mb)
 					+ ";";
 		}
 
@@ -899,7 +897,7 @@ public final class TransformUtil {
 
 	}
 
-	private static boolean sameParameters(IMethodBinding mb, IMethodBinding mb2) {
+	public static boolean sameParameters(IMethodBinding mb, IMethodBinding mb2) {
 		if (mb.getParameterTypes().length != mb2.getParameterTypes().length) {
 			return false;
 		}
@@ -995,55 +993,6 @@ public final class TransformUtil {
 		pw.println("namespace java { namespace lang { String *operator \"\" _j(const char16_t *p, size_t n); } }");
 		pw.println("using java::lang::operator \"\" _j;");
 		pw.println();
-	}
-
-	/**
-	 * In java, if a super class implements the method of an interface, it
-	 * doesn't have to be re-implemented on the class implementing the
-	 * interface. In C++ we have to forward the call to the super method - this
-	 * method returns a list of methods needing such forwarding.
-	 */
-	public static List<IMethodBinding> baseCallMethods(ITypeBinding tb) {
-		Set<IMethodBinding> im = new TreeSet<IMethodBinding>(
-				new BindingComparator());
-
-		for (ITypeBinding ib : interfaces(tb)) {
-			im.addAll(Arrays.asList(ib.getDeclaredMethods()));
-		}
-
-		List<IMethodBinding> missing = new ArrayList<IMethodBinding>(im);
-
-		for (IMethodBinding imb : im) {
-			for (IMethodBinding mb : tb.getDeclaredMethods()) {
-				if (mb.isSubsignature(imb)) {
-					missing.remove(imb);
-					break;
-				}
-			}
-
-			// Same method in two interfaces
-			for (IMethodBinding mb : missing) {
-				if (!mb.isEqualTo(imb) && mb.isSubsignature(imb)) {
-					missing.remove(imb);
-					break;
-				}
-			}
-		}
-		return missing;
-	}
-
-	public static List<ITypeBinding> interfaces(ITypeBinding tb) {
-		if (tb.getInterfaces().length == 0) {
-			return Collections.emptyList();
-		}
-
-		List<ITypeBinding> ret = new ArrayList<ITypeBinding>();
-		for (ITypeBinding ib : tb.getInterfaces()) {
-			ret.add(ib);
-			ret.addAll(interfaces(ib));
-		}
-
-		return ret;
 	}
 
 	public static void printSuperCall(PrintWriter out, ITypeBinding type,
