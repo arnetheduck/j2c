@@ -11,4 +11,8 @@ public class ConstructorTest {
 	public ConstructorTest(short s) {
 		this((int) s);
 	}
+
+	public void ConstructorTest() {
+		// This is not a constructor!
+	}
 }

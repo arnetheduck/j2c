@@ -184,6 +184,12 @@ public final class TransformUtil {
 			ret = name(mb.getDeclaringClass()) + "_" + ret;
 		}
 
+		// Methods can have the same name as the constructor without being a
+		// constructor!
+		if (!mb.isConstructor() && ret.equals(name(mb.getDeclaringClass()))) {
+			ret = "_" + ret;
+		}
+
 		return ret;
 	}
 
