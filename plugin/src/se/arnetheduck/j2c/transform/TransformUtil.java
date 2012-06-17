@@ -39,7 +39,6 @@ import org.eclipse.jdt.core.dom.TypeParameter;
 import org.eclipse.jdt.core.dom.VariableDeclarationFragment;
 
 public final class TransformUtil {
-
 	public static final String NATIVE = "-native";
 	public static final String STUB = "-stub";
 
@@ -101,29 +100,28 @@ public final class TransformUtil {
 
 	public static String relativeCName(ITypeBinding tb, ITypeBinding root,
 			boolean global) {
-		IPackageBinding pkg = elementPackage(tb);
-		if (pkg == null) {
-			return name(tb);
-		}
-
-		IPackageBinding rootPkg = elementPackage(root);
-		if (rootPkg == null || !rootPkg.getKey().equals(pkg.getKey())) {
+		if (!samePackage(tb, root)) {
 			return qualifiedCName(tb, global);
 		}
 
 		String tbn = name(tb);
 
+		// In C++, unqualified names in a class are looked up in base
+		// classes before the own namespace
 		for (ITypeBinding sb = root.getSuperclass(); sb != null; sb = sb
 				.getSuperclass()) {
+			if (samePackage(tb, sb)) {
+				return name(tb);
+			}
+
 			if (name(sb).equals(tbn)) {
-				// In C++, unqualified names in a class are looked up in base
-				// classes before the own namespace
 				return qualifiedCName(tb, global);
 			}
 		}
 
 		if (tbn.equals(Object.class.getSimpleName()) && !same(tb, Object.class)) {
-			// Intefaces have null superclass but inherit from Object
+			// Intefaces have null superclass but inherit (conceptually) from
+			// Object
 			return qualifiedCName(tb, global);
 		}
 
@@ -134,6 +132,16 @@ public final class TransformUtil {
 		// When processing generics, only the erasure will have a package
 		return tb.isArray() ? tb.getElementType().getErasure().getPackage()
 				: tb.getErasure().getPackage();
+	}
+
+	private static boolean samePackage(ITypeBinding tb0, ITypeBinding tb1) {
+		IPackageBinding p0 = elementPackage(tb0);
+		IPackageBinding p1 = elementPackage(tb1);
+		if (p0 == null) {
+			return p1 == null;
+		}
+
+		return p1 != null && p0.isEqualTo(p1);
 	}
 
 	private static Pattern lastBin = Pattern.compile("\\$(\\d*)$");
