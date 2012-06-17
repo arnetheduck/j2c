@@ -26,7 +26,6 @@ import org.eclipse.jdt.core.IInitializer;
 import org.eclipse.jdt.core.IJavaElement;
 import org.eclipse.jdt.core.IMethod;
 import org.eclipse.jdt.core.JavaModelException;
-import org.eclipse.jdt.core.dom.AST;
 import org.eclipse.jdt.core.dom.Expression;
 import org.eclipse.jdt.core.dom.IMethodBinding;
 import org.eclipse.jdt.core.dom.IPackageBinding;
@@ -113,11 +112,19 @@ public final class TransformUtil {
 		}
 
 		String tbn = name(tb);
+
 		for (ITypeBinding sb = root.getSuperclass(); sb != null; sb = sb
 				.getSuperclass()) {
 			if (name(sb).equals(tbn)) {
+				// In C++, unqualified names in a class are looked up in base
+				// classes before the own namespace
 				return qualifiedCName(tb, global);
 			}
+		}
+
+		if (tbn.equals(Object.class.getSimpleName()) && !same(tb, Object.class)) {
+			// Intefaces have null superclass but inherit from Object
+			return qualifiedCName(tb, global);
 		}
 
 		return tbn;
@@ -357,7 +364,10 @@ public final class TransformUtil {
 		return ret;
 	}
 
-	public static String methodModifiers(int modifiers, int typeModifiers) {
+	public static String methodModifiers(IMethodBinding mb) {
+		int modifiers = mb.getModifiers();
+		int typeModifiers = mb.getDeclaringClass() == null ? 0 : mb
+				.getDeclaringClass().getModifiers();
 		if (Modifier.isStatic(modifiers)) {
 			return "static ";
 		}
@@ -564,47 +574,24 @@ public final class TransformUtil {
 		return name;
 	}
 
-	public static String methodUsing(IMethodBinding mb) {
-		return methodUsing(mb, mb.getDeclaringClass());
-	}
-
-	public static String methodUsing(IMethodBinding mb, ITypeBinding tb) {
-		if (Modifier.isPrivate(mb.getModifiers())) {
-			return null;
-		}
-
-		ITypeBinding using = null;
-		for (IMethodBinding b : baseMethods(tb, mb.getName())) {
-			if (!sameParameters(mb, b)) {
-				using = b.getDeclaringClass();
-				break;
-			}
-		}
-
-		if (using != null) {
-			return "using " + relativeCName(using, tb, true) + "::" + name(mb)
-					+ ";";
-		}
-
-		return null;
-	}
-
-	public static Set<IMethodBinding> allMethods(ITypeBinding tb, String name) {
+	public static Set<IMethodBinding> allMethods(ITypeBinding tb, String name,
+			ITypeBinding object) {
 		Set<IMethodBinding> ret = new TreeSet<IMethodBinding>(
 				new BindingComparator());
 
 		methods(tb, name, ret);
 
-		ret.addAll(baseMethods(tb, name));
+		ret.addAll(baseMethods(tb, name, object));
 
 		return ret;
 	}
 
-	public static List<IMethodBinding> baseMethods(ITypeBinding tb, String name) {
+	public static List<IMethodBinding> baseMethods(ITypeBinding tb,
+			String name, ITypeBinding object) {
 		List<IMethodBinding> ret = new ArrayList<IMethodBinding>();
 
 		// Order significant in case an interface is inherited multiple times
-		Collection<ITypeBinding> bases = getAllBases(tb);
+		Collection<ITypeBinding> bases = TypeUtil.allBases(tb, object);
 		for (ITypeBinding base : bases) {
 			methods(base, name, ret);
 		}
@@ -629,8 +616,7 @@ public final class TransformUtil {
 	}
 
 	public static String virtual(ITypeBinding tb) {
-		if (tb.isInterface()
-				|| tb.getQualifiedName().equals(Object.class.getName())) {
+		if (tb.isInterface() || same(tb, Object.class)) {
 			return "virtual ";
 		}
 
@@ -657,49 +643,6 @@ public final class TransformUtil {
 		return pw;
 	}
 
-	public static List<ITypeBinding> getBases(ITypeBinding tb,
-			ITypeBinding object) {
-		List<ITypeBinding> ret = new ArrayList<ITypeBinding>();
-
-		addDep(tb.getSuperclass(), ret);
-
-		for (ITypeBinding ib : tb.getInterfaces()) {
-			addDep(ib, ret);
-		}
-
-		if (ret.isEmpty()
-				&& !tb.getQualifiedName().equals(Object.class.getName())) {
-			addDep(object, ret);
-		}
-
-		return ret;
-	}
-
-	public static List<ITypeBinding> getAllBases(ITypeBinding tb) {
-		List<ITypeBinding> ret = new ArrayList<ITypeBinding>();
-
-		addDep(tb.getSuperclass(), ret);
-		if (tb.getSuperclass() != null) {
-			for (ITypeBinding a : getAllBases(tb.getSuperclass())) {
-				addDep(a, ret);
-			}
-		}
-
-		for (ITypeBinding ib : tb.getInterfaces()) {
-			addDep(ib, ret);
-
-			for (ITypeBinding a : getAllBases(ib)) {
-				addDep(a, ret);
-			}
-		}
-
-		return ret;
-	}
-
-	public static List<ITypeBinding> getBases(AST ast, ITypeBinding tb) {
-		return getBases(tb, ast.resolveWellKnownType(Object.class.getName()));
-	}
-
 	public static void print(PrintWriter out, Object... objects) {
 		for (Object o : objects) {
 			out.print(o);
@@ -722,8 +665,11 @@ public final class TransformUtil {
 	}
 
 	public static void printParams(PrintWriter out, ITypeBinding tb,
-			IMethodBinding mb, Collection<ITypeBinding> deps) {
-		out.print("(");
+			IMethodBinding mb, boolean parens, Collection<ITypeBinding> deps) {
+		if (parens) {
+			out.print("(");
+		}
+
 		for (int i = 0; i < mb.getParameterTypes().length; ++i) {
 			if (i > 0)
 				out.print(", ");
@@ -738,7 +684,9 @@ public final class TransformUtil {
 			out.print(paramName(mb, i));
 		}
 
-		out.print(")");
+		if (parens) {
+			out.print(")");
+		}
 	}
 
 	public static String paramName(IMethodBinding mb, int i) {
@@ -823,10 +771,6 @@ public final class TransformUtil {
 		return null;
 	}
 
-	public static boolean isBridged(IMethodBinding mb) {
-		return needsBridge(mb, getSuperMethod(mb));
-	}
-
 	public static void declareBridge(PrintWriter pw, ITypeBinding tb,
 			IMethodBinding mb, Collection<ITypeBinding> softDeps) {
 		if (!mb.isConstructor()) {
@@ -891,12 +835,12 @@ public final class TransformUtil {
 		return deps;
 	}
 
-	public static boolean needsBridge(IMethodBinding mb, IMethodBinding mb2) {
+	private static boolean needsBridge(IMethodBinding mb, IMethodBinding mb2) {
 		return mb2 != null && !sameSignature(mb, mb2.getMethodDeclaration())
 				&& !returnCovariant(mb, mb2.getMethodDeclaration());
 	}
 
-	public static boolean sameSignature(IMethodBinding mb, IMethodBinding mb2) {
+	private static boolean sameSignature(IMethodBinding mb, IMethodBinding mb2) {
 		if (!mb.getName().equals(mb2.getName())) {
 			return false;
 		}
@@ -918,6 +862,9 @@ public final class TransformUtil {
 		if (mb.getParameterTypes().length != mb2.getParameterTypes().length) {
 			return false;
 		}
+
+		mb = mb.getMethodDeclaration();
+		mb2 = mb2.getMethodDeclaration();
 
 		for (int i = 0; i < mb.getParameterTypes().length; ++i) {
 			if (!mb.getParameterTypes()[i].getErasure().isEqualTo(
@@ -941,13 +888,13 @@ public final class TransformUtil {
 			IMethodBinding mb, Collection<ITypeBinding> softDeps,
 			boolean qualified) {
 		if (mb.isConstructor()) {
-			pw.print(name(tb));
+			pw.print("void " + CTOR);
 		} else {
 			ITypeBinding rt = mb.getReturnType();
 			addDep(rt, softDeps);
 
 			if (!qualified) {
-				pw.print(methodModifiers(mb.getModifiers(), tb.getModifiers()));
+				pw.print(methodModifiers(mb));
 				pw.print(relativeCName(rt, tb, true));
 			} else {
 				pw.print(qualifiedCName(rt, true));
@@ -964,7 +911,27 @@ public final class TransformUtil {
 			pw.print(name(mb));
 		}
 
-		printParams(pw, tb, mb, softDeps);
+		printParams(pw, tb, mb, true, softDeps);
+	}
+
+	public static String printNestedParams(PrintWriter pw, ITypeBinding type,
+			Collection<IVariableBinding> closures) {
+		String sep = "";
+		if (TransformUtil.hasOuterThis(type)) {
+			pw.print(TransformUtil.outerThis(type));
+			sep = ", ";
+		}
+
+		if (closures != null) {
+			for (IVariableBinding closure : closures) {
+				pw.print(sep
+						+ TransformUtil.relativeCName(closure.getType(), type,
+								true) + " " + TransformUtil.refName(closure));
+				sep = ", ";
+			}
+		}
+
+		return sep;
 	}
 
 	public static boolean isVoid(ITypeBinding tb) {
@@ -977,22 +944,12 @@ public final class TransformUtil {
 				&& mb.getName().equals("main")
 				&& mb.getParameterTypes().length == 1
 				&& mb.getParameterTypes()[0].isArray()
-				&& mb.getParameterTypes()[0].getComponentType()
-						.getQualifiedName().equals("java.lang.String");
-	}
-
-	public static boolean hasNatives(ITypeBinding tb) {
-		for (IMethodBinding mb : tb.getDeclaredMethods()) {
-			if (Modifier.isNative(mb.getModifiers())) {
-				return true;
-			}
-		}
-
-		return false;
+				&& same(mb.getParameterTypes()[0].getComponentType(),
+						String.class);
 	}
 
 	public static void printStringSupport(ITypeBinding tb, PrintWriter pw) {
-		if (!tb.getQualifiedName().equals(String.class.getName())) {
+		if (!same(tb, String.class)) {
 			return;
 		}
 
@@ -1010,20 +967,6 @@ public final class TransformUtil {
 		pw.println("namespace java { namespace lang { String *operator \"\" _j(const char16_t *p, size_t n); } }");
 		pw.println("using java::lang::operator \"\" _j;");
 		pw.println();
-	}
-
-	public static void printSuperCall(PrintWriter out, ITypeBinding type,
-			IMethodBinding mb, Collection<ITypeBinding> softDeps) {
-		printSignature(out, type, mb, softDeps, false);
-
-		out.print(" { return super::" + name(mb) + "(");
-		String sep = "";
-		for (int i = 0; i < mb.getParameterTypes().length; ++i) {
-			out.print(sep + paramName(mb, i));
-			sep = ", ";
-		}
-
-		out.println("); }");
 	}
 
 	public static void printClassLiteral(PrintWriter out, ITypeBinding type) {

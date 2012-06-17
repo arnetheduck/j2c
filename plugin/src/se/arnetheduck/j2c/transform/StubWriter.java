@@ -167,7 +167,7 @@ public class StubWriter {
 
 		print(mb.isConstructor() ? TransformUtil.CTOR : TransformUtil.name(mb));
 
-		TransformUtil.printParams(pw, tb, mb, softDeps);
+		TransformUtil.printParams(pw, tb, mb, true, softDeps);
 		pw.println();
 		print("{");
 		if (Modifier.isNative(mb.getModifiers())) {
@@ -177,7 +177,7 @@ public class StubWriter {
 		}
 
 		if (TransformUtil.isStatic(mb)) {
-			println(TransformUtil.indent(1) + "clinit();");
+			println(TransformUtil.indent(1) + TransformUtil.STATIC_INIT + "();");
 		}
 
 		boolean hasBody = false;

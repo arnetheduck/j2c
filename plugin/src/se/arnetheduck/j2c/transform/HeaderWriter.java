@@ -6,10 +6,8 @@ import java.lang.reflect.Modifier;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
-import java.util.HashSet;
 import java.util.Iterator;
 import java.util.List;
-import java.util.Set;
 
 import org.eclipse.core.runtime.IPath;
 import org.eclipse.jdt.core.dom.ASTNode;
@@ -41,11 +39,8 @@ public class HeaderWriter extends TransformWriter {
 	private final IPath root;
 	private final Collection<IVariableBinding> closures;
 
-	private final Set<String> usings = new HashSet<String>();
-	private final List<MethodDeclaration> constructors = new ArrayList<MethodDeclaration>();
-	private final List<IMethodBinding> methods = new ArrayList<IMethodBinding>();
-
-	private String lastAccess;
+	private final Header headerInfo;
+	private String access;
 
 	private boolean hasInit;
 
@@ -55,17 +50,17 @@ public class HeaderWriter extends TransformWriter {
 		this.root = root;
 		this.closures = closures;
 
-		lastAccess = HeaderUtil.initialAccess(type);
+		access = Header.initialAccess(type);
+
+		headerInfo = new Header(ctx, type, softDeps);
 	}
 
 	public void write(AnnotationTypeDeclaration node) throws Exception {
-		writeType(new ArrayList<EnumConstantDeclaration>(),
-				node.bodyDeclarations());
+		writeType(node.bodyDeclarations());
 	}
 
 	public void write(AnonymousClassDeclaration node) throws Exception {
-		writeType(new ArrayList<EnumConstantDeclaration>(),
-				node.bodyDeclarations());
+		writeType(node.bodyDeclarations());
 	}
 
 	public void write(EnumDeclaration node) throws Exception {
@@ -73,8 +68,11 @@ public class HeaderWriter extends TransformWriter {
 	}
 
 	public void write(TypeDeclaration node) throws Exception {
-		writeType(new ArrayList<EnumConstantDeclaration>(),
-				node.bodyDeclarations());
+		writeType(node.bodyDeclarations());
+	}
+
+	private void writeType(List<BodyDeclaration> declarations) {
+		writeType(new ArrayList<EnumConstantDeclaration>(), declarations);
 	}
 
 	private void writeType(List<EnumConstantDeclaration> enums,
@@ -83,12 +81,8 @@ public class HeaderWriter extends TransformWriter {
 		try {
 			String body = getBody(enums, declarations);
 
-			PrintWriter pw = HeaderUtil.open(root, type, ctx, softDeps,
-					hardDeps);
-
-			pw.print(body);
-
-			pw.close();
+			headerInfo.write(root, softDeps, hardDeps, body, closures, hasInit,
+					unitInfo.types);
 		} catch (Exception e) {
 			throw new Error(e);
 		}
@@ -100,195 +94,20 @@ public class HeaderWriter extends TransformWriter {
 
 	private String getBody(List<EnumConstantDeclaration> enums,
 			List<BodyDeclaration> declarations) {
-		PrintWriter old = out;
 		StringWriter sw = new StringWriter();
 		out = new PrintWriter(sw);
 
-		out.println("{");
-
 		indent++;
-
-		lastAccess = HeaderUtil.printSuper(out, type, lastAccess);
-		lastAccess = HeaderUtil.printClassLiteral(out, lastAccess);
 
 		visitAll(enums);
 
 		visitAll(declarations); // This will gather constructors
 
-		if (!type.isInterface()) {
-			if (type.isAnonymous()) {
-				makeBaseConstructors(closures);
-			} else {
-				makeConstructors(closures);
-			}
-
-			ITypeBinding sb = type.getSuperclass();
-			boolean superInner = sb != null && TransformUtil.hasOuterThis(sb);
-			if (TransformUtil.hasOuterThis(type)) {
-				if (!superInner
-						|| sb.getDeclaringClass() != null
-						&& !type.getDeclaringClass().getErasure()
-								.isEqualTo(sb.getDeclaringClass().getErasure())) {
-					softDep(type.getDeclaringClass());
-					printlni(TransformUtil.outerThis(type), ";");
-				}
-			}
-
-			if (closures != null) {
-				for (IVariableBinding closure : closures) {
-					softDep(closure.getType());
-					printlni(TransformUtil.relativeCName(closure.getType(),
-							type, true), " ", TransformUtil.refName(closure),
-							";");
-				}
-			}
-
-			makeBaseCalls();
-
-			lastAccess = HeaderUtil.printEnumMethods(out, type, softDeps,
-					lastAccess);
-
-			makeInit();
-
-			lastAccess = HeaderUtil.printClinit(out, lastAccess);
-			lastAccess = HeaderUtil.printDtor(out, type, lastAccess);
-			lastAccess = HeaderUtil.printGetClass(out, type, lastAccess);
-
-			HeaderUtil.printStringOperator(out, type);
-
-			for (ITypeBinding nb : unitInfo.types) {
-				softDep(nb);
-				if (!nb.isEqualTo(type)) {
-					printlni("friend class ", TransformUtil.name(nb), ";");
-				}
-			}
-		}
-
 		indent--;
 
-		println("};");
-
-		TransformUtil.printStringSupport(type, out);
-
 		out.close();
-
-		out = old;
+		out = null;
 		return sw.toString();
-	}
-
-	public void makeInit() {
-		if (!hasInit) {
-			return;
-		}
-
-		lastAccess = HeaderUtil.printAccess(out, Modifier.PRIVATE, lastAccess);
-
-		printlni("void ", TransformUtil.INSTANCE_INIT, "();");
-	}
-
-	private void makeConstructors(Collection<IVariableBinding> closures) {
-		String name = TransformUtil.name(type);
-
-		boolean hasEmpty = false;
-		for (MethodDeclaration md : constructors) {
-			if (md.parameters().size() == 0
-					&& Modifier.isPrivate(md.getModifiers())) {
-				if (!"protected:".equals(lastAccess)) {
-					lastAccess = "protected:";
-					println(lastAccess);
-				}
-			} else {
-				lastAccess = HeaderUtil.printAccess(out, md.getModifiers(),
-						lastAccess);
-			}
-
-			printi(name, "(");
-
-			String sep = printNestedParams(closures);
-
-			if (!md.parameters().isEmpty()) {
-				print(sep);
-				visitAllCSV(md.parameters(), false);
-			}
-
-			hasEmpty |= md.parameters().isEmpty();
-			println(")", TransformUtil.throwsDecl(md.thrownExceptions()), ";");
-		}
-
-		if (!hasEmpty) {
-			if (constructors.size() > 0 && !"protected:".equals(lastAccess)) {
-				lastAccess = "protected:";
-				println(lastAccess);
-			} else {
-				lastAccess = HeaderUtil.printAccess(out, Modifier.PUBLIC,
-						lastAccess);
-			}
-
-			printi(name, "(");
-
-			printNestedParams(closures);
-
-			println(");");
-
-			printlni("void ", TransformUtil.CTOR, "();");
-		}
-	}
-
-	private void makeBaseConstructors(Collection<IVariableBinding> closures) {
-		lastAccess = HeaderUtil.printAccess(out, Modifier.PUBLIC, lastAccess);
-		// Synthesize base class constructors
-		String name = TransformUtil.name(type);
-		boolean fake = true;
-		for (IMethodBinding mb : type.getSuperclass().getDeclaredMethods()) {
-			if (!mb.isConstructor() || Modifier.isPrivate(mb.getModifiers())) {
-				continue;
-			}
-
-			fake = false;
-			printi(name, "(");
-
-			String sep = printNestedParams(closures);
-
-			for (int i = 0; i < mb.getParameterTypes().length; ++i) {
-				ITypeBinding pb = mb.getParameterTypes()[i];
-				softDep(pb);
-
-				print(sep, TransformUtil.relativeCName(pb, type, true), " ",
-						TransformUtil.ref(pb), TransformUtil.paramName(mb, i));
-				sep = ", ";
-			}
-
-			println(");");
-		}
-
-		if (fake) {
-			printi(name, "(");
-			printNestedParams(closures);
-			println(");");
-		}
-	}
-
-	private void makeBaseCalls() {
-		if (Modifier.isAbstract(type.getModifiers())) {
-			return;
-		}
-
-		List<IMethodBinding> missing = HeaderUtil.baseCallMethods(type);
-
-		for (IMethodBinding mb : missing) {
-			lastAccess = HeaderUtil.printAccess(out, Modifier.PUBLIC,
-					lastAccess);
-
-			printi();
-			TransformUtil.printSuperCall(out, type, mb, softDeps);
-
-			String using = TransformUtil.methodUsing(mb, type);
-			if (using != null) {
-				if (usings.add(using)) {
-					printlni(using);
-				}
-			}
-		}
 	}
 
 	@Override
@@ -342,6 +161,7 @@ public class HeaderWriter extends TransformWriter {
 
 	@Override
 	public boolean visit(EnumConstantDeclaration node) {
+		access = Header.printAccess(out, node.getModifiers(), access);
 		printi("static ", TransformUtil.name(type), " *");
 
 		node.getName().accept(this);
@@ -356,8 +176,7 @@ public class HeaderWriter extends TransformWriter {
 			node.getJavadoc().accept(this);
 		}
 
-		lastAccess = HeaderUtil.printAccess(out, node.getModifiers(),
-				lastAccess);
+		access = Header.printAccess(out, node.getModifiers(), access);
 
 		List<VariableDeclarationFragment> fragments = node.fragments();
 
@@ -366,19 +185,8 @@ public class HeaderWriter extends TransformWriter {
 			for (VariableDeclarationFragment f : fragments) {
 				IVariableBinding vb = f.resolveBinding();
 				boolean asMethod = TransformUtil.asMethod(vb);
-				if (asMethod) {
-					lastAccess = HeaderUtil.printAccess(out,
-							node.getModifiers(), lastAccess);
-					printi("static ", TransformUtil.relativeCName(vb.getType(),
-							type, true), " ");
-
-					print(TransformUtil.ref(vb.getType()), "&",
-							TransformUtil.name(vb));
-					println("();");
-
-					lastAccess = HeaderUtil.printAccess(out, Modifier.PRIVATE,
-							lastAccess);
-				}
+				access = Header.printAccess(out, asMethod ? Modifier.PRIVATE
+						: vb.getModifiers(), access);
 
 				printi(TransformUtil.fieldModifiers(type, node.getModifiers(),
 						true, TransformUtil.constantValue(f) != null));
@@ -456,9 +264,7 @@ public class HeaderWriter extends TransformWriter {
 		}
 
 		IMethodBinding mb = node.resolveBinding();
-
-		if ((Modifier.isAbstract(mb.getModifiers()) || type.isInterface())
-				&& TransformUtil.baseHasSame(mb, type, ctx)) {
+		if (Header.baseDeclared(ctx, type, mb)) {
 			// Defining once more will lead to virtual inheritance issues
 			printi("/*");
 			TransformUtil.printSignature(out, type, mb, softDeps, false);
@@ -466,22 +272,16 @@ public class HeaderWriter extends TransformWriter {
 			return false;
 		}
 
-		if (node.isConstructor()) {
-			constructors.add(node);
+		headerInfo.method(mb);
 
-			if (!"protected:".equals(lastAccess)) {
-				lastAccess = "protected:";
-				println(lastAccess);
-			}
+		if (node.isConstructor()) {
+			access = Header.printProtected(out, access);
 
 			printi("void ", TransformUtil.CTOR);
 		} else {
-			methods.add(mb);
-			lastAccess = HeaderUtil.printAccess(out, node.getModifiers(),
-					lastAccess);
+			access = Header.printAccess(out, mb, access);
 
-			printi(TransformUtil.methodModifiers(node.getModifiers(),
-					type.getModifiers()));
+			printi(TransformUtil.methodModifiers(mb));
 			print(TransformUtil.typeParameters(node.typeParameters()));
 
 			ITypeBinding rt = TransformUtil.returnType(node);
@@ -508,16 +308,6 @@ public class HeaderWriter extends TransformWriter {
 
 		println(";");
 
-		if (!node.isConstructor()) {
-			String using = TransformUtil.methodUsing(mb);
-			if (using != null) {
-				if (usings.add(using)) {
-					printlni(using);
-				}
-			}
-		}
-
-		TransformUtil.declareBridge(out, type, mb, softDeps);
 		return false;
 	}
 
@@ -590,7 +380,9 @@ public class HeaderWriter extends TransformWriter {
 
 	@Override
 	public boolean visit(VariableDeclarationFragment node) {
-		ITypeBinding tb = node.resolveBinding().getType();
+		IVariableBinding vb = node.resolveBinding();
+		ITypeBinding tb = vb.getType();
+		headerInfo.field(vb);
 		softDep(tb);
 		print(TransformUtil.ref(tb));
 

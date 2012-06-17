@@ -82,6 +82,8 @@ public class Transformer {
 
 	public List<Snippet> snippets = new ArrayList<Snippet>();
 
+	protected AST currentAST;
+
 	public void process(IProgressMonitor monitor, ICompilationUnit... units)
 			throws Exception {
 		monitor.subTask("Moving old files");
@@ -165,6 +167,7 @@ public class Transformer {
 		parse(units, new ASTRequestor() {
 			@Override
 			public void acceptAST(ICompilationUnit source, CompilationUnit ast) {
+				currentAST = ast.getAST();
 				try {
 					if (hasError(ast)) {
 						for (AbstractTypeDeclaration type : (List<AbstractTypeDeclaration>) ast
@@ -178,6 +181,7 @@ public class Transformer {
 				} catch (Throwable e) {
 					e.printStackTrace();
 				}
+				currentAST = null;
 			}
 		});
 	}
@@ -325,6 +329,13 @@ public class Transformer {
 	}
 
 	public ITypeBinding resolve(Class<?> clazz) {
+		if (currentAST != null) {
+			ITypeBinding ret = currentAST.resolveWellKnownType(clazz.getName());
+			if (ret != null) {
+				return ret;
+			}
+		}
+
 		try {
 			ASTParser parser = ASTParser.newParser(AST.JLS4);
 			parser.setProject(project);

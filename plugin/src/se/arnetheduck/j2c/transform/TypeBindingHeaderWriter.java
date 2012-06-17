@@ -3,8 +3,7 @@ package se.arnetheduck.j2c.transform;
 import java.io.PrintWriter;
 import java.io.StringWriter;
 import java.lang.reflect.Modifier;
-import java.util.HashSet;
-import java.util.List;
+import java.util.ArrayList;
 import java.util.Set;
 import java.util.TreeSet;
 
@@ -18,7 +17,8 @@ public class TypeBindingHeaderWriter {
 	private final ITypeBinding type;
 	private final Transformer ctx;
 
-	private String lastAccess;
+	private String access;
+	private final Header header;
 
 	protected final Set<ITypeBinding> hardDeps = new TreeSet<ITypeBinding>(
 			new BindingComparator());
@@ -31,8 +31,9 @@ public class TypeBindingHeaderWriter {
 		this.ctx = ctx;
 		this.type = type;
 
-		lastAccess = HeaderUtil.initialAccess(type);
+		access = Header.initialAccess(type);
 		softDep(type);
+		header = new Header(ctx, type, softDeps);
 	}
 
 	public void write() throws Exception {
@@ -41,7 +42,7 @@ public class TypeBindingHeaderWriter {
 		if (!type.isInterface()) {
 			StubWriter sw = new StubWriter(root, ctx, type);
 			sw.write(false, false);
-			if (TransformUtil.hasNatives(type)) {
+			if (hasNatives()) {
 				sw = new StubWriter(root, ctx, type);
 				sw.write(true, false);
 			}
@@ -50,6 +51,16 @@ public class TypeBindingHeaderWriter {
 		for (ITypeBinding tb : softDeps) {
 			ctx.softDep(tb);
 		}
+	}
+
+	private boolean hasNatives() {
+		for (IMethodBinding mb : type.getDeclaredMethods()) {
+			if (Modifier.isNative(mb.getModifiers())) {
+				return true;
+			}
+		}
+
+		return false;
 	}
 
 	private void writeType() throws Exception {
@@ -62,12 +73,9 @@ public class TypeBindingHeaderWriter {
 		try {
 			String body = getBody();
 
-			PrintWriter pw = HeaderUtil.open(root, type, ctx, softDeps,
-					hardDeps);
-
-			pw.print(body);
-
-			pw.close();
+			header.write(root, softDeps, hardDeps, body,
+					new ArrayList<IVariableBinding>(), false,
+					new ArrayList<ITypeBinding>());
 		} catch (Exception e) {
 			throw new Error(e);
 		}
@@ -77,87 +85,26 @@ public class TypeBindingHeaderWriter {
 		StringWriter sw = new StringWriter();
 		PrintWriter out = new PrintWriter(sw);
 
-		out.println("{");
-
-		lastAccess = HeaderUtil.printSuper(out, type, lastAccess);
-		lastAccess = HeaderUtil.printClassLiteral(out, lastAccess);
-
 		for (IVariableBinding vb : type.getDeclaredFields()) {
+			header.field(vb);
 			printField(out, vb);
 		}
 
 		out.println();
 
-		Set<String> usings = new HashSet<String>();
-
-		boolean hasConstructor = false;
-		boolean hasEmptyConstructor = false;
 		for (IMethodBinding mb : type.getDeclaredMethods()) {
-			printMethod(out, type, mb, usings);
-
-			hasConstructor |= mb.isConstructor();
-			hasEmptyConstructor |= mb.isConstructor()
-					&& mb.getParameterTypes().length == 0;
+			printMethod(out, type, mb);
 		}
-
-		if (!hasEmptyConstructor) {
-			if (!hasConstructor && !"protected:".equals(lastAccess)) {
-				lastAccess = "protected:";
-				out.println(lastAccess);
-			} else if (!hasConstructor) {
-				lastAccess = HeaderUtil.printAccess(out, Modifier.PUBLIC,
-						lastAccess);
-			}
-
-			out.print(TransformUtil.indent(1));
-			out.print(TransformUtil.name(type));
-			out.println("();");
-
-			out.print(TransformUtil.indent(1));
-			out.print("void ");
-			out.print(TransformUtil.CTOR);
-			out.println("();");
-		}
-
-		makeBaseCalls(out, usings);
-
-		lastAccess = HeaderUtil.printEnumMethods(out, type, softDeps,
-				lastAccess);
-
-		lastAccess = HeaderUtil.printClinit(out, lastAccess);
-		lastAccess = HeaderUtil.printDtor(out, type, lastAccess);
-		lastAccess = HeaderUtil.printGetClass(out, type, lastAccess);
-
-		HeaderUtil.printStringOperator(out, type);
-
-		out.println("};");
-
-		TransformUtil.printStringSupport(type, out);
-
-		out.close();
 
 		return sw.toString();
 	}
 
 	private void printField(PrintWriter pw, IVariableBinding vb) {
-		lastAccess = HeaderUtil.printAccess(pw, vb.getModifiers(), lastAccess);
 		softDep(vb.getType());
 
 		boolean asMethod = TransformUtil.asMethod(vb);
-		if (asMethod) {
-			pw.print(TransformUtil.indent(1));
-			pw.print("static "
-					+ TransformUtil.relativeCName(vb.getType(), type, true)
-					+ " ");
-
-			pw.print(TransformUtil.ref(vb.getType()));
-			pw.print("&" + TransformUtil.name(vb));
-			pw.println("();");
-
-			lastAccess = HeaderUtil.printAccess(pw, Modifier.PRIVATE,
-					lastAccess);
-		}
-
+		access = Header.printAccess(pw,
+				asMethod ? Modifier.PRIVATE : vb.getModifiers(), access);
 		pw.print(TransformUtil.indent(1));
 
 		Object cv = TransformUtil.constantValue(vb);
@@ -179,19 +126,15 @@ public class TypeBindingHeaderWriter {
 		pw.println(";");
 	}
 
-	private void printMethod(PrintWriter pw, ITypeBinding tb,
-			IMethodBinding mb, Set<String> usings) {
-		if (mb.isConstructor() && mb.getParameterTypes().length == 0
-				&& Modifier.isPrivate(mb.getModifiers())) {
-			lastAccess = "protected:";
-			pw.println(lastAccess);
+	private void printMethod(PrintWriter pw, ITypeBinding tb, IMethodBinding mb) {
+		if (mb.isConstructor()) {
+			// The fake ctor should always be protected
+			access = Header.printProtected(pw, access);
 		} else {
-			lastAccess = HeaderUtil.printAccess(pw, mb.getModifiers(),
-					lastAccess);
+			access = Header.printAccess(pw, mb.getModifiers(), access);
 		}
 
-		if ((Modifier.isAbstract(mb.getModifiers()) || tb.isInterface())
-				&& TransformUtil.baseHasSame(mb, tb, ctx)) {
+		if (Header.baseDeclared(ctx, type, mb)) {
 			// Defining once more will lead to virtual inheritance issues
 			pw.print(TransformUtil.indent(1));
 			pw.print("/*");
@@ -209,24 +152,14 @@ public class TypeBindingHeaderWriter {
 			return;
 		}
 
+		header.method(mb);
+
 		pw.print(TransformUtil.indent(1));
 
 		TransformUtil.printSignature(pw, tb, mb, softDeps, false);
 
 		if (Modifier.isAbstract(mb.getModifiers())) {
 			pw.print(" = 0");
-		}
-
-		if (mb.isConstructor()) {
-			pw.println(";");
-
-			lastAccess = HeaderUtil
-					.printAccess(pw, Modifier.PUBLIC, lastAccess);
-
-			pw.print(TransformUtil.indent(1));
-			pw.print("void ");
-			pw.print(TransformUtil.CTOR);
-			TransformUtil.printParams(pw, tb, mb, softDeps);
 		}
 
 		pw.println(";");
@@ -237,38 +170,6 @@ public class TypeBindingHeaderWriter {
 			hardDep(mb.getReturnType());
 		}
 
-		TransformUtil.declareBridge(pw, tb, mb, softDeps);
-
-		String using = TransformUtil.methodUsing(mb);
-		if (using != null) {
-			if (usings.add(using)) {
-				pw.print(TransformUtil.indent(1));
-				pw.println(using);
-			}
-		}
-	}
-
-	private void makeBaseCalls(PrintWriter pw, Set<String> usings) {
-		if (Modifier.isAbstract(type.getModifiers()) || !type.isClass()) {
-			return;
-		}
-
-		List<IMethodBinding> missing = HeaderUtil.baseCallMethods(type);
-
-		for (IMethodBinding mb : missing) {
-			lastAccess = HeaderUtil
-					.printAccess(pw, Modifier.PUBLIC, lastAccess);
-
-			pw.print(TransformUtil.indent(1));
-			TransformUtil.printSuperCall(pw, type, mb, softDeps);
-
-			String using = TransformUtil.methodUsing(mb, type);
-			if (using != null) {
-				if (usings.add(using)) {
-					pw.println(TransformUtil.indent(1) + using);
-				}
-			}
-		}
 	}
 
 	public void hardDep(ITypeBinding dep) {

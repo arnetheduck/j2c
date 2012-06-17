@@ -157,24 +157,6 @@ public abstract class TransformWriter extends ASTVisitor {
 		TransformUtil.printlni(out, indent, objects);
 	}
 
-	protected String printNestedParams(Collection<IVariableBinding> closures) {
-		String sep = "";
-		if (TransformUtil.hasOuterThis(type)) {
-			print(TransformUtil.outerThis(type));
-			sep = ", ";
-		}
-
-		if (closures != null) {
-			for (IVariableBinding closure : closures) {
-				print(sep, TransformUtil.relativeCName(closure.getType(), type,
-						true), " ", TransformUtil.refName(closure));
-				sep = ", ";
-			}
-		}
-
-		return sep;
-	}
-
 	@Override
 	public boolean visit(ArrayType node) {
 		if (node.getComponentType().isArrayType()

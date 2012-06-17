@@ -372,7 +372,7 @@ public class ImplWriter extends TransformWriter {
 		for (MethodDeclaration md : constructors) {
 			printi(qname, "::", name, "(");
 
-			String sep = printNestedParams(closures);
+			String sep = TransformUtil.printNestedParams(out, type, closures);
 
 			if (!md.parameters().isEmpty()) {
 				print(sep);
@@ -410,7 +410,7 @@ public class ImplWriter extends TransformWriter {
 		if (!hasEmpty) {
 			printi(qname, "::", name, "(");
 
-			printNestedParams(closures);
+			TransformUtil.printNestedParams(out, type, closures);
 
 			println(")");
 
@@ -517,7 +517,7 @@ public class ImplWriter extends TransformWriter {
 
 			printi(qname, "::", name, "(");
 
-			String sep = printNestedParams(closures);
+			String sep = TransformUtil.printNestedParams(out, type, closures);
 
 			for (int i = 0; i < mb.getParameterTypes().length; ++i) {
 				ITypeBinding pb = mb.getParameterTypes()[i];
@@ -1653,7 +1653,7 @@ public class ImplWriter extends TransformWriter {
 
 	private boolean isOverloaded(IMethodBinding b) {
 		Collection<IMethodBinding> methods = TransformUtil.allMethods(
-				b.getDeclaringClass(), b.getName());
+				b.getDeclaringClass(), b.getName(), ctx.resolve(Object.class));
 		if (methods.size() < 2) {
 			return false;
 		}
@@ -2237,32 +2237,32 @@ public class ImplWriter extends TransformWriter {
 			Code code = ((PrimitiveType) node.getType()).getPrimitiveTypeCode();
 			if (code.equals(PrimitiveType.BOOLEAN)) {
 				hardDep(node.getAST().resolveWellKnownType("java.lang.Boolean"));
-				print("java::lang::Boolean::TYPE_()");
+				print("::java::lang::Boolean::TYPE_()");
 			} else if (code.equals(PrimitiveType.BYTE)) {
 				hardDep(node.getAST().resolveWellKnownType("java.lang.Byte"));
-				print("java::lang::Byte::TYPE_()");
+				print("::java::lang::Byte::TYPE_()");
 			} else if (code.equals(PrimitiveType.CHAR)) {
 				hardDep(node.getAST().resolveWellKnownType(
 						"java.lang.Character"));
-				print("java::lang::Character::TYPE_()");
+				print("::java::lang::Character::TYPE_()");
 			} else if (code.equals(PrimitiveType.DOUBLE)) {
 				hardDep(node.getAST().resolveWellKnownType("java.lang.Double"));
-				print("java::lang::Double::TYPE_()");
+				print("::java::lang::Double::TYPE_()");
 			} else if (code.equals(PrimitiveType.FLOAT)) {
 				hardDep(node.getAST().resolveWellKnownType("java.lang.Float"));
-				print("java::lang::Float::TYPE_()");
+				print("::java::lang::Float::TYPE_()");
 			} else if (code.equals(PrimitiveType.INT)) {
 				hardDep(node.getAST().resolveWellKnownType("java.lang.Integer"));
-				print("java::lang::Integer::TYPE_()");
+				print("::java::lang::Integer::TYPE_()");
 			} else if (code.equals(PrimitiveType.LONG)) {
 				hardDep(node.getAST().resolveWellKnownType("java.lang.Long"));
-				print("java::lang::Long::TYPE_()");
+				print("::java::lang::Long::TYPE_()");
 			} else if (code.equals(PrimitiveType.SHORT)) {
 				hardDep(node.getAST().resolveWellKnownType("java.lang.Short"));
-				print("java::lang::Short::TYPE_()");
+				print("::java::lang::Short::TYPE_()");
 			} else if (code.equals(PrimitiveType.VOID)) {
 				hardDep(node.getAST().resolveWellKnownType("java.lang.Void"));
-				print("java::lang::Void::TYPE_()");
+				print("::java::lang::Void::TYPE_()");
 			}
 		} else {
 			hardDep(node.getType().resolveBinding());
