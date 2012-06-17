@@ -3,6 +3,7 @@ package se.arnetheduck.j2c.transform;
 import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.PrintWriter;
+import java.io.StringWriter;
 import java.lang.reflect.Modifier;
 import java.util.ArrayList;
 import java.util.Collection;
@@ -64,10 +65,12 @@ public class Header {
 		fields.add(vb);
 	}
 
-	public void write(IPath root, Collection<ITypeBinding> softDeps,
-			Collection<ITypeBinding> hardDeps, String body,
-			Collection<IVariableBinding> closures, boolean hasInit,
-			Collection<ITypeBinding> nested) throws IOException {
+	public void write(IPath root, Collection<ITypeBinding> hardDeps,
+			String body, Collection<IVariableBinding> closures,
+			boolean hasInit, Collection<ITypeBinding> nested)
+			throws IOException {
+
+		String extras = getExtras(closures, hasInit, nested);
 
 		FileOutputStream fos = new FileOutputStream(root.append(
 				TransformUtil.headerName(type)).toFile());
@@ -138,8 +141,7 @@ public class Header {
 		printSuper(type);
 
 		pw.print(body);
-
-		printExtras(closures, hasInit, nested);
+		pw.print(extras);
 
 		pw.println("};");
 
@@ -279,8 +281,11 @@ public class Header {
 				&& TransformUtil.baseHasSame(mb, type, ctx);
 	}
 
-	private void printExtras(Collection<IVariableBinding> closures,
+	private String getExtras(Collection<IVariableBinding> closures,
 			boolean hasInit, Collection<ITypeBinding> nested) {
+		StringWriter sw = new StringWriter();
+		pw = new PrintWriter(sw);
+
 		printConstructors(closures);
 
 		printClassLiteral();
@@ -297,6 +302,10 @@ public class Header {
 		printStringOperator();
 
 		printFriends(nested);
+
+		pw.close();
+		pw = null;
+		return sw.toString();
 	}
 
 	private void printStringOperator() {
@@ -520,8 +529,10 @@ public class Header {
 		if (closures != null) {
 			for (IVariableBinding closure : closures) {
 				TransformUtil.addDep(closure.getType(), softDeps);
-				pw.println(TransformUtil.relativeCName(closure.getType(), type,
-						true) + " " + TransformUtil.refName(closure) + ";");
+				pw.println(i1
+						+ TransformUtil.relativeCName(closure.getType(), type,
+								true) + " " + TransformUtil.refName(closure)
+						+ ";");
 			}
 		}
 

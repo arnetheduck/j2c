@@ -73,7 +73,7 @@ public class TypeBindingHeaderWriter {
 		try {
 			String body = getBody();
 
-			header.write(root, softDeps, hardDeps, body,
+			header.write(root, hardDeps, body,
 					new ArrayList<IVariableBinding>(), false,
 					new ArrayList<ITypeBinding>());
 		} catch (Exception e) {
