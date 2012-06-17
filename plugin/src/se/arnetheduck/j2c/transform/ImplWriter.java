@@ -630,6 +630,23 @@ public class ImplWriter extends TransformWriter {
 	}
 
 	@Override
+	public boolean visit(AnnotationTypeDeclaration node) {
+		ITypeBinding tb = node.resolveBinding();
+		ImplWriter iw = new ImplWriter(root, ctx, tb, unitInfo);
+		try {
+			iw.write(node);
+		} catch (Exception e) {
+			throw new Error(e);
+		}
+
+		if (tb.isLocal()) {
+			localTypes.put(tb, iw);
+		}
+
+		return false;
+	}
+
+	@Override
 	public boolean visit(AnnotationTypeMemberDeclaration node) {
 		return false;
 	}

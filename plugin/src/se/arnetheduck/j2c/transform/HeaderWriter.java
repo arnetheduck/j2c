@@ -125,6 +125,11 @@ public class HeaderWriter extends TransformWriter {
 			Arrays.asList(TypeDeclaration.class));
 
 	@Override
+	public boolean visit(AnnotationTypeDeclaration node) {
+		return false;
+	}
+
+	@Override
 	public boolean visit(AnnotationTypeMemberDeclaration node) {
 		printi();
 		TransformUtil.printSignature(out, type, node.resolveBinding(),
