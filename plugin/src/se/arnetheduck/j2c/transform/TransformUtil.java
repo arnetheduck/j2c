@@ -177,8 +177,41 @@ public final class TransformUtil {
 	public static String name(IMethodBinding mb) {
 		// private methods mess up using statements that import methods
 		// from base classes
-		String name = keywords(mb.getName());
-		return Modifier.isPrivate(mb.getModifiers()) ? "_" + name : name;
+		String ret = keywords(mb.getName());
+		ret = Modifier.isPrivate(mb.getModifiers()) ? "_" + ret : ret;
+
+		if (couldOverrideDefault(mb, ret)) {
+			ret = name(mb.getDeclaringClass()) + "_" + ret;
+		}
+
+		return ret;
+	}
+
+	/**
+	 * In Java, if a method has the same name as a package-private method in a
+	 * base class, it will not override the base class member. In C++, we have
+	 * nothing of the sort so we have to rename the non-overriding method
+	 */
+	public static boolean couldOverrideDefault(IMethodBinding mb, String ret) {
+		ITypeBinding tb = mb.getDeclaringClass();
+		if (tb != null) {
+			for (ITypeBinding tbx = tb.getSuperclass(); tbx != null; tbx = tbx
+					.getSuperclass()) {
+				if (samePackage(tb, tbx)) {
+					continue;
+				}
+
+				for (IMethodBinding mbx : tbx.getDeclaredMethods()) {
+					if (isDefault(mbx.getModifiers())
+							&& mbx.getName().equals(mb.getName())
+							&& sameParameters(mb, mbx)) {
+						return true;
+					}
+				}
+			}
+		}
+
+		return false;
 	}
 
 	public static String name(IVariableBinding vb) {
@@ -501,6 +534,12 @@ public final class TransformUtil {
 
 	public static String ref(Type t) {
 		return t.isPrimitiveType() ? "" : "*";
+	}
+
+	public static boolean isDefault(int modifiers) {
+		return !Modifier.isPrivate(modifiers)
+				&& !Modifier.isProtected(modifiers)
+				&& !Modifier.isPublic(modifiers);
 	}
 
 	public static boolean isFinal(IVariableBinding vb) {
