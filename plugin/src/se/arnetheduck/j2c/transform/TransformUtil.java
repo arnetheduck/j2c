@@ -390,6 +390,17 @@ public final class TransformUtil {
 		return cv;
 	}
 
+	/**
+	 * Clean up java-escaped string literals for C++.
+	 * 
+	 * In java, it is valid to have lone UTF-16 surrogates - in C++, not.
+	 */
+	public static String stringLiteral(String escaped) {
+		Pattern p = Pattern.compile("\\\\u(D[89abcdefABCDEF]..)");
+		Matcher m = p.matcher(escaped);
+		return m.replaceAll("\\\\x$1");
+	}
+
 	public static String fieldModifiers(ITypeBinding type, int modifiers,
 			boolean header, boolean isConstExpr) {
 		String ret = "";

@@ -10,5 +10,6 @@ public class LiteralTest {
 		char c5 = '\u00f0';
 		String s0 = " ";
 		String s1 = "\u2233";
+		String s2 = "\uD800x\uD902"; // Also not valid
 	}
 }
