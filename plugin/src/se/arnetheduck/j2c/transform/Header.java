@@ -222,7 +222,7 @@ public class Header {
 		return access;
 	}
 
-	public void printSuper(ITypeBinding type) {
+	private void printSuper(ITypeBinding type) {
 		if (type.getSuperclass() == null) {
 			return;
 		}
@@ -437,10 +437,13 @@ public class Header {
 		if (type.isClass()) {
 			for (List<IMethodBinding> e : methods.values()) {
 				for (IMethodBinding mb : e) {
-					TransformUtil.declareBridge(pw, type, mb, softDeps);
+					access = TransformUtil.declareBridge(pw, type, mb,
+							softDeps, access);
 				}
 			}
 
+			// Interface methods are always public
+			access = printAccess(pw, Modifier.PUBLIC, access);
 			List<IMethodBinding> missing = baseCallMethods(type);
 			for (IMethodBinding mb : missing) {
 				IMethodBinding im = findImpl(mb);
@@ -489,6 +492,7 @@ public class Header {
 		}
 
 		// The remaining method need unhiding
+		access = printAccess(pw, Modifier.PUBLIC, access);
 		Set<String> usings = new HashSet<String>();
 		for (IMethodBinding mb : superMethods) {
 			String using = methodUsing(mb);

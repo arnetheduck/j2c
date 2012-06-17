@@ -779,13 +779,14 @@ public final class TransformUtil {
 		return null;
 	}
 
-	public static void declareBridge(PrintWriter pw, ITypeBinding tb,
-			IMethodBinding mb, Collection<ITypeBinding> softDeps) {
+	public static String declareBridge(PrintWriter pw, ITypeBinding tb,
+			IMethodBinding mb, Collection<ITypeBinding> softDeps, String access) {
 		if (!mb.isConstructor()) {
 			IMethodBinding mb2 = getSuperMethod(mb);
 			if (needsBridge(mb, mb2)) {
 				mb2 = mb2.getMethodDeclaration();
 
+				access = Header.printAccess(pw, mb2, access);
 				pw.print(TransformUtil.indent(1));
 
 				TransformUtil.printSignature(pw, tb, mb2, softDeps, false);
@@ -793,6 +794,8 @@ public final class TransformUtil {
 				pw.println(";");
 			}
 		}
+
+		return access;
 	}
 
 	public static List<ITypeBinding> defineBridge(PrintWriter pw,
