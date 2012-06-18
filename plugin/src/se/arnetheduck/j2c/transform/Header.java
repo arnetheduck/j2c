@@ -467,8 +467,6 @@ public class Header {
 				}
 			}
 
-			// Interface methods are always public
-			access = printAccess(pw, Modifier.PUBLIC, access);
 			List<IMethodBinding> missing = baseCallMethods(type);
 			for (IMethodBinding mb : missing) {
 				IMethodBinding im = findImpl(mb);
@@ -479,6 +477,7 @@ public class Header {
 					continue;
 				}
 
+				// Interface methods are always public
 				access = printAccess(pw, Modifier.PUBLIC, access);
 
 				pw.print(i1);
@@ -534,9 +533,25 @@ public class Header {
 				.superClasses(type));
 
 		for (IMethodBinding sm : superMethods) {
-			if (sm.isSubsignature(mb)) {
-				return sm;
+			// isSubsignature doesn't seem to work with generics(!)
+			// if (sm.isSubsignature(mb)) {
+			// return sm;
+			// }
+
+			if (sm.isConstructor()) {
+				continue;
 			}
+
+			if (!sm.getName().equals(mb.getName())) {
+				continue;
+			}
+
+			if (!TransformUtil.sameParameters(sm, mb)) {
+				continue;
+			}
+
+			return sm;
+
 		}
 
 		return null;
