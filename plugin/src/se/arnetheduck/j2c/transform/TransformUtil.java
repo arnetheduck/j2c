@@ -554,6 +554,14 @@ public final class TransformUtil {
 		return ref(vb.getType()) + name(vb);
 	}
 
+	public static String constVar(IVariableBinding vb) {
+		if (!vb.isField() && Modifier.isFinal(vb.getModifiers())) {
+			return "const ";
+		}
+
+		return "";
+	}
+
 	public static String ref(Type t) {
 		return t.isPrimitiveType() ? "" : "*";
 	}

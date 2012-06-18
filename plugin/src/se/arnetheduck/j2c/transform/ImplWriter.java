@@ -1895,11 +1895,14 @@ public class ImplWriter extends TransformWriter {
 
 		print(" ", TransformUtil.ref(tb));
 
-		node.getName().accept(this);
-
 		if (node.getInitializer() != null) {
+			print(TransformUtil.constVar(node.resolveBinding()));
+			node.getName().accept(this);
+			hardDep(node.getInitializer().resolveTypeBinding());
 			print(" = ");
 			node.getInitializer().accept(this);
+		} else {
+			node.getName().accept(this);
 		}
 
 		return false;
@@ -2374,12 +2377,14 @@ public class ImplWriter extends TransformWriter {
 	public boolean visit(VariableDeclarationFragment node) {
 		print(TransformUtil.ref(node.resolveBinding().getType()));
 
-		node.getName().accept(this);
-
 		if (node.getInitializer() != null) {
+			print(TransformUtil.constVar(node.resolveBinding()));
+			node.getName().accept(this);
 			hardDep(node.getInitializer().resolveTypeBinding());
 			print(" = ");
 			node.getInitializer().accept(this);
+		} else {
+			node.getName().accept(this);
 		}
 
 		return false;
