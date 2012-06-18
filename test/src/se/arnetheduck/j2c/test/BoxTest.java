@@ -20,4 +20,8 @@ public class BoxTest {
 		BoxTest bt = new BoxTest();
 		Integer i = bt.k;
 	}
+
+	public java.lang.Object m0() {
+		return (k);
+	}
 }

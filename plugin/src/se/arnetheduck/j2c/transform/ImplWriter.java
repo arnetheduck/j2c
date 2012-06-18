@@ -55,6 +55,7 @@ import org.eclipse.jdt.core.dom.MethodInvocation;
 import org.eclipse.jdt.core.dom.Modifier;
 import org.eclipse.jdt.core.dom.Name;
 import org.eclipse.jdt.core.dom.NullLiteral;
+import org.eclipse.jdt.core.dom.ParenthesizedExpression;
 import org.eclipse.jdt.core.dom.PostfixExpression;
 import org.eclipse.jdt.core.dom.PrefixExpression;
 import org.eclipse.jdt.core.dom.PrimitiveType;
@@ -602,6 +603,13 @@ public class ImplWriter extends TransformWriter {
 	}
 
 	private boolean checkBoxNesting(Expression expr) {
+		if (expr.getParent() instanceof ParenthesizedExpression) {
+			assert (((ParenthesizedExpression) expr.getParent())
+					.resolveBoxing() || ((ParenthesizedExpression) expr
+					.getParent()).resolveUnboxing());
+			return false;
+		}
+
 		if (expr.getParent() instanceof Name) {
 			return false;
 		}
