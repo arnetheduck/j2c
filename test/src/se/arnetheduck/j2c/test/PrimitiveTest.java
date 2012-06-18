@@ -32,4 +32,19 @@ public class PrimitiveTest {
 	static int sii = 5;
 	static long sli = 5l;
 	static short ssi = 4;
+
+	void f() {
+		float f0 = 1;
+		float f1 = 2;
+		float f2 = f0 % f1; // fmod in c++
+		f2 %= f1;
+	}
+
+	void d() {
+		double f0 = 1;
+		double f1 = 2;
+		double f2 = f0 % f1; // fmod in c++
+		f2 %= f1;
+	}
+
 }

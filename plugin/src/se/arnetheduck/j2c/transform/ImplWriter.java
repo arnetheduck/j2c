@@ -768,7 +768,7 @@ public class ImplWriter extends TransformWriter {
 		hardDep(node.getRightHandSide().resolveTypeBinding());
 
 		ITypeBinding tb = node.getLeftHandSide().resolveTypeBinding();
-		if (tb.getQualifiedName().equals("java.lang.String")
+		if (TransformUtil.same(tb, String.class)
 				&& node.getOperator() == Operator.PLUS_ASSIGN) {
 			node.getLeftHandSide().accept(this);
 			print(" = ::join(");
@@ -796,6 +796,21 @@ public class ImplWriter extends TransformWriter {
 			return false;
 		}
 
+		if (node.getOperator().equals(Operator.REMAINDER_ASSIGN)) {
+			if (tb.getName().equals("float") || tb.getName().equals("double")) {
+				fmod = true;
+				node.getLeftHandSide().accept(this);
+				print(" = ");
+				print("std::fmod(");
+				node.getLeftHandSide().accept(this);
+				print(", ");
+				node.getLeftHandSide().accept(this);
+				print(")");
+
+				return false;
+			}
+		}
+
 		Expression lhs = node.getLeftHandSide();
 		if (node.getOperator() == Operator.ASSIGN
 				&& lhs instanceof ArrayAccess
@@ -809,13 +824,14 @@ public class ImplWriter extends TransformWriter {
 			print(", ");
 			node.getRightHandSide().accept(this);
 			print(")");
-		} else {
-			node.getLeftHandSide().accept(this);
-
-			print(" ", node.getOperator(), " ");
-
-			node.getRightHandSide().accept(this);
+			return false;
 		}
+
+		node.getLeftHandSide().accept(this);
+
+		print(" ", node.getOperator(), " ");
+
+		node.getRightHandSide().accept(this);
 
 		return false;
 	}
