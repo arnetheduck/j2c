@@ -292,7 +292,12 @@ public final class TransformUtil {
 			return null;
 		}
 
-		if (!isFinal(node.resolveBinding())) {
+		IVariableBinding vb = node.resolveBinding();
+		if (!vb.getType().isPrimitive()) {
+			return null;
+		}
+
+		if (!isFinal(vb)) {
 			return null;
 		}
 
@@ -402,7 +407,7 @@ public final class TransformUtil {
 	 * In java, it is valid to have lone UTF-16 surrogates - in C++, not.
 	 */
 	public static String stringLiteral(String escaped) {
-		Pattern p = Pattern.compile("\\\\u(D[89abcdefABCDEF]..)");
+		Pattern p = Pattern.compile("\\\\u([dD][89abcdefABCDEF]..)");
 		Matcher m = p.matcher(escaped);
 		return m.replaceAll("\\\\x$1");
 	}

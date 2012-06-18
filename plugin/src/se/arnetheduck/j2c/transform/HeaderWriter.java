@@ -181,8 +181,6 @@ public class HeaderWriter extends TransformWriter {
 			node.getJavadoc().accept(this);
 		}
 
-		access = Header.printAccess(out, node.getModifiers(), access);
-
 		List<VariableDeclarationFragment> fragments = node.fragments();
 
 		ITypeBinding tb = node.getType().resolveBinding();
@@ -204,6 +202,8 @@ public class HeaderWriter extends TransformWriter {
 				println(asMethod ? "_;" : ";");
 			}
 		} else {
+			access = Header.printAccess(out, node.getModifiers(), access);
+
 			printi(TransformUtil.fieldModifiers(type, node.getModifiers(),
 					true, hasInitilializer(fragments)));
 
