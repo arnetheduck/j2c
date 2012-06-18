@@ -611,19 +611,27 @@ public class ImplWriter extends TransformWriter {
 	 * this method returns the type after conversion
 	 */
 	private ITypeBinding boxingType(Expression node) {
+		ITypeBinding ret = null;
 		ASTNode parent = node.getParent();
 		if (parent instanceof Assignment) {
-			return ((Assignment) parent).getLeftHandSide().resolveTypeBinding();
+			ret = ((Assignment) parent).getLeftHandSide().resolveTypeBinding();
 		}
 
 		if (parent instanceof VariableDeclarationFragment) {
-			return ((VariableDeclarationFragment) parent).resolveBinding()
+			ret = ((VariableDeclarationFragment) parent).resolveBinding()
 					.getType();
 		}
 
 		if (parent instanceof SingleVariableDeclaration) {
-			return ((SingleVariableDeclaration) parent).resolveBinding()
+			ret = ((SingleVariableDeclaration) parent).resolveBinding()
 					.getType();
+		}
+
+		if (ret != null
+				&& (TransformUtil.same(ret, Byte.class)
+						|| TransformUtil.same(ret, Short.class) || TransformUtil
+							.same(ret, Character.class))) {
+			return ret;
 		}
 
 		return node.getAST().resolveWellKnownType(
@@ -1137,7 +1145,7 @@ public class ImplWriter extends TransformWriter {
 			print(" = ");
 			ITypeBinding tb = node.getParameter().getType().resolveBinding();
 
-			dynamicCast(tb);
+			dynamicCast(ctx.resolve(Object.class), tb);
 			println("_i->next());");
 			printi();
 			handleLoopBody(node, node.getBody());
@@ -1145,25 +1153,10 @@ public class ImplWriter extends TransformWriter {
 			indent--;
 			printlni("}");
 
-			hardDep(getIterator(eb));
+			hardDep(ctx.resolve(Iterator.class));
 		}
 
 		return false;
-	}
-
-	private ITypeBinding getIterator(ITypeBinding tb) {
-		for (IMethodBinding mb : tb.getDeclaredMethods()) {
-			if (mb.getName().equals("iterator")
-					&& TransformUtil.same(mb.getReturnType(), Iterator.class)) {
-				return mb.getReturnType();
-			}
-		}
-
-		if (tb.getSuperclass() != null) {
-			return getIterator(tb.getSuperclass());
-		}
-
-		return null;
 	}
 
 	@Override
@@ -1454,7 +1447,7 @@ public class ImplWriter extends TransformWriter {
 	@Override
 	public boolean visit(InstanceofExpression node) {
 		ITypeBinding tb = node.getRightOperand().resolveBinding();
-		dynamicCast(tb);
+		dynamicCast(node.getLeftOperand().resolveTypeBinding(), tb);
 		node.getLeftOperand().accept(this);
 		print(")");
 		return false;
@@ -1609,7 +1602,8 @@ public class ImplWriter extends TransformWriter {
 		boolean erased = returnErased(b);
 
 		if (erased) {
-			dynamicCast(b.getReturnType());
+			dynamicCast(b.getMethodDeclaration().getReturnType().getErasure(),
+					b.getReturnType());
 		}
 
 		Expression expr = node.getExpression();
@@ -1619,7 +1613,7 @@ public class ImplWriter extends TransformWriter {
 			boolean castExpr = !etb.isSubTypeCompatible(mb.getDeclaringClass());
 
 			if (castExpr) {
-				dynamicCast(mb.getDeclaringClass());
+				dynamicCast(etb, mb.getDeclaringClass());
 			}
 
 			expr.accept(this);
@@ -1746,10 +1740,11 @@ public class ImplWriter extends TransformWriter {
 						b.getMethodDeclaration().getReturnType().getErasure());
 	}
 
-	private void dynamicCast(ITypeBinding rt) {
-		hardDep(rt);
-		print("dynamic_cast< ", TransformUtil.relativeCName(rt, type, true),
-				"* >(");
+	private void dynamicCast(ITypeBinding source, ITypeBinding target) {
+		hardDep(source);
+		hardDep(target);
+		print("dynamic_cast< ",
+				TransformUtil.relativeCName(target, type, true), "* >(");
 	}
 
 	private void cast(Expression argument, ITypeBinding pb, boolean hasOverloads) {
@@ -1944,7 +1939,8 @@ public class ImplWriter extends TransformWriter {
 		boolean erased = returnErased(b);
 
 		if (erased) {
-			dynamicCast(b.getReturnType());
+			dynamicCast(b.getMethodDeclaration().getReturnType().getErasure(),
+					b.getReturnType());
 		}
 
 		if (node.getQualifier() != null) {

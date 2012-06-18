@@ -13,6 +13,8 @@ public class BoxTest {
 
 		Short s = 42;
 		Byte b = 33;
+
+		java.lang.Object o = '\u0000';
 	}
 
 	int m2(Integer i) {
