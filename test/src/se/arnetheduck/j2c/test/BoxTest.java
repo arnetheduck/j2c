@@ -10,6 +10,9 @@ public class BoxTest {
 		i = Integer.bitCount(i);
 		j = m2(i);
 		i = m2(j);
+
+		Short s = 42;
+		Byte b = 33;
 	}
 
 	int m2(Integer i) {

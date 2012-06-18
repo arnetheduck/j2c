@@ -339,27 +339,52 @@ public class Header {
 			return;
 		}
 
-		access = printAccess(pw, Modifier.PUBLIC, access);
+		boolean hasValues = false;
+		boolean hasValueOf = false;
+		List<IMethodBinding> m = methods.get("values");
+		if (m != null) {
+			for (IMethodBinding mb : m) {
+				hasValues |= isValues(mb);
+			}
+		}
+
+		m = methods.get("valueOf");
+		if (m != null) {
+			for (IMethodBinding mb : m) {
+				hasValueOf |= isValueOf(mb);
+			}
+		}
 
 		for (IMethodBinding mb : type.getDeclaredMethods()) {
-			if (type.createArrayType(1).isEqualTo(mb.getReturnType())
-					&& mb.getName().equals("values")
-					&& mb.getParameterTypes().length == 0) {
+			if (!hasValues && isValues(mb)) {
+				access = printAccess(pw, Modifier.PUBLIC, access);
 				pw.print(i1);
 				TransformUtil.printSignature(pw, type, mb, softDeps, false);
 				pw.println(" { return nullptr; /* TODO */ }");
-			} else if (type.isEqualTo(mb.getReturnType())
-					&& mb.getName().equals("valueOf")
-					&& mb.getParameterTypes().length == 1
-					&& mb.getParameterTypes()[0].getQualifiedName().equals(
-							String.class.getName())) {
+				hasValues = true;
+			} else if (!hasValueOf && isValueOf(mb)) {
+				access = printAccess(pw, Modifier.PUBLIC, access);
 				pw.print(i1);
 				TransformUtil.printSignature(pw, type, mb, softDeps, false);
 				pw.println(" { return nullptr; /* TODO */ }");
+				hasValueOf = true;
 			}
 		}
 
 		return;
+	}
+
+	private boolean isValueOf(IMethodBinding mb) {
+		return type.isEqualTo(mb.getReturnType())
+				&& mb.getName().equals("valueOf")
+				&& mb.getParameterTypes().length == 1
+				&& TransformUtil.same(mb.getParameterTypes()[0], String.class);
+	}
+
+	private boolean isValues(IMethodBinding mb) {
+		return type.createArrayType(1).isEqualTo(mb.getReturnType())
+				&& mb.getName().equals("values")
+				&& mb.getParameterTypes().length == 0;
 	}
 
 	private void printConstructors(Collection<IVariableBinding> closures) {

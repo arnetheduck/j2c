@@ -1,6 +1,7 @@
 package se.arnetheduck.j2c.test.init;
 
 public class ConstExpr {
+	final byte yi = 4;
 	final boolean bi = false;
 	final char ci = 'c';
 	final double di = 0.1;
@@ -9,6 +10,7 @@ public class ConstExpr {
 	final long li = 5l;
 	final short si = 4;
 
+	static final byte syi = 4;
 	static final boolean sbi = false;
 	static final char sci = 'c';
 	static final double sdi = 0.1;
@@ -21,6 +23,7 @@ public class ConstExpr {
 	final String s = "hello";
 	static final String ss = "helloToo";
 
+	final Byte byi = 4;
 	final Boolean bbi = false;
 	final Character bci = 'c';
 	final Double bdi = 0.1;
@@ -29,6 +32,7 @@ public class ConstExpr {
 	final Long bli = 5l;
 	final Short bsi = 4;
 
+	static final Byte bsyi = 4;
 	static final Boolean bsbi = false;
 	static final Character bsci = 'c';
 	static final Double bsdi = 0.1;

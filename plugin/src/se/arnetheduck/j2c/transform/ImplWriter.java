@@ -581,13 +581,11 @@ public class ImplWriter extends TransformWriter {
 					&& checkBoxNesting(expr)) {
 
 				if (expr.resolveBoxing()) {
-					String x = TransformUtil.primitives.get(tb.getName());
-					assert (x != null);
-					boxes.add(node);
-					ITypeBinding tb2 = node.getAST().resolveWellKnownType(x);
+					ITypeBinding tb2 = boxingType(expr);
 					hardDep(tb2);
 					print(TransformUtil.relativeCName(tb2, type, true),
 							"::valueOf(");
+					boxes.add(node);
 				} else if (expr.resolveUnboxing()) {
 					if (TransformUtil.reverses.containsKey(tb
 							.getQualifiedName())) {
@@ -600,6 +598,31 @@ public class ImplWriter extends TransformWriter {
 		}
 
 		return super.preVisit2(node);
+	}
+
+	/**
+	 * Java allows conversions on assignment when boxing byte, short, char -
+	 * this method returns the type after conversion
+	 */
+	private ITypeBinding boxingType(Expression node) {
+		ASTNode parent = node.getParent();
+		if (parent instanceof Assignment) {
+			return ((Assignment) parent).getLeftHandSide().resolveTypeBinding();
+		}
+
+		if (parent instanceof VariableDeclarationFragment) {
+			return ((VariableDeclarationFragment) parent).resolveBinding()
+					.getType();
+		}
+
+		if (parent instanceof SingleVariableDeclaration) {
+			return ((SingleVariableDeclaration) parent).resolveBinding()
+					.getType();
+		}
+
+		return node.getAST().resolveWellKnownType(
+				TransformUtil.primitives.get(node.resolveTypeBinding()
+						.getName()));
 	}
 
 	private boolean checkBoxNesting(Expression expr) {
