@@ -531,19 +531,25 @@ public class ImplWriter extends TransformWriter {
 
 			println(")");
 			indent++;
-			printi(": ");
-			print(TransformUtil.relativeCName(type.getSuperclass(), type, true),
-					"(");
+			String initSep = ": ";
 
-			sep = "";
-			for (int i = 0; i < mb.getParameterTypes().length; ++i) {
-				print(sep, TransformUtil.paramName(mb, i));
-				sep = ", ";
+			if (!(type.getSuperclass() != null && TransformUtil
+					.hasOuterThis(type.getSuperclass()))) {
+				printi(initSep);
+				initSep = ", ";
+				print(TransformUtil.relativeCName(type.getSuperclass(), type,
+						true), "(");
+
+				sep = "";
+				for (int i = 0; i < mb.getParameterTypes().length; ++i) {
+					print(sep, TransformUtil.paramName(mb, i));
+					sep = ", ";
+				}
+
+				println(")");
 			}
 
-			println(")");
-
-			printFieldInit(", ");
+			printFieldInit(initSep);
 
 			indent--;
 			println("{");
