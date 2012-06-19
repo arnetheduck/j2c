@@ -253,11 +253,6 @@ public class Header {
 
 		for (IMethodBinding imb : im) {
 			for (IMethodBinding mb : tb.getDeclaredMethods()) {
-				if (Modifier.isAbstract(mb.getModifiers())) {
-					missing.remove(imb);
-					break;
-				}
-
 				if (mb.isSubsignature(imb)) {
 					missing.remove(imb);
 					break;
