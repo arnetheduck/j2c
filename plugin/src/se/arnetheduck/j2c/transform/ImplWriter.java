@@ -516,6 +516,10 @@ public class ImplWriter extends TransformWriter {
 				continue;
 			}
 
+			if (Modifier.isPrivate(mb.getModifiers())) {
+				continue;
+			}
+
 			printi(qname, "::", name, "(");
 
 			String sep = TransformUtil.printNestedParams(out, type, closures);
