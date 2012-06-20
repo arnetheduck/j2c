@@ -1095,4 +1095,12 @@ public final class TransformUtil {
 	public static boolean same(ITypeBinding type, Class<?> klazz) {
 		return type.getErasure().getQualifiedName().equals(klazz.getName());
 	}
+
+	public static boolean returnErased(IMethodBinding b) {
+		return !b
+				.getMethodDeclaration()
+				.getReturnType()
+				.isEqualTo(
+						b.getMethodDeclaration().getReturnType().getErasure());
+	}
 }

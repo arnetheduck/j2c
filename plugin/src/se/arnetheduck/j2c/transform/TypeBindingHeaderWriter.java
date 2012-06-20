@@ -96,6 +96,9 @@ public class TypeBindingHeaderWriter {
 			printMethod(out, type, mb);
 		}
 
+		// These add hard deps
+		access = Header.printSuperCalls(out, header, hardDeps, access);
+
 		return sw.toString();
 	}
 

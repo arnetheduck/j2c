@@ -462,25 +462,6 @@ public class Header {
 							softDeps, access);
 				}
 			}
-
-			List<IMethodBinding> missing = baseCallMethods(type);
-			for (IMethodBinding mb : missing) {
-				IMethodBinding im = findImpl(mb);
-				if (im == null) {
-					// Only print super call if an implementation actually
-					// exists
-					assert (Modifier.isAbstract(type.getModifiers()));
-					continue;
-				}
-
-				// Interface methods are always public
-				access = printAccess(pw, Modifier.PUBLIC, access);
-
-				pw.print(i1);
-				printSuperCall(im);
-
-				method(mb);
-			}
 		}
 
 		List<IMethodBinding> superMethods = TypeUtil.methods(TypeUtil.allBases(
@@ -524,7 +505,38 @@ public class Header {
 		}
 	}
 
-	private IMethodBinding findImpl(IMethodBinding mb) {
+	public static String printSuperCalls(PrintWriter pw, Header header,
+			Collection<ITypeBinding> hardDeps, String access) {
+		ITypeBinding type = header.type;
+		if (type.isClass()) {
+			List<IMethodBinding> missing = baseCallMethods(type);
+			for (IMethodBinding mb : missing) {
+				IMethodBinding im = findImpl(type, mb);
+				if (im == null) {
+					// Only print super call if an implementation actually
+					// exists
+					assert (Modifier.isAbstract(type.getModifiers()));
+					continue;
+				}
+
+				// Interface methods are always public
+				access = printAccess(pw, Modifier.PUBLIC, access);
+
+				pw.print(i1);
+				printSuperCall(pw, header, im);
+
+				header.method(mb);
+
+				if (TransformUtil.returnErased(mb)) {
+					TransformUtil.addDep(mb.getReturnType(), hardDeps);
+				}
+			}
+		}
+
+		return access;
+	}
+
+	public static IMethodBinding findImpl(ITypeBinding type, IMethodBinding mb) {
 		Collection<IMethodBinding> superMethods = TypeUtil.methods(TypeUtil
 				.superClasses(type));
 
@@ -610,23 +622,10 @@ public class Header {
 
 	}
 
-	private void printSuperCall(IMethodBinding mb) {
-		TransformUtil.printSignature(pw, type, mb, softDeps, false);
-
-		if (TransformUtil.isVoid(mb.getReturnType())) {
-			pw.format(" { %s::%s(", TransformUtil.name(mb.getDeclaringClass()),
-					TransformUtil.name(mb));
-		} else {
-			pw.format(" { return %s::%s(",
-					TransformUtil.name(mb.getDeclaringClass()),
-					TransformUtil.name(mb));
-		}
-		String sep = "";
-		for (int i = 0; i < mb.getParameterTypes().length; ++i) {
-			pw.print(sep + TransformUtil.paramName(mb, i));
-			sep = ", ";
-		}
-
-		pw.println("); }");
+	private static void printSuperCall(PrintWriter pw, Header header,
+			IMethodBinding mb) {
+		TransformUtil.printSignature(pw, header.type, mb, header.softDeps,
+				false);
+		pw.println(";");
 	}
 }

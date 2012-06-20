@@ -158,6 +158,9 @@ public class ImplWriter extends TransformWriter {
 
 		visitAll(declarations);
 
+		// These may add hard deps
+		printSuperCalls();
+
 		out.close();
 		return body;
 	}
@@ -502,6 +505,62 @@ public class ImplWriter extends TransformWriter {
 				sep = ", ";
 			}
 		}
+	}
+
+	private void printSuperCalls() {
+		if (type.isClass()) {
+			List<IMethodBinding> missing = Header.baseCallMethods(type);
+			for (IMethodBinding mb : missing) {
+				IMethodBinding im = Header.findImpl(type, mb);
+				if (im == null) {
+					// Only print super call if an implementation actually
+					// exists
+					assert (Modifier.isAbstract(type.getModifiers()));
+					continue;
+				}
+
+				printSuperCall(im);
+			}
+		}
+	}
+
+	private void printSuperCall(IMethodBinding mb) {
+		TransformUtil.printSignature(out, type, mb, softDeps, true);
+		println();
+		println("{");
+		indent++;
+		printi();
+
+		boolean erased = TransformUtil.returnErased(mb);
+
+		if (TransformUtil.isVoid(mb.getReturnType())) {
+			out.format("%s::%s(", TransformUtil.name(mb.getDeclaringClass()),
+					TransformUtil.name(mb));
+		} else {
+			print("return ");
+			if (erased) {
+				dynamicCast(mb.getMethodDeclaration().getReturnType()
+						.getErasure(), mb.getReturnType());
+			}
+
+			out.format("%s::%s(", TransformUtil.name(mb.getDeclaringClass()),
+					TransformUtil.name(mb));
+		}
+
+		String sep = "";
+		for (int i = 0; i < mb.getParameterTypes().length; ++i) {
+			print(sep + TransformUtil.paramName(mb, i));
+			sep = ", ";
+		}
+
+		if (erased) {
+			print(")");
+		}
+
+		println(");");
+		indent--;
+		println("}");
+		println();
 	}
 
 	private String makeBaseConstructors() {
@@ -1448,7 +1507,7 @@ public class ImplWriter extends TransformWriter {
 
 	private void castNull(Expression left) {
 		if (left.resolveTypeBinding().isNullType()) {
-			print("static_cast<::java::lang::Object*>(");
+			print("static_cast< ::java::lang::Object* >(");
 			left.accept(this);
 			print(")");
 		} else {
@@ -1618,7 +1677,7 @@ public class ImplWriter extends TransformWriter {
 	@Override
 	public boolean visit(MethodInvocation node) {
 		IMethodBinding b = node.resolveMethodBinding();
-		boolean erased = returnErased(b);
+		boolean erased = TransformUtil.returnErased(b);
 
 		if (erased) {
 			dynamicCast(b.getMethodDeclaration().getReturnType().getErasure(),
@@ -1749,14 +1808,6 @@ public class ImplWriter extends TransformWriter {
 		}
 
 		return false;
-	}
-
-	private boolean returnErased(IMethodBinding b) {
-		return !b
-				.getMethodDeclaration()
-				.getReturnType()
-				.isEqualTo(
-						b.getMethodDeclaration().getReturnType().getErasure());
 	}
 
 	private void dynamicCast(ITypeBinding source, ITypeBinding target) {
@@ -1947,7 +1998,7 @@ public class ImplWriter extends TransformWriter {
 	@Override
 	public boolean visit(SuperMethodInvocation node) {
 		IMethodBinding b = node.resolveMethodBinding();
-		boolean erased = returnErased(b);
+		boolean erased = TransformUtil.returnErased(b);
 
 		if (erased) {
 			dynamicCast(b.getMethodDeclaration().getReturnType().getErasure(),

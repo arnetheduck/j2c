@@ -39,7 +39,7 @@ public class HeaderWriter extends TransformWriter {
 	private final IPath root;
 	private final Collection<IVariableBinding> closures;
 
-	private final Header headerInfo;
+	private final Header header;
 	private String access;
 
 	private boolean hasInit;
@@ -52,7 +52,7 @@ public class HeaderWriter extends TransformWriter {
 
 		access = Header.initialAccess(type);
 
-		headerInfo = new Header(ctx, type, softDeps);
+		header = new Header(ctx, type, softDeps);
 	}
 
 	public void write(AnnotationTypeDeclaration node) throws Exception {
@@ -81,7 +81,7 @@ public class HeaderWriter extends TransformWriter {
 		try {
 			String body = getBody(enums, declarations);
 
-			headerInfo.write(root, hardDeps, body, closures, hasInit,
+			header.write(root, hardDeps, body, closures, hasInit,
 					unitInfo.types);
 		} catch (Exception e) {
 			throw new Error(e);
@@ -102,6 +102,9 @@ public class HeaderWriter extends TransformWriter {
 		visitAll(enums);
 
 		visitAll(declarations); // This will gather constructors
+
+		// These add hard deps
+		access = Header.printSuperCalls(out, header, hardDeps, access);
 
 		indent--;
 
@@ -277,7 +280,7 @@ public class HeaderWriter extends TransformWriter {
 			return false;
 		}
 
-		headerInfo.method(mb);
+		header.method(mb);
 
 		if (node.isConstructor()) {
 			access = Header.printProtected(out, access);
@@ -387,7 +390,7 @@ public class HeaderWriter extends TransformWriter {
 	public boolean visit(VariableDeclarationFragment node) {
 		IVariableBinding vb = node.resolveBinding();
 		ITypeBinding tb = vb.getType();
-		headerInfo.field(vb);
+		header.field(vb);
 		softDep(tb);
 		print(TransformUtil.ref(tb));
 
