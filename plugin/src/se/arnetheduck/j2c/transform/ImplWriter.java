@@ -1370,20 +1370,25 @@ public class ImplWriter extends TransformWriter {
 	public boolean visit(InfixExpression node) {
 		final List<Expression> extendedOperands = node.extendedOperands();
 		ITypeBinding tb = node.resolveTypeBinding();
+		Expression left = node.getLeftOperand();
+		Expression right = node.getRightOperand();
 		if (tb != null && tb.getQualifiedName().equals("java.lang.String")) {
 			print("::join(");
 			for (int i = 0; i < extendedOperands.size(); ++i) {
 				print("::join(");
 			}
 
-			node.getLeftOperand().accept(this);
+			castNull(left);
+
 			print(", ");
-			node.getRightOperand().accept(this);
+
+			castNull(right);
+
 			print(")");
 
 			for (Expression e : extendedOperands) {
 				print(", ");
-				e.accept(this);
+				castNull(e);
 				print(")");
 			}
 
@@ -1394,9 +1399,9 @@ public class ImplWriter extends TransformWriter {
 			if (tb.getName().equals("float") || tb.getName().equals("double")) {
 				fmod = true;
 				print("std::fmod(");
-				cast(node.getLeftOperand(), tb, true);
+				cast(left, tb, true);
 				print(", ");
-				cast(node.getRightOperand(), tb, true);
+				cast(right, tb, true);
 				print(")");
 
 				return false;
@@ -1405,28 +1410,28 @@ public class ImplWriter extends TransformWriter {
 
 		if (node.getOperator().equals(
 				InfixExpression.Operator.RIGHT_SHIFT_UNSIGNED)) {
-			ITypeBinding b = node.getLeftOperand().resolveTypeBinding();
+			ITypeBinding b = left.resolveTypeBinding();
 			if (b.getName().equals("long")) {
 				print("static_cast<uint64_t>(");
 			} else {
 				print("static_cast<uint32_t>(");
 			}
-			node.getLeftOperand().accept(this);
+			left.accept(this);
 			print(") >>");
 		} else {
-			node.getLeftOperand().accept(this);
+			left.accept(this);
 			print(' '); // for cases like x= i - -1; or x= i++ + ++i;
 
 			print(node.getOperator().toString());
 		}
 
-		hardDep(node.getLeftOperand().resolveTypeBinding());
+		hardDep(left.resolveTypeBinding());
 
 		print(' ');
 
-		node.getRightOperand().accept(this);
+		right.accept(this);
 
-		hardDep(node.getRightOperand().resolveTypeBinding());
+		hardDep(right.resolveTypeBinding());
 
 		if (!extendedOperands.isEmpty()) {
 			print(' ');
@@ -1439,6 +1444,16 @@ public class ImplWriter extends TransformWriter {
 		}
 
 		return false;
+	}
+
+	private void castNull(Expression left) {
+		if (left.resolveTypeBinding().isNullType()) {
+			print("static_cast<::java::lang::Object*>(");
+			left.accept(this);
+			print(")");
+		} else {
+			left.accept(this);
+		}
 	}
 
 	@Override

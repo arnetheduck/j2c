@@ -41,4 +41,7 @@ public class StringTest {
 		return "" + this;
 	}
 
+	public String nulls() {
+		return "" + null + null + "";
+	}
 }
