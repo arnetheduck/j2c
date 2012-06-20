@@ -1905,11 +1905,8 @@ public class ImplWriter extends TransformWriter {
 
 	@Override
 	public boolean visit(SuperConstructorInvocation node) {
-		if (node.getExpression() != null) {
-			node.getExpression().accept(this);
-			print(".");
-		}
-
+		// We skip node.getExpression() here as that should have been taken
+		// care of by the constructor invocation
 		printi(TransformUtil.typeArguments(node.typeArguments()));
 
 		print("super::", TransformUtil.CTOR);
@@ -1922,12 +1919,7 @@ public class ImplWriter extends TransformWriter {
 
 	@Override
 	public boolean visit(SuperFieldAccess node) {
-		if (node.getQualifier() != null) {
-			node.getQualifier().accept(this);
-			print(".");
-		}
-
-		print("super::");
+		// Qualification is handled in TransformWriter.visit(SimpleName)
 		node.getName().accept(this);
 
 		return false;
@@ -1943,13 +1935,7 @@ public class ImplWriter extends TransformWriter {
 					b.getReturnType());
 		}
 
-		if (node.getQualifier() != null) {
-			node.getQualifier().accept(this);
-			print(".");
-		}
-
-		print("super::");
-
+		// Qualification is handled in TransformWriter.visit(SimpleName)
 		print(TransformUtil.typeArguments(node.typeArguments()));
 
 		node.getName().accept(this);
@@ -2203,22 +2189,33 @@ public class ImplWriter extends TransformWriter {
 
 	@Override
 	public boolean visit(ThisExpression node) {
-		if (node.getQualifier() != null
-				&& !type.isSubTypeCompatible(node.getQualifier()
-						.resolveTypeBinding())) {
-			String sep = "";
-			ITypeBinding dc = node.getQualifier().resolveTypeBinding();
-			for (ITypeBinding x = type; x.getDeclaringClass() != null
-					&& !x.isSubTypeCompatible(dc); x = x.getDeclaringClass()) {
-				hardDep(x.getDeclaringClass());
-
-				print(sep, TransformUtil.outerThisName(x));
-				sep = "->";
-			}
-		} else {
+		if (!qualify(node.getQualifier())) {
 			print("this");
 		}
+
 		return false;
+	}
+
+	private boolean qualify(Name qualifier) {
+		if (qualifier == null) {
+			return false;
+		}
+
+		ITypeBinding qt = qualifier.resolveTypeBinding();
+		if (type.isSubTypeCompatible(qt)) {
+			return false;
+		}
+
+		String sep = "";
+		for (ITypeBinding x = type; x.getDeclaringClass() != null
+				&& !x.isSubTypeCompatible(qt); x = x.getDeclaringClass()) {
+			hardDep(x.getDeclaringClass());
+
+			print(sep, TransformUtil.outerThisName(x));
+			sep = "->";
+		}
+
+		return true;
 	}
 
 	@Override

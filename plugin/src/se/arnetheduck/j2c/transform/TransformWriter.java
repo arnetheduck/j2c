@@ -46,6 +46,8 @@ import org.eclipse.jdt.core.dom.SimpleName;
 import org.eclipse.jdt.core.dom.SimpleType;
 import org.eclipse.jdt.core.dom.SingleMemberAnnotation;
 import org.eclipse.jdt.core.dom.StringLiteral;
+import org.eclipse.jdt.core.dom.SuperFieldAccess;
+import org.eclipse.jdt.core.dom.SuperMethodInvocation;
 import org.eclipse.jdt.core.dom.TagElement;
 import org.eclipse.jdt.core.dom.TextElement;
 import org.eclipse.jdt.core.dom.Type;
@@ -374,6 +376,10 @@ public abstract class TransformWriter extends ASTVisitor {
 						TransformUtil.isStatic(vb));
 			}
 
+			if (node.getParent() instanceof SuperFieldAccess) {
+				print("super::");
+			}
+
 			print(TransformUtil.name(vb));
 		} else if (b instanceof ITypeBinding) {
 			print(TransformUtil.relativeCName((ITypeBinding) b, type, true));
@@ -384,6 +390,10 @@ public abstract class TransformWriter extends ASTVisitor {
 			if (needsQualification(node, mb.getDeclaringClass())) {
 				qualify(mb.getDeclaringClass().getErasure(),
 						TransformUtil.isStatic(mb));
+			}
+
+			if (node.getParent() instanceof SuperMethodInvocation) {
+				print("super::");
 			}
 
 			print(TransformUtil.name(mb));
