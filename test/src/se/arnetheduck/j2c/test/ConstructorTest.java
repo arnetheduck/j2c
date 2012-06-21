@@ -15,4 +15,8 @@ public class ConstructorTest {
 	public void ConstructorTest() {
 		// This is not a constructor!
 	}
+
+	public void m() {
+		ConstructorTest();
+	}
 }

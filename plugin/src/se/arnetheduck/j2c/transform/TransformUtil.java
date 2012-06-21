@@ -105,24 +105,24 @@ public final class TransformUtil {
 		}
 
 		String tbn = name(tb);
+		if (tbn.equals(Object.class.getSimpleName()) && !same(tb, Object.class)) {
+			// Intefaces have null superclass but inherit (conceptually) from
+			// Object
+			return qualifiedCName(tb, global);
+		}
 
 		// In C++, unqualified names in a class are looked up in base
 		// classes before the own namespace
-		for (ITypeBinding sb = root.getSuperclass(); sb != null; sb = sb
-				.getSuperclass()) {
-			if (samePackage(tb, sb)) {
+		List<ITypeBinding> bases = TypeUtil.superClasses(root);
+		TypeUtil.interfaces(tb, bases);
+		for (ITypeBinding sb : bases) {
+			if (tb.getErasure().equals(sb.getErasure())) {
 				return name(tb);
 			}
 
 			if (name(sb).equals(tbn)) {
 				return qualifiedCName(tb, global);
 			}
-		}
-
-		if (tbn.equals(Object.class.getSimpleName()) && !same(tb, Object.class)) {
-			// Intefaces have null superclass but inherit (conceptually) from
-			// Object
-			return qualifiedCName(tb, global);
 		}
 
 		return tbn;

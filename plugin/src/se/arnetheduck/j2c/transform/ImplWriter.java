@@ -469,6 +469,7 @@ public class ImplWriter extends TransformWriter {
 					.getDeclaringClass().getErasure()) {
 				print(sepx);
 				sepx = "->";
+				hardDep(tb.getDeclaringClass());
 				print(TransformUtil.outerThisName(tb));
 				if (tb.getDeclaringClass()
 						.getErasure()
@@ -488,6 +489,7 @@ public class ImplWriter extends TransformWriter {
 						.getDeclaringClass().getErasure()
 						.isEqualTo(sb.getDeclaringClass().getErasure()))) {
 			printi(sep);
+			hardDep(type.getDeclaringClass());
 			printInit(TransformUtil.outerThisName(type));
 			sep = ", ";
 		}
@@ -924,6 +926,7 @@ public class ImplWriter extends TransformWriter {
 		boolean cast = e instanceof NullLiteral
 				|| !ct.isEqualTo(e.resolveTypeBinding());
 		if (cast) {
+			hardDep(e.resolveTypeBinding());
 			print("static_cast< ", TransformUtil.relativeCName(ct, type, true),
 					TransformUtil.ref(ct), " >(");
 		}

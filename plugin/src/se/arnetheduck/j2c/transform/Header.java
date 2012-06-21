@@ -515,7 +515,7 @@ public class Header {
 				if (im == null) {
 					// Only print super call if an implementation actually
 					// exists
-					assert (Modifier.isAbstract(type.getModifiers()));
+					// assert (Modifier.isAbstract(type.getModifiers()));
 					continue;
 				}
 

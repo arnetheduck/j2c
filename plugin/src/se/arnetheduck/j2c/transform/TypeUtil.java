@@ -3,10 +3,8 @@ package se.arnetheduck.j2c.transform;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
-import java.util.Collections;
 import java.util.List;
 
-import org.eclipse.jdt.core.dom.AST;
 import org.eclipse.jdt.core.dom.IMethodBinding;
 import org.eclipse.jdt.core.dom.ITypeBinding;
 
@@ -14,12 +12,11 @@ import org.eclipse.jdt.core.dom.ITypeBinding;
 public class TypeUtil {
 	/** Superclasses of tb, including java.lang.Object but not tb itself */
 	public static List<ITypeBinding> superClasses(ITypeBinding tb) {
-		assert (tb.isClass());
+		List<ITypeBinding> ret = new ArrayList<ITypeBinding>();
 		if (tb.getSuperclass() == null) {
-			return Collections.emptyList();
+			return ret;
 		}
 
-		List<ITypeBinding> ret = new ArrayList<ITypeBinding>();
 		superClasses(tb, ret);
 		return ret;
 	}
@@ -39,11 +36,11 @@ public class TypeUtil {
 	 * superinterfaces (but not the interfaces of any super class)
 	 */
 	public static List<ITypeBinding> interfaces(ITypeBinding tb) {
+		List<ITypeBinding> ret = new ArrayList<ITypeBinding>();
 		if (tb.getInterfaces().length == 0) {
-			return Collections.emptyList();
+			return ret;
 		}
 
-		List<ITypeBinding> ret = new ArrayList<ITypeBinding>();
 		interfaces(tb, ret);
 		return ret;
 	}
@@ -111,9 +108,5 @@ public class TypeUtil {
 		assert (TransformUtil.same(tb.createArrayType(1).getSuperclass(),
 				Object.class));
 		return tb.createArrayType(1).getSuperclass();
-	}
-
-	public static List<ITypeBinding> getBases(AST ast, ITypeBinding tb) {
-		return bases(tb, ast.resolveWellKnownType(Object.class.getName()));
 	}
 }
