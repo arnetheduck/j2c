@@ -180,8 +180,9 @@ public final class TransformUtil {
 		String ret = keywords(mb.getName());
 		ret = Modifier.isPrivate(mb.getModifiers()) ? "_" + ret : ret;
 
-		if (couldOverrideDefault(mb, ret)) {
-			ret = name(mb.getDeclaringClass()) + "_" + ret;
+		IMethodBinding lastOverride = couldOverrideDefault(mb, ret);
+		if (lastOverride != null) {
+			ret = name(lastOverride.getDeclaringClass()) + "_" + ret;
 		}
 
 		// Methods can have the same name as the constructor without being a
@@ -198,26 +199,31 @@ public final class TransformUtil {
 	 * base class, it will not override the base class member. In C++, we have
 	 * nothing of the sort so we have to rename the non-overriding method
 	 */
-	public static boolean couldOverrideDefault(IMethodBinding mb, String ret) {
+	public static IMethodBinding couldOverrideDefault(IMethodBinding mb,
+			String ret) {
 		ITypeBinding tb = mb.getDeclaringClass();
 		if (tb != null) {
+			IMethodBinding last = mb;
 			for (ITypeBinding tbx = tb.getSuperclass(); tbx != null; tbx = tbx
 					.getSuperclass()) {
-				if (samePackage(tb, tbx)) {
-					continue;
-				}
+				boolean samePackage = samePackage(tb, tbx);
 
 				for (IMethodBinding mbx : tbx.getDeclaredMethods()) {
-					if (isDefault(mbx.getModifiers())
+					if (!samePackage && isDefault(mbx.getModifiers())
 							&& mbx.getName().equals(mb.getName())
 							&& sameParameters(mb, mbx)) {
-						return true;
+						return last;
+					}
+
+					if (last.overrides(mbx)) {
+						// This will give the final name of the method
+						last = mbx;
 					}
 				}
 			}
 		}
 
-		return false;
+		return null;
 	}
 
 	public static String name(IVariableBinding vb) {

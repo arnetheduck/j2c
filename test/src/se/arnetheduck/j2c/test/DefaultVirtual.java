@@ -5,4 +5,7 @@ public class DefaultVirtual {
 	NestedTest.Static m() {
 		return null;
 	}
+
+	void n() {
+	}
 }
