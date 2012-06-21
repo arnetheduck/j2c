@@ -38,6 +38,7 @@ import org.eclipse.jdt.core.dom.EnhancedForStatement;
 import org.eclipse.jdt.core.dom.EnumConstantDeclaration;
 import org.eclipse.jdt.core.dom.EnumDeclaration;
 import org.eclipse.jdt.core.dom.Expression;
+import org.eclipse.jdt.core.dom.ExpressionStatement;
 import org.eclipse.jdt.core.dom.FieldAccess;
 import org.eclipse.jdt.core.dom.FieldDeclaration;
 import org.eclipse.jdt.core.dom.ForStatement;
@@ -515,7 +516,7 @@ public class ImplWriter extends TransformWriter {
 				if (im == null) {
 					// Only print super call if an implementation actually
 					// exists
-					assert (Modifier.isAbstract(type.getModifiers()));
+					// assert (Modifier.isAbstract(type.getModifiers()));
 					continue;
 				}
 
@@ -631,8 +632,17 @@ public class ImplWriter extends TransformWriter {
 		println(n, "(", n, ")");
 	}
 
-	List<ASTNode> boxes = new ArrayList<ASTNode>();
-	List<ASTNode> unboxes = new ArrayList<ASTNode>();
+	private static class NodeInfo {
+		public final ASTNode node;
+		public final String str;
+
+		public NodeInfo(ASTNode node, String str) {
+			this.node = node;
+			this.str = str;
+		}
+	}
+
+	List<NodeInfo> visits = new ArrayList<NodeInfo>();
 
 	@Override
 	public boolean preVisit2(ASTNode node) {
@@ -654,19 +664,68 @@ public class ImplWriter extends TransformWriter {
 					hardDep(tb2);
 					print(TransformUtil.relativeCName(tb2, type, true),
 							"::valueOf(");
-					boxes.add(node);
+
+					visits.add(new NodeInfo(node, ")"));
 				} else if (expr.resolveUnboxing()) {
 					if (TransformUtil.reverses.containsKey(tb
 							.getQualifiedName())) {
-						unboxes.add(node);
 						hardDep(tb);
 						print("(");
+						visits.add(new NodeInfo(node, ")->"
+								+ TransformUtil.reverses.get(tb
+										.getQualifiedName()) + "Value()"));
 					}
+				}
+			}
+
+			if (node instanceof Name) {
+				Name name = ((Name) node);
+				IBinding b = name.resolveBinding();
+				if (b instanceof IVariableBinding) {
+					IVariableBinding vb = (IVariableBinding) b;
+					castName(node, name, vb);
 				}
 			}
 		}
 
 		return super.preVisit2(node);
+	}
+
+	private void castName(ASTNode node, Name name, IVariableBinding vb) {
+		if (!vb.isField()) {
+			return;
+		}
+
+		if (!TransformUtil.variableErased(vb)) {
+			return;
+		}
+
+		ASTNode parent = name.getParent();
+		if (parent instanceof VariableDeclarationFragment
+				|| parent instanceof SingleVariableDeclaration) {
+			return;
+		}
+
+		if (parent instanceof Name) {
+			Name p = (Name) parent;
+			if (p.resolveBinding().isEqualTo(vb)) {
+				return;
+			}
+		}
+
+		if (parent instanceof FieldAccess) {
+			return;
+		}
+
+		if (parent instanceof Assignment) {
+			if (((Assignment) parent).getLeftHandSide() == node) {
+				return;
+			}
+		}
+
+		dynamicCast(vb.getVariableDeclaration().getType().getErasure(),
+				vb.getType());
+		visits.add(new NodeInfo(node, ")"));
 	}
 
 	/**
@@ -726,15 +785,18 @@ public class ImplWriter extends TransformWriter {
 
 	@Override
 	public void postVisit(ASTNode node) {
-		if (!boxes.isEmpty() && boxes.get(boxes.size() - 1) == node) {
-			print(")");
-			boxes.remove(boxes.size() - 1);
+		if (visits.isEmpty()) {
+			return;
 		}
-		if (!unboxes.isEmpty() && unboxes.get(unboxes.size() - 1) == node) {
-			print(")->", TransformUtil.reverses.get(((Expression) node)
-					.resolveTypeBinding().getQualifiedName()), "Value()");
-			unboxes.remove(unboxes.size() - 1);
+
+		NodeInfo last = visits.get(visits.size() - 1);
+
+		if (!last.node.equals(node)) {
+			return;
 		}
+
+		print(last.str);
+		visits.remove(visits.size() - 1);
 	}
 
 	@Override
@@ -1265,10 +1327,29 @@ public class ImplWriter extends TransformWriter {
 
 	@Override
 	public boolean visit(FieldAccess node) {
+		ITypeBinding tb = node.resolveTypeBinding();
+		ITypeBinding tbe = node.resolveFieldBinding().getVariableDeclaration()
+				.getType().getErasure();
+		ASTNode parent = node.getParent();
+		boolean cast = TransformUtil.variableErased(node.resolveFieldBinding());
+		if (cast && parent instanceof Assignment) {
+			if (((Assignment) parent).getLeftHandSide() == node) {
+				cast = false;
+			}
+		}
+
+		if (cast) {
+			dynamicCast(tbe, tb);
+		}
+
 		node.getExpression().accept(this);
 		hardDep(node.getExpression().resolveTypeBinding());
 		print("->");
 		node.getName().accept(this);
+		if (cast) {
+			print(")");
+		}
+
 		return false;
 	}
 
@@ -1677,7 +1758,8 @@ public class ImplWriter extends TransformWriter {
 	@Override
 	public boolean visit(MethodInvocation node) {
 		IMethodBinding b = node.resolveMethodBinding();
-		boolean erased = TransformUtil.returnErased(b);
+		boolean erased = TransformUtil.returnErased(b)
+				&& !(node.getParent() instanceof ExpressionStatement);
 
 		if (erased) {
 			dynamicCast(b.getMethodDeclaration().getReturnType().getErasure(),
@@ -1877,6 +1959,7 @@ public class ImplWriter extends TransformWriter {
 		}
 
 		boolean ret = super.visit(node);
+
 		if (b instanceof IVariableBinding
 				&& TransformUtil.asMethod((IVariableBinding) b)) {
 			print("()");

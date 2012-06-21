@@ -1102,11 +1102,13 @@ public final class TransformUtil {
 		return type.getErasure().getQualifiedName().equals(klazz.getName());
 	}
 
+	public static boolean variableErased(IVariableBinding b) {
+		return !b.getType().isEqualTo(
+				b.getVariableDeclaration().getType().getErasure());
+	}
+
 	public static boolean returnErased(IMethodBinding b) {
-		return !b
-				.getMethodDeclaration()
-				.getReturnType()
-				.isEqualTo(
-						b.getMethodDeclaration().getReturnType().getErasure());
+		return !b.getReturnType().isEqualTo(
+				b.getMethodDeclaration().getReturnType().getErasure());
 	}
 }
