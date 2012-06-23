@@ -647,8 +647,12 @@ public final class TransformUtil {
 		return TransformUtil.name(tb) + "_this";
 	}
 
-	/** Filter out C++ keywords */
+	/** Filter out C++ keywords and other reserved names */
 	public static String keywords(String name) {
+		if (name.endsWith("Array")) { // We use these
+			return "_" + name;
+		}
+
 		if (keywords.contains(name)) {
 			return "_" + name;
 		}
