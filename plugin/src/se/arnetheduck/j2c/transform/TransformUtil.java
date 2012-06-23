@@ -113,8 +113,7 @@ public final class TransformUtil {
 
 		// In C++, unqualified names in a class are looked up in base
 		// classes before the own namespace
-		List<ITypeBinding> bases = TypeUtil.superClasses(root);
-		TypeUtil.interfaces(tb, bases);
+		List<ITypeBinding> bases = TypeUtil.allBases(tb, null);
 		for (ITypeBinding sb : bases) {
 			if (tb.getErasure().equals(sb.getErasure())) {
 				return name(tb);
