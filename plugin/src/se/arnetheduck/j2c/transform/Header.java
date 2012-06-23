@@ -533,7 +533,7 @@ public class Header {
 						|| !decl.getMethodDeclaration().getReturnType()
 								.getErasure()
 								.isEqualTo(impl.getReturnType().getErasure())) {
-					TransformUtil.addDep(decl.getReturnType(), hardDeps);
+					TransformUtil.addDep(impl.getReturnType(), hardDeps);
 				}
 			}
 		}

@@ -20,6 +20,7 @@ public class Fields {
 	}
 
 	Empty m(A<Empty> a) {
+		Empty x = a.t;
 		return a.t;
 	}
 }

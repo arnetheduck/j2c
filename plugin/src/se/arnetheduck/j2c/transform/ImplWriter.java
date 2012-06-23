@@ -712,7 +712,14 @@ public class ImplWriter extends TransformWriter {
 
 		ASTNode parent = name.getParent();
 		if (parent instanceof VariableDeclarationFragment
-				|| parent instanceof SingleVariableDeclaration) {
+				&& node != ((VariableDeclarationFragment) parent)
+						.getInitializer()) {
+			return;
+		}
+
+		if (parent instanceof SingleVariableDeclaration
+				&& node != ((SingleVariableDeclaration) parent)
+						.getInitializer()) {
 			return;
 		}
 
