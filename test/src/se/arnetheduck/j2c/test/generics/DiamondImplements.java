@@ -1,5 +1,7 @@
 package se.arnetheduck.j2c.test.generics;
 
+import se.arnetheduck.j2c.test.Empty;
+
 public class DiamondImplements {
 	public interface I<T> {
 		T m();
@@ -20,7 +22,7 @@ public class DiamondImplements {
 		}
 	}
 
-	public class B extends A<String> implements K<String>, J<String> {
+	public class B extends A<Empty> implements K<Empty>, J<Empty> {
 	}
 
 	<T> I<T> m() {

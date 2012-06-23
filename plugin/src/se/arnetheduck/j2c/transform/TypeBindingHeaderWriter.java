@@ -167,12 +167,7 @@ public class TypeBindingHeaderWriter {
 
 		pw.println(";");
 
-		IMethodBinding mb2 = TransformUtil.getSuperMethod(mb);
-
-		if (mb2 != null && TransformUtil.returnCovariant(mb, mb2)) {
-			hardDep(mb.getReturnType());
-		}
-
+		TransformUtil.returnDeps(type, ctx.resolve(Object.class), mb, hardDeps);
 	}
 
 	public void hardDep(ITypeBinding dep) {

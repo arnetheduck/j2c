@@ -509,9 +509,9 @@ public class Header {
 		ITypeBinding type = header.type;
 		if (type.isClass()) {
 			List<IMethodBinding> missing = baseCallMethods(type);
-			for (IMethodBinding mb : missing) {
-				IMethodBinding im = findImpl(type, mb);
-				if (im == null) {
+			for (IMethodBinding decl : missing) {
+				IMethodBinding impl = findImpl(type, decl);
+				if (impl == null) {
 					// Only print super call if an implementation actually
 					// exists
 					assert (Modifier.isAbstract(type.getModifiers()));
@@ -522,12 +522,18 @@ public class Header {
 				access = printAccess(pw, Modifier.PUBLIC, access);
 
 				pw.print(i1);
-				printSuperCall(pw, header, mb);
+				TransformUtil.printSignature(pw, header.type,
+						decl.getMethodDeclaration(), impl.getReturnType(),
+						header.softDeps, false);
+				pw.println(";");
 
-				header.method(mb);
+				header.method(decl);
 
-				if (TransformUtil.returnErased(mb)) {
-					TransformUtil.addDep(mb.getReturnType(), hardDeps);
+				if (TransformUtil.returnErased(decl)
+						|| !decl.getMethodDeclaration().getReturnType()
+								.getErasure()
+								.isEqualTo(impl.getReturnType().getErasure())) {
+					TransformUtil.addDep(decl.getReturnType(), hardDeps);
 				}
 			}
 		}
@@ -619,12 +625,5 @@ public class Header {
 				+ TransformUtil.relativeCName(mb.getDeclaringClass(), type,
 						true) + "::" + TransformUtil.name(mb) + ";";
 
-	}
-
-	private static void printSuperCall(PrintWriter pw, Header header,
-			IMethodBinding decl) {
-		TransformUtil.printSignature(pw, header.type,
-				decl.getMethodDeclaration(), header.softDeps, false);
-		pw.println(";");
 	}
 }

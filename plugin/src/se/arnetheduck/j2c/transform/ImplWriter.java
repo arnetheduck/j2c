@@ -529,7 +529,8 @@ public class ImplWriter extends TransformWriter {
 
 	private void printSuperCall(IMethodBinding decl, IMethodBinding impl) {
 		IMethodBinding md = decl.getMethodDeclaration();
-		TransformUtil.printSignature(out, type, md, softDeps, true);
+		TransformUtil.printSignature(out, type, md, impl.getReturnType(),
+				softDeps, true);
 		println();
 		println("{");
 		indent++;

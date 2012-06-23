@@ -299,11 +299,8 @@ public class HeaderWriter extends TransformWriter {
 
 			node.getName().accept(this);
 
-			IMethodBinding mb2 = TransformUtil.getSuperMethod(mb);
-
-			if (mb2 != null && TransformUtil.returnCovariant(mb, mb2)) {
-				hardDep(mb.getReturnType());
-			}
+			TransformUtil.returnDeps(type, ctx.resolve(Object.class), mb,
+					hardDeps);
 		}
 
 		visitAllCSV(node.parameters(), true);

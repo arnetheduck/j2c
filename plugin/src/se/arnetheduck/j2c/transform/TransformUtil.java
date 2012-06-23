@@ -854,6 +854,17 @@ public final class TransformUtil {
 		return mbcu != null && mbcu.equals(tbcu);
 	}
 
+	public static void returnDeps(ITypeBinding type, ITypeBinding object,
+			IMethodBinding mb, Collection<ITypeBinding> deps) {
+		Collection<ITypeBinding> bases = TypeUtil.allBases(type, object);
+		for (ITypeBinding base : bases) {
+			IMethodBinding mb2 = getSuperMethod(mb, base);
+			if (mb2 != null && returnCovariant(mb, mb2)) {
+				addDep(mb.getReturnType(), deps);
+			}
+		}
+	}
+
 	public static IMethodBinding getSuperMethod(IMethodBinding mb) {
 		if (isStatic(mb) || mb.isConstructor()) {
 			return null;
@@ -999,10 +1010,15 @@ public final class TransformUtil {
 	public static void printSignature(PrintWriter pw, ITypeBinding tb,
 			IMethodBinding mb, Collection<ITypeBinding> softDeps,
 			boolean qualified) {
+		printSignature(pw, tb, mb, mb.getReturnType(), softDeps, qualified);
+	}
+
+	public static void printSignature(PrintWriter pw, ITypeBinding tb,
+			IMethodBinding mb, ITypeBinding rt,
+			Collection<ITypeBinding> softDeps, boolean qualified) {
 		if (mb.isConstructor()) {
 			pw.print("void " + CTOR);
 		} else {
-			ITypeBinding rt = mb.getReturnType();
 			addDep(rt, softDeps);
 
 			if (!qualified) {
