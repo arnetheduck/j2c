@@ -1284,8 +1284,17 @@ public class ImplWriter extends TransformWriter {
 			print(" = ");
 			ITypeBinding tb = node.getParameter().getType().resolveBinding();
 
-			dynamicCast(ctx.resolve(Object.class), tb);
-			println("_i->next());");
+			if (tb.isPrimitive()) {
+				ITypeBinding tbb = node.getAST().resolveWellKnownType(
+						TransformUtil.primitives.get(tb.getName()));
+				hardDep(tbb);
+				dynamicCast(ctx.resolve(Object.class), tbb);
+				println("_i->next())->" + tb.getName() + "Value();");
+			} else {
+				dynamicCast(ctx.resolve(Object.class), tb);
+				println("_i->next());");
+			}
+
 			printi();
 			handleLoopBody(node, node.getBody());
 

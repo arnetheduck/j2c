@@ -25,10 +25,19 @@ public class ForTest {
 		return ret;
 	}
 
-	public void enhancedList() {
-		List<String> x = new ArrayList<String>();
-		for (String i : x) {
-			System.out.print(i);
+	public Empty enhancedList() {
+		List<Empty> x = new ArrayList<Empty>();
+		for (Empty i : x) {
+			return i;
 		}
+		return null;
+	}
+
+	public int enhancedBox() {
+		List<Integer> x = new ArrayList<Integer>();
+		for (int i : x) {
+			return i;
+		}
+		return 0;
 	}
 }
