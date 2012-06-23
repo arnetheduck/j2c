@@ -585,11 +585,7 @@ public class ImplWriter extends TransformWriter {
 		String qname = TransformUtil.qualifiedCName(type, true);
 		String name = TransformUtil.name(type);
 		for (IMethodBinding mb : type.getSuperclass().getDeclaredMethods()) {
-			if (!mb.isConstructor()) {
-				continue;
-			}
-
-			if (Modifier.isPrivate(mb.getModifiers())) {
+			if (!TransformUtil.asBaseConstructor(mb, type)) {
 				continue;
 			}
 
@@ -1535,6 +1531,13 @@ public class ImplWriter extends TransformWriter {
 		ITypeBinding tb = node.resolveTypeBinding();
 		Expression left = node.getLeftOperand();
 		Expression right = node.getRightOperand();
+
+		if (!left.resolveTypeBinding().isEqualTo(right.resolveTypeBinding())) {
+			// If we have pointer compares, we need the complete type
+			hardDep(left.resolveTypeBinding());
+			hardDep(right.resolveTypeBinding());
+		}
+
 		if (tb != null && tb.getQualifiedName().equals("java.lang.String")) {
 			print("::join(");
 			for (int i = 0; i < extendedOperands.size(); ++i) {
@@ -1631,7 +1634,7 @@ public class ImplWriter extends TransformWriter {
 		ITypeBinding tb = node.getRightOperand().resolveBinding();
 		dynamicCast(node.getLeftOperand().resolveTypeBinding(), tb);
 		node.getLeftOperand().accept(this);
-		print(")");
+		print(") != nullptr");
 		return false;
 	}
 

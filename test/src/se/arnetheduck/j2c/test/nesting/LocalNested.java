@@ -10,4 +10,8 @@ public class LocalNested {
 		};
 	}
 
+	Object n() {
+		return new LocalPrivateCtor.A(2) {
+		};
+	}
 }

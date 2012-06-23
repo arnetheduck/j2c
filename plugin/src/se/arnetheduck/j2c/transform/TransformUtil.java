@@ -830,6 +830,26 @@ public final class TransformUtil {
 		return false;
 	}
 
+	public static boolean asBaseConstructor(IMethodBinding mb, ITypeBinding tb) {
+		if (!mb.isConstructor()) {
+			return false;
+		}
+
+		if (!Modifier.isPrivate(mb.getModifiers())) {
+			return true;
+		}
+
+		IJavaElement mbje = mb.getJavaElement();
+		IJavaElement tbje = tb.getJavaElement();
+		if (mbje == null || tbje == null) {
+			return false;
+		}
+
+		IJavaElement mbcu = mbje.getAncestor(IJavaElement.COMPILATION_UNIT);
+		IJavaElement tbcu = tbje.getAncestor(IJavaElement.COMPILATION_UNIT);
+		return mbcu != null && mbcu.equals(tbcu);
+	}
+
 	public static IMethodBinding getSuperMethod(IMethodBinding mb) {
 		if (isStatic(mb) || mb.isConstructor()) {
 			return null;

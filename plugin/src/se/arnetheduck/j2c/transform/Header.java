@@ -392,8 +392,7 @@ public class Header {
 		if (type.isAnonymous()) {
 			assert (constructors.isEmpty());
 			for (IMethodBinding mb : type.getSuperclass().getDeclaredMethods()) {
-				if (mb.isConstructor()
-						&& !Modifier.isPrivate(mb.getModifiers())) {
+				if (TransformUtil.asBaseConstructor(mb, type)) {
 					constructors.add(mb);
 				}
 			}
