@@ -485,7 +485,7 @@ public class Header {
 			}
 
 			for (IMethodBinding d : declared) {
-				if (TransformUtil.sameParameters(supermethod, d)) {
+				if (TransformUtil.sameParameters(supermethod, d, true)) {
 					i.remove();
 					continue outer;
 				}
@@ -515,7 +515,7 @@ public class Header {
 				if (im == null) {
 					// Only print super call if an implementation actually
 					// exists
-					// assert (Modifier.isAbstract(type.getModifiers()));
+					assert (Modifier.isAbstract(type.getModifiers()));
 					continue;
 				}
 
@@ -523,7 +523,7 @@ public class Header {
 				access = printAccess(pw, Modifier.PUBLIC, access);
 
 				pw.print(i1);
-				printSuperCall(pw, header, im);
+				printSuperCall(pw, header, mb);
 
 				header.method(mb);
 
@@ -554,7 +554,7 @@ public class Header {
 				continue;
 			}
 
-			if (!TransformUtil.sameParameters(sm, mb)) {
+			if (!TransformUtil.sameParameters(sm, mb, false)) {
 				continue;
 			}
 
@@ -623,9 +623,9 @@ public class Header {
 	}
 
 	private static void printSuperCall(PrintWriter pw, Header header,
-			IMethodBinding mb) {
-		TransformUtil.printSignature(pw, header.type, mb, header.softDeps,
-				false);
+			IMethodBinding decl) {
+		TransformUtil.printSignature(pw, header.type,
+				decl.getMethodDeclaration(), header.softDeps, false);
 		pw.println(";");
 	}
 }

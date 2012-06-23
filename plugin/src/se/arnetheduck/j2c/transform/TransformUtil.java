@@ -113,10 +113,10 @@ public final class TransformUtil {
 
 		// In C++, unqualified names in a class are looked up in base
 		// classes before the own namespace
-		List<ITypeBinding> bases = TypeUtil.allBases(tb, null);
+		List<ITypeBinding> bases = TypeUtil.allBases(root, null);
 		for (ITypeBinding sb : bases) {
-			if (tb.getErasure().equals(sb.getErasure())) {
-				return name(tb);
+			if (tb.getErasure().isEqualTo(sb.getErasure())) {
+				return tbn;
 			}
 
 			if (name(sb).equals(tbn)) {
@@ -210,7 +210,7 @@ public final class TransformUtil {
 				for (IMethodBinding mbx : tbx.getDeclaredMethods()) {
 					if (!samePackage && isDefault(mbx.getModifiers())
 							&& mbx.getName().equals(mb.getName())
-							&& sameParameters(mb, mbx)) {
+							&& sameParameters(mb, mbx, true)) {
 						return last;
 					}
 
@@ -930,7 +930,7 @@ public final class TransformUtil {
 			return false;
 		}
 
-		return sameReturn(mb, mb2) && sameParameters(mb, mb2);
+		return sameReturn(mb, mb2) && sameParameters(mb, mb2, true);
 	}
 
 	private static boolean sameReturn(IMethodBinding mb, IMethodBinding mb2) {
@@ -943,13 +943,16 @@ public final class TransformUtil {
 
 	}
 
-	public static boolean sameParameters(IMethodBinding mb, IMethodBinding mb2) {
+	public static boolean sameParameters(IMethodBinding mb, IMethodBinding mb2,
+			boolean erase) {
 		if (mb.getParameterTypes().length != mb2.getParameterTypes().length) {
 			return false;
 		}
 
-		mb = mb.getMethodDeclaration();
-		mb2 = mb2.getMethodDeclaration();
+		if (erase) {
+			mb = mb.getMethodDeclaration();
+			mb2 = mb2.getMethodDeclaration();
+		}
 
 		for (int i = 0; i < mb.getParameterTypes().length; ++i) {
 			if (!mb.getParameterTypes()[i].getErasure().isEqualTo(
@@ -966,7 +969,7 @@ public final class TransformUtil {
 	}
 
 	public static boolean returnCovariant(IMethodBinding mb, IMethodBinding mb2) {
-		return !sameReturn(mb, mb2) && sameParameters(mb, mb2);
+		return !sameReturn(mb, mb2) && sameParameters(mb, mb2, true);
 	}
 
 	public static void printSignature(PrintWriter pw, ITypeBinding tb,

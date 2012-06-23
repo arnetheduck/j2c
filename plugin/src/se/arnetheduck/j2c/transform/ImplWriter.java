@@ -522,37 +522,48 @@ public class ImplWriter extends TransformWriter {
 					continue;
 				}
 
-				printSuperCall(im);
+				printSuperCall(mb, im);
 			}
 		}
 	}
 
-	private void printSuperCall(IMethodBinding mb) {
-		TransformUtil.printSignature(out, type, mb, softDeps, true);
+	private void printSuperCall(IMethodBinding decl, IMethodBinding impl) {
+		IMethodBinding md = decl.getMethodDeclaration();
+		TransformUtil.printSignature(out, type, md, softDeps, true);
 		println();
 		println("{");
 		indent++;
 		printi();
 
-		boolean erased = TransformUtil.returnErased(mb);
+		boolean erased = TransformUtil.returnErased(impl);
 
-		if (TransformUtil.isVoid(mb.getReturnType())) {
-			out.format("%s::%s(", TransformUtil.name(mb.getDeclaringClass()),
-					TransformUtil.name(mb));
+		if (TransformUtil.isVoid(impl.getReturnType())) {
+			out.format("%s::%s(", TransformUtil.name(impl.getDeclaringClass()),
+					TransformUtil.name(impl));
 		} else {
 			print("return ");
 			if (erased) {
-				dynamicCast(mb.getMethodDeclaration().getReturnType()
-						.getErasure(), mb.getReturnType());
+				dynamicCast(impl.getMethodDeclaration().getReturnType()
+						.getErasure(), impl.getReturnType());
 			}
 
-			out.format("%s::%s(", TransformUtil.name(mb.getDeclaringClass()),
-					TransformUtil.name(mb));
+			out.format("%s::%s(", TransformUtil.name(impl.getDeclaringClass()),
+					TransformUtil.name(impl));
 		}
 
 		String sep = "";
-		for (int i = 0; i < mb.getParameterTypes().length; ++i) {
-			print(sep + TransformUtil.paramName(mb, i));
+		for (int i = 0; i < impl.getParameterTypes().length; ++i) {
+			boolean cast = !md.getParameterTypes()[i].getErasure()
+					.isAssignmentCompatible(
+							impl.getParameterTypes()[i].getErasure());
+			if (cast) {
+				dynamicCast(md.getParameterTypes()[i],
+						impl.getParameterTypes()[i]);
+			}
+			print(sep + TransformUtil.paramName(md, i));
+			if (cast) {
+				print(")");
+			}
 			sep = ", ";
 		}
 
