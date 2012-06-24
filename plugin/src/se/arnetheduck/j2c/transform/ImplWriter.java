@@ -115,8 +115,7 @@ public class ImplWriter extends TransformWriter {
 	}
 
 	public void write(AnnotationTypeDeclaration node) throws Exception {
-		StringWriter body = getBody(new ArrayList<EnumConstantDeclaration>(),
-				node.bodyDeclarations());
+		String body = getBody(node.bodyDeclarations());
 		writeType(body);
 
 		HeaderWriter hw = new HeaderWriter(root, ctx, type, unitInfo, closures);
@@ -124,8 +123,7 @@ public class ImplWriter extends TransformWriter {
 	}
 
 	public void write(AnonymousClassDeclaration node) throws Exception {
-		StringWriter body = getBody(new ArrayList<EnumConstantDeclaration>(),
-				node.bodyDeclarations());
+		String body = getBody(node.bodyDeclarations());
 		writeType(body);
 
 		HeaderWriter hw = new HeaderWriter(root, ctx, type, unitInfo, closures);
@@ -133,8 +131,7 @@ public class ImplWriter extends TransformWriter {
 	}
 
 	public void write(EnumDeclaration node) throws Exception {
-		StringWriter body = getBody(node.enumConstants(),
-				node.bodyDeclarations());
+		String body = getBody(node.enumConstants(), node.bodyDeclarations());
 		writeType(body);
 
 		HeaderWriter hw = new HeaderWriter(root, ctx, type, unitInfo, closures);
@@ -142,15 +139,18 @@ public class ImplWriter extends TransformWriter {
 	}
 
 	public void write(TypeDeclaration node) throws Exception {
-		StringWriter body = getBody(new ArrayList<EnumConstantDeclaration>(),
-				node.bodyDeclarations());
+		String body = getBody(node.bodyDeclarations());
 		writeType(body);
 
 		HeaderWriter hw = new HeaderWriter(root, ctx, type, unitInfo, closures);
 		hw.write(node);
 	}
 
-	private StringWriter getBody(List<EnumConstantDeclaration> enums,
+	private String getBody(List<BodyDeclaration> declarations) {
+		return getBody(new ArrayList<EnumConstantDeclaration>(), declarations);
+	}
+
+	private String getBody(List<EnumConstantDeclaration> enums,
 			List<BodyDeclaration> declarations) {
 		StringWriter body = new StringWriter();
 		out = new PrintWriter(body);
@@ -159,47 +159,22 @@ public class ImplWriter extends TransformWriter {
 
 		visitAll(declarations);
 
-		// These may add hard deps
 		printSuperCalls();
 
 		out.close();
-		return body;
+		return body.toString();
 	}
 
-	private void writeType(StringWriter body) throws Exception {
+	private void writeType(String body) throws Exception {
 		try {
-			String cons = type.isAnonymous() ? makeBaseConstructors()
-					: makeConstructors();
+			String extras = getExtras();
 
 			out = TransformUtil.openImpl(root, type, "");
 
 			makeIncludes();
 
-			TransformUtil.printClassLiteral(out, type);
-
-			if (!(type.isInterface() || type.isAnnotation())) {
-				if (needsFinally) {
-					makeFinally();
-				}
-
-				if (needsSynchronized) {
-					makeSynchronized();
-				}
-
-				makeClinit();
-
-				if (init != null) {
-					makeInit();
-				}
-
-				println(cons);
-
-				makeDtor();
-
-				makeGetClass();
-			}
-
-			print(body.toString());
+			print(extras); // Body code depends on some extras
+			print(body);
 
 			out.close();
 
@@ -216,6 +191,36 @@ public class ImplWriter extends TransformWriter {
 		for (ITypeBinding tb : softDeps) {
 			ctx.softDep(tb);
 		}
+	}
+
+	private String getExtras() {
+		StringWriter sw = new StringWriter();
+		out = new PrintWriter(sw);
+
+		printFinally();
+		printSynchronized();
+
+		if (type.isAnonymous()) {
+			printBaseConstructors();
+		} else {
+			printConstructors();
+		}
+
+		TransformUtil.printClassLiteral(out, type);
+
+		if (!(type.isInterface() || type.isAnnotation())) {
+			printClinit();
+
+			printInit();
+
+			printDtor();
+
+			printGetClass();
+		}
+
+		out.close();
+		out = null;
+		return sw.toString();
 	}
 
 	private void makeIncludes() {
@@ -247,7 +252,11 @@ public class ImplWriter extends TransformWriter {
 		}
 	}
 
-	private void makeFinally() {
+	private void printFinally() {
+		if (!needsFinally) {
+			return;
+		}
+
 		println("namespace {");
 		indent++;
 		printlni("template<typename F> struct finally_ {");
@@ -266,7 +275,11 @@ public class ImplWriter extends TransformWriter {
 		println();
 	}
 
-	private void makeSynchronized() {
+	private void printSynchronized() {
+		if (!needsSynchronized) {
+			return;
+		}
+
 		println("extern void lock(java::lang::Object *);");
 		println("extern void unlock(java::lang::Object *);");
 		println("namespace {");
@@ -284,7 +297,7 @@ public class ImplWriter extends TransformWriter {
 		println();
 	}
 
-	private void makeClinit() {
+	private void printClinit() {
 		if (clinit != null) {
 			println("static bool clinit_done;");
 		}
@@ -312,7 +325,7 @@ public class ImplWriter extends TransformWriter {
 		println();
 	}
 
-	private void makeInit() {
+	private void printInit() {
 		if (init == null) {
 			return;
 		}
@@ -360,16 +373,18 @@ public class ImplWriter extends TransformWriter {
 				hardDep(ib);
 			}
 		}
+
 		indent--;
 
 		out.close();
 		out = old;
 	}
 
-	private String makeConstructors() {
-		PrintWriter old = out;
-		StringWriter sw = new StringWriter();
-		out = new PrintWriter(sw);
+	private void printConstructors() {
+		if (!type.isClass() && !type.isEnum()) {
+			return;
+		}
+
 		String qname = TransformUtil.qualifiedCName(type, true);
 		String name = TransformUtil.name(type);
 
@@ -438,13 +453,9 @@ public class ImplWriter extends TransformWriter {
 			println("{");
 			println("}");
 		}
-
-		out.close();
-		out = old;
-		return sw.toString();
 	}
 
-	private void makeDtor() {
+	private void printDtor() {
 		if (type.getQualifiedName().equals(Object.class.getName())) {
 			println("::java::lang::Object::~Object()");
 			println("{");
@@ -453,7 +464,7 @@ public class ImplWriter extends TransformWriter {
 		}
 	}
 
-	private void makeGetClass() {
+	private void printGetClass() {
 		if (type.isClass()) {
 			TransformUtil.printGetClass(out, type);
 		}
@@ -578,10 +589,11 @@ public class ImplWriter extends TransformWriter {
 		println();
 	}
 
-	private String makeBaseConstructors() {
-		PrintWriter old = out;
-		StringWriter sw = new StringWriter();
-		out = new PrintWriter(sw);
+	private void printBaseConstructors() {
+		if (!type.isClass() && !type.isEnum()) {
+			return;
+		}
+
 		// Synthesize base class constructors
 		String qname = TransformUtil.qualifiedCName(type, true);
 		String name = TransformUtil.name(type);
@@ -633,9 +645,6 @@ public class ImplWriter extends TransformWriter {
 			indent--;
 			println();
 		}
-		out.close();
-		out = old;
-		return sw.toString();
 	}
 
 	private void printInit(String n) {
@@ -1546,7 +1555,7 @@ public class ImplWriter extends TransformWriter {
 			hardDep(right.resolveTypeBinding());
 		}
 
-		if (tb != null && tb.getQualifiedName().equals("java.lang.String")) {
+		if (TransformUtil.same(tb, String.class)) {
 			print("::join(");
 			for (int i = 0; i < extendedOperands.size(); ++i) {
 				print("::join(");
@@ -1565,6 +1574,8 @@ public class ImplWriter extends TransformWriter {
 				castNull(e);
 				print(")");
 			}
+
+			hardDep(tb);
 
 			return false;
 		}

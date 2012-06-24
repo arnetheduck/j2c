@@ -52,7 +52,7 @@ public class HeaderWriter extends TransformWriter {
 
 		access = Header.initialAccess(type);
 
-		header = new Header(ctx, type, softDeps);
+		header = new Header(ctx, type, softDeps, hardDeps);
 	}
 
 	public void write(AnnotationTypeDeclaration node) throws Exception {
@@ -81,8 +81,7 @@ public class HeaderWriter extends TransformWriter {
 		try {
 			String body = getBody(enums, declarations);
 
-			header.write(root, hardDeps, body, closures, hasInit,
-					unitInfo.types);
+			header.write(root, body, closures, hasInit, unitInfo.types);
 		} catch (Exception e) {
 			throw new Error(e);
 		}
@@ -102,9 +101,6 @@ public class HeaderWriter extends TransformWriter {
 		visitAll(enums);
 
 		visitAll(declarations); // This will gather constructors
-
-		// These add hard deps
-		access = Header.printSuperCalls(out, header, hardDeps, access);
 
 		indent--;
 
@@ -299,8 +295,10 @@ public class HeaderWriter extends TransformWriter {
 
 			node.getName().accept(this);
 
-			TransformUtil.returnDeps(type, ctx.resolve(Object.class), mb,
-					hardDeps);
+			for (ITypeBinding rd : TransformUtil.returnDeps(type,
+					ctx.resolve(Object.class), mb)) {
+				hardDep(rd);
+			}
 		}
 
 		visitAllCSV(node.parameters(), true);

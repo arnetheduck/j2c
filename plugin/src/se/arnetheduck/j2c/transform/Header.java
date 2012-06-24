@@ -30,6 +30,7 @@ public class Header {
 
 	private final ITypeBinding type;
 	private final Collection<ITypeBinding> softDeps;
+	private final Collection<ITypeBinding> hardDeps;
 
 	private final List<IMethodBinding> constructors = new ArrayList<IMethodBinding>();
 	private final Map<String, List<IMethodBinding>> methods = new TreeMap<String, List<IMethodBinding>>();
@@ -41,10 +42,11 @@ public class Header {
 	private PrintWriter pw;
 
 	public Header(Transformer ctx, ITypeBinding type,
-			Collection<ITypeBinding> softDeps) {
+			Collection<ITypeBinding> softDeps, Collection<ITypeBinding> hardDeps) {
 		this.ctx = ctx;
 		this.type = type;
 		this.softDeps = softDeps;
+		this.hardDeps = hardDeps;
 	}
 
 	public void method(IMethodBinding mb) {
@@ -65,10 +67,9 @@ public class Header {
 		fields.add(vb);
 	}
 
-	public void write(IPath root, Collection<ITypeBinding> hardDeps,
-			String body, Collection<IVariableBinding> closures,
-			boolean hasInit, Collection<ITypeBinding> nested)
-			throws IOException {
+	public void write(IPath root, String body,
+			Collection<IVariableBinding> closures, boolean hasInit,
+			Collection<ITypeBinding> nested) throws IOException {
 
 		String extras = getExtras(closures, hasInit, nested);
 
@@ -286,6 +287,7 @@ public class Header {
 		printClassLiteral();
 		printClinit();
 		printInit(hasInit);
+		printSuperCalls();
 		printMethods();
 		printClosures(closures);
 		printFields();
@@ -504,9 +506,7 @@ public class Header {
 		}
 	}
 
-	public static String printSuperCalls(PrintWriter pw, Header header,
-			Collection<ITypeBinding> hardDeps, String access) {
-		ITypeBinding type = header.type;
+	private String printSuperCalls() {
 		if (type.isClass()) {
 			List<IMethodBinding> missing = baseCallMethods(type);
 			for (IMethodBinding decl : missing) {
@@ -522,18 +522,18 @@ public class Header {
 				access = printAccess(pw, Modifier.PUBLIC, access);
 
 				pw.print(i1);
-				TransformUtil.printSignature(pw, header.type,
+				TransformUtil.printSignature(pw, type,
 						decl.getMethodDeclaration(), impl.getReturnType(),
-						header.softDeps, false);
+						softDeps, false);
 				pw.println(";");
 
-				header.method(decl);
+				method(decl);
 
 				if (TransformUtil.returnErased(decl)
 						|| !decl.getMethodDeclaration().getReturnType()
 								.getErasure()
 								.isEqualTo(impl.getReturnType().getErasure())) {
-					TransformUtil.addDep(impl.getReturnType(), hardDeps);
+					hardDep(impl.getReturnType());
 				}
 			}
 		}
@@ -625,5 +625,10 @@ public class Header {
 				+ TransformUtil.relativeCName(mb.getDeclaringClass(), type,
 						true) + "::" + TransformUtil.name(mb) + ";";
 
+	}
+
+	public void hardDep(ITypeBinding dep) {
+		TransformUtil.addDep(dep, hardDeps);
+		ctx.hardDep(dep);
 	}
 }

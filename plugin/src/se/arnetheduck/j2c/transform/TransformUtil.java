@@ -854,15 +854,18 @@ public final class TransformUtil {
 		return mbcu != null && mbcu.equals(tbcu);
 	}
 
-	public static void returnDeps(ITypeBinding type, ITypeBinding object,
-			IMethodBinding mb, Collection<ITypeBinding> deps) {
+	public static Collection<ITypeBinding> returnDeps(ITypeBinding type,
+			ITypeBinding object, IMethodBinding mb) {
+		List<ITypeBinding> ret = new ArrayList<ITypeBinding>();
 		Collection<ITypeBinding> bases = TypeUtil.allBases(type, object);
 		for (ITypeBinding base : bases) {
 			IMethodBinding mb2 = getSuperMethod(mb, base);
 			if (mb2 != null && returnCovariant(mb, mb2)) {
-				addDep(mb.getReturnType(), deps);
+				addDep(mb.getReturnType(), ret);
 			}
 		}
+
+		return ret;
 	}
 
 	public static IMethodBinding getSuperMethod(IMethodBinding mb) {

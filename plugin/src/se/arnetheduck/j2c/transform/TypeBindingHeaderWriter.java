@@ -33,7 +33,7 @@ public class TypeBindingHeaderWriter {
 
 		access = Header.initialAccess(type);
 		softDep(type);
-		header = new Header(ctx, type, softDeps);
+		header = new Header(ctx, type, softDeps, hardDeps);
 	}
 
 	public void write() throws Exception {
@@ -73,8 +73,7 @@ public class TypeBindingHeaderWriter {
 		try {
 			String body = getBody();
 
-			header.write(root, hardDeps, body,
-					new ArrayList<IVariableBinding>(), false,
+			header.write(root, body, new ArrayList<IVariableBinding>(), false,
 					new ArrayList<ITypeBinding>());
 		} catch (Exception e) {
 			throw new Error(e);
@@ -95,9 +94,6 @@ public class TypeBindingHeaderWriter {
 		for (IMethodBinding mb : type.getDeclaredMethods()) {
 			printMethod(out, type, mb);
 		}
-
-		// These add hard deps
-		access = Header.printSuperCalls(out, header, hardDeps, access);
 
 		return sw.toString();
 	}
@@ -167,7 +163,10 @@ public class TypeBindingHeaderWriter {
 
 		pw.println(";");
 
-		TransformUtil.returnDeps(type, ctx.resolve(Object.class), mb, hardDeps);
+		for (ITypeBinding rd : TransformUtil.returnDeps(type,
+				ctx.resolve(Object.class), mb)) {
+			hardDep(rd);
+		}
 	}
 
 	public void hardDep(ITypeBinding dep) {

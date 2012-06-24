@@ -20,7 +20,9 @@ public class TestHandler extends AbstractHandler {
 		// Loop over all projects
 		for (IProject project : projects) {
 			try {
-				if (!project.isNatureEnabled("org.eclipse.jdt.core.javanature")) {
+				if (!project.isOpen()
+						|| !project
+								.isNatureEnabled("org.eclipse.jdt.core.javanature")) {
 					continue;
 				}
 
