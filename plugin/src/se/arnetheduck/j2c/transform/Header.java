@@ -516,7 +516,7 @@ public class Header {
 				TransformUtil.printSignature(pw, type,
 						dupe.getMethodDeclaration(), dupe.getReturnType(),
 						softDeps, false);
-				pw.println(";");
+				pw.println(" = 0;");
 			}
 		}
 
@@ -553,6 +553,15 @@ public class Header {
 		}
 	}
 
+	/**
+	 * In C++, if a method with the same name exists in two base classes,
+	 * ambiguity ensues even if the methods are overloads (name resolution comes
+	 * before overload resolution). This method returns a list of such
+	 * duplicates.
+	 * 
+	 * @param type
+	 * @return
+	 */
 	public static List<IMethodBinding> dupeNames(ITypeBinding type) {
 		List<IMethodBinding> ret = new ArrayList<IMethodBinding>();
 
@@ -564,9 +573,10 @@ public class Header {
 
 				for (IMethodBinding m0 : b0.getDeclaredMethods()) {
 					for (IMethodBinding m1 : b1.getDeclaredMethods()) {
-						if (m0.isSubsignature(m1)) {
+						if (m0.getName().equals(m1.getName())) {
 							boolean found = false;
 							for (IMethodBinding m2 : ret) {
+								// Only one copy of each signature
 								if (m2.isSubsignature(m0)) {
 									found = true;
 									break;
