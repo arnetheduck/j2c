@@ -15,6 +15,7 @@ import java.util.Map.Entry;
 import java.util.Set;
 import java.util.TreeMap;
 import java.util.TreeSet;
+import java.util.WeakHashMap;
 
 import org.eclipse.core.runtime.IPath;
 import org.eclipse.core.runtime.IProgressMonitor;
@@ -328,12 +329,21 @@ public class Transformer {
 		mains.put(info.qcname, info);
 	}
 
+	private final Map<String, ITypeBinding> bindings = new WeakHashMap<String, ITypeBinding>();
+
 	public ITypeBinding resolve(Class<?> clazz) {
+		ITypeBinding ret;
+		String name = clazz.getName();
 		if (currentAST != null) {
-			ITypeBinding ret = currentAST.resolveWellKnownType(clazz.getName());
+			ret = currentAST.resolveWellKnownType(name);
 			if (ret != null) {
 				return ret;
 			}
+		}
+
+		ret = bindings.get(name);
+		if (ret != null) {
+			return ret;
 		}
 
 		try {
@@ -341,9 +351,10 @@ public class Transformer {
 			parser.setProject(project);
 			parser.setKind(ASTParser.K_COMPILATION_UNIT);
 			parser.setResolveBindings(true);
-			return (ITypeBinding) parser.createBindings(
-					new IJavaElement[] { project.findType(clazz.getName()) },
-					null)[0];
+			ret = (ITypeBinding) parser.createBindings(
+					new IJavaElement[] { project.findType(name) }, null)[0];
+			bindings.put(name, ret);
+			return ret;
 		} catch (JavaModelException e) {
 			throw new Error(e);
 		}

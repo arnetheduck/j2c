@@ -1084,17 +1084,6 @@ public final class TransformUtil {
 			return;
 		}
 
-		pw.println();
-		pw.println("java::lang::String *join(java::lang::String *lhs, java::lang::String *rhs);");
-		for (String type : new String[] { "java::lang::Object *", "bool ",
-				"int8_t ", "char16_t ", "double ", "float ", "int32_t ",
-				"int64_t ", "int16_t " }) {
-			pw.println("java::lang::String *join(java::lang::String *lhs, "
-					+ type + "rhs);");
-			pw.println("java::lang::String *join(" + type
-					+ "lhs, java::lang::String *rhs);");
-		}
-
 		pw.println("namespace java { namespace lang { String *operator \"\" _j(const char16_t *p, size_t n); } }");
 		pw.println("using java::lang::operator \"\" _j;");
 		pw.println();

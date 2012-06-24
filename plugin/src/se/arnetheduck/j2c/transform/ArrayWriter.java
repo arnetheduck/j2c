@@ -4,6 +4,7 @@ import java.io.File;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.PrintWriter;
+import java.io.Serializable;
 import java.nio.file.Files;
 import java.nio.file.StandardCopyOption;
 import java.util.ArrayList;
@@ -54,6 +55,8 @@ public class ArrayWriter {
 
 	public void write() throws IOException {
 		ctx.softDep(type);
+		ctx.hardDep(ctx.resolve(Cloneable.class));
+		ctx.hardDep(ctx.resolve(Serializable.class));
 		writeHeader();
 		writeImpl();
 	}

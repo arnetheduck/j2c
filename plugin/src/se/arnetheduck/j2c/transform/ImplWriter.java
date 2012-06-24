@@ -962,73 +962,76 @@ public class ImplWriter extends TransformWriter {
 
 	@Override
 	public boolean visit(Assignment node) {
-		hardDep(node.getRightHandSide().resolveTypeBinding());
+		Expression lhs = node.getLeftHandSide();
+		ITypeBinding lht = lhs.resolveTypeBinding();
+		Expression rhs = node.getRightHandSide();
 
-		ITypeBinding tb = node.getLeftHandSide().resolveTypeBinding();
-		if (TransformUtil.same(tb, String.class)
+		hardDep(rhs.resolveTypeBinding());
+
+		if (TransformUtil.same(lht, String.class)
 				&& node.getOperator() == Operator.PLUS_ASSIGN) {
-			node.getLeftHandSide().accept(this);
-			print(" = ::join(");
-			node.getLeftHandSide().accept(this);
-			print(", ");
-			node.getRightHandSide().accept(this);
-			print(")");
+			lhs.accept(this);
+			print(" = (new ::java::lang::StringBuilder(");
+			lhs.accept(this);
+			print("))->append(");
+			rhs.accept(this);
+			print(")->toString()");
+
+			hardDep(ctx.resolve(StringBuilder.class));
 
 			return false;
 		}
 
 		if (node.getOperator() == Operator.RIGHT_SHIFT_UNSIGNED_ASSIGN) {
-			ITypeBinding b = node.getLeftHandSide().resolveTypeBinding();
-			node.getLeftHandSide().accept(this);
+			lhs.accept(this);
 			print(" = ");
-			if (b.getName().equals("long")) {
+			if (lht.getName().equals("long")) {
 				print("static_cast<uint64_t>(");
 			} else {
 				print("static_cast<uint32_t>(");
 			}
-			node.getLeftHandSide().accept(this);
+			lhs.accept(this);
 			print(") >> ");
-			node.getRightHandSide().accept(this);
+			rhs.accept(this);
 
 			return false;
 		}
 
 		if (node.getOperator().equals(Operator.REMAINDER_ASSIGN)) {
-			if (tb.getName().equals("float") || tb.getName().equals("double")) {
+			if (lht.getName().equals("float") || lht.getName().equals("double")) {
 				fmod = true;
-				node.getLeftHandSide().accept(this);
+				lhs.accept(this);
 				print(" = ");
 				print("std::fmod(");
-				node.getLeftHandSide().accept(this);
+				lhs.accept(this);
 				print(", ");
-				node.getLeftHandSide().accept(this);
+				lhs.accept(this);
 				print(")");
 
 				return false;
 			}
 		}
 
-		Expression lhs = node.getLeftHandSide();
 		if (node.getOperator() == Operator.ASSIGN
 				&& lhs instanceof ArrayAccess
 				&& !((ArrayAccess) lhs).getArray().resolveTypeBinding()
 						.getComponentType().isPrimitive()) {
-			ArrayAccess aa = (ArrayAccess) node.getLeftHandSide();
+			ArrayAccess aa = (ArrayAccess) lhs;
 			hardDep(aa.getArray().resolveTypeBinding());
 			aa.getArray().accept(this);
 			print("->set(");
 			aa.getIndex().accept(this);
 			print(", ");
-			node.getRightHandSide().accept(this);
+			rhs.accept(this);
 			print(")");
 			return false;
 		}
 
-		node.getLeftHandSide().accept(this);
+		lhs.accept(this);
 
 		print(" ", node.getOperator(), " ");
 
-		node.getRightHandSide().accept(this);
+		rhs.accept(this);
 
 		return false;
 	}
@@ -1549,33 +1552,37 @@ public class ImplWriter extends TransformWriter {
 		Expression left = node.getLeftOperand();
 		Expression right = node.getRightOperand();
 
-		if (!left.resolveTypeBinding().isEqualTo(right.resolveTypeBinding())) {
+		ITypeBinding lt = left.resolveTypeBinding();
+		ITypeBinding rt = right.resolveTypeBinding();
+		if (!lt.isEqualTo(rt)) {
 			// If we have pointer compares, we need the complete type
-			hardDep(left.resolveTypeBinding());
-			hardDep(right.resolveTypeBinding());
+			hardDep(lt);
+			hardDep(rt);
 		}
 
 		if (TransformUtil.same(tb, String.class)) {
-			print("::join(");
-			for (int i = 0; i < extendedOperands.size(); ++i) {
-				print("::join(");
-			}
+			print("(new ::java::lang::StringBuilder())->append(");
 
 			castNull(left);
 
-			print(", ");
+			print(")->append(");
 
 			castNull(right);
 
 			print(")");
 
+			indent++;
 			for (Expression e : extendedOperands) {
-				print(", ");
+				println();
+				printi("->append(");
 				castNull(e);
 				print(")");
 			}
+			indent--;
 
-			hardDep(tb);
+			print("->toString()");
+
+			hardDep(ctx.resolve(StringBuilder.class));
 
 			return false;
 		}
@@ -1595,8 +1602,7 @@ public class ImplWriter extends TransformWriter {
 
 		if (node.getOperator().equals(
 				InfixExpression.Operator.RIGHT_SHIFT_UNSIGNED)) {
-			ITypeBinding b = left.resolveTypeBinding();
-			if (b.getName().equals("long")) {
+			if (lt.getName().equals("long")) {
 				print("static_cast<uint64_t>(");
 			} else {
 				print("static_cast<uint32_t>(");
@@ -1610,13 +1616,13 @@ public class ImplWriter extends TransformWriter {
 			print(node.getOperator().toString());
 		}
 
-		hardDep(left.resolveTypeBinding());
+		hardDep(lt);
 
 		print(' ');
 
 		right.accept(this);
 
-		hardDep(right.resolveTypeBinding());
+		hardDep(rt);
 
 		if (!extendedOperands.isEmpty()) {
 			print(' ');
@@ -1865,11 +1871,12 @@ public class ImplWriter extends TransformWriter {
 		b = b.getMethodDeclaration();
 
 		boolean hasOverloads = isOverloaded(b);
+		ITypeBinding[] paramTypes = b.getParameterTypes();
 		for (int i = 0; i < arguments.size(); ++i) {
 			print(s);
 			s = ", ";
-			if (b.isVarargs() && i == b.getParameterTypes().length - 1) {
-				ITypeBinding tb = b.getParameterTypes()[b.getParameterTypes().length - 1]
+			if (b.isVarargs() && i == paramTypes.length - 1) {
+				ITypeBinding tb = paramTypes[paramTypes.length - 1]
 						.getErasure();
 				ITypeBinding ab = arguments.get(i).resolveTypeBinding();
 
@@ -1882,35 +1889,34 @@ public class ImplWriter extends TransformWriter {
 			}
 
 			ITypeBinding pb;
-			if (b.isVarargs() && i >= b.getParameterTypes().length - 1) {
-				pb = b.getParameterTypes()[b.getParameterTypes().length - 1];
+			if (b.isVarargs() && i >= paramTypes.length - 1) {
+				pb = paramTypes[paramTypes.length - 1];
 				if (isVarArg) {
 					pb = pb.getComponentType();
 				}
 			} else {
-				pb = b.getParameterTypes()[i];
+				pb = paramTypes[i];
 			}
 
 			Expression argument = arguments.get(i);
 			if (isVarArg) {
-				arrayInitCast(
-						b.getParameterTypes()[b.getParameterTypes().length - 1]
-								.getErasure().getComponentType(), argument);
+				arrayInitCast(paramTypes[paramTypes.length - 1].getErasure()
+						.getComponentType(), argument);
 			} else {
 				cast(argument, pb, hasOverloads);
 			}
 			if (isVarArg && i == arguments.size() - 1
-					&& i >= b.getParameterTypes().length - 1) {
+					&& i >= paramTypes.length - 1) {
 				print("})");
 			}
 		}
 
-		if (b.isVarargs() && arguments.size() < b.getParameterTypes().length) {
+		if (b.isVarargs() && arguments.size() < paramTypes.length) {
 			if (arguments.size() > 0) {
 				print(", ");
 			}
 
-			ITypeBinding tb = b.getParameterTypes()[b.getParameterTypes().length - 1];
+			ITypeBinding tb = paramTypes[paramTypes.length - 1];
 			hardDep(tb);
 			print("new " + TransformUtil.relativeCName(tb, type, true), "()");
 		}
