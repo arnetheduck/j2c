@@ -1554,11 +1554,6 @@ public class ImplWriter extends TransformWriter {
 
 		ITypeBinding lt = left.resolveTypeBinding();
 		ITypeBinding rt = right.resolveTypeBinding();
-		if (!lt.isEqualTo(rt)) {
-			// If we have pointer compares, we need the complete type
-			hardDep(lt);
-			hardDep(rt);
-		}
 
 		if (TransformUtil.same(tb, String.class)) {
 			print("(new ::java::lang::StringBuilder())->append(");
@@ -1600,6 +1595,21 @@ public class ImplWriter extends TransformWriter {
 			}
 		}
 
+		ITypeBinding common = null;
+		if (!lt.isEqualTo(rt)) {
+			// If we have pointer compares, we need the complete type
+			hardDep(lt);
+			hardDep(rt);
+			if (!lt.isPrimitive()
+					&& !rt.isPrimitive()
+					&& (node.getOperator().equals(
+							InfixExpression.Operator.EQUALS) || node
+							.getOperator().equals(
+									InfixExpression.Operator.NOT_EQUALS))) {
+				common = TypeUtil.commonBase(lt, rt, ctx.resolve(Object.class));
+			}
+		}
+
 		if (node.getOperator().equals(
 				InfixExpression.Operator.RIGHT_SHIFT_UNSIGNED)) {
 			if (lt.getName().equals("long")) {
@@ -1610,19 +1620,15 @@ public class ImplWriter extends TransformWriter {
 			left.accept(this);
 			print(") >>");
 		} else {
-			left.accept(this);
+			staticCast(left, lt, common);
 			print(' '); // for cases like x= i - -1; or x= i++ + ++i;
 
 			print(node.getOperator().toString());
 		}
 
-		hardDep(lt);
-
 		print(' ');
 
-		right.accept(this);
-
-		hardDep(rt);
+		staticCast(right, rt, common);
 
 		if (!extendedOperands.isEmpty()) {
 			print(' ');
@@ -1635,6 +1641,19 @@ public class ImplWriter extends TransformWriter {
 		}
 
 		return false;
+	}
+
+	private void staticCast(Expression left, ITypeBinding lt,
+			ITypeBinding common) {
+		if (common != null && !lt.isEqualTo(common)) {
+			print("static_cast< "
+					+ TransformUtil.relativeCName(common, type, true)
+					+ TransformUtil.ref(common) + " >(");
+			left.accept(this);
+			print(")");
+		} else {
+			left.accept(this);
+		}
 	}
 
 	private void castNull(Expression left) {

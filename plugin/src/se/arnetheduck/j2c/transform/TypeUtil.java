@@ -79,6 +79,25 @@ public class TypeUtil {
 		return ret;
 	}
 
+	public static ITypeBinding commonBase(ITypeBinding tb0, ITypeBinding tb1,
+			ITypeBinding object) {
+		if (tb0.isEqualTo(tb1)) {
+			return tb0;
+		}
+
+		List<ITypeBinding> b0 = allBases(tb0, object);
+		List<ITypeBinding> b1 = allBases(tb1, object);
+		for (ITypeBinding x0 : b0) {
+			for (ITypeBinding x1 : b1) {
+				if (x0.isEqualTo(x1)) {
+					return x0;
+				}
+			}
+		}
+
+		throw new Error("Huh? Where's Object?");
+	}
+
 	/** Recursive bases (superclasses and interfaces) of a type */
 	public static List<ITypeBinding> allBases(ITypeBinding tb,
 			ITypeBinding object) {

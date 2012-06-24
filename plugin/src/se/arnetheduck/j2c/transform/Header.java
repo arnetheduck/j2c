@@ -506,39 +506,91 @@ public class Header {
 		}
 	}
 
-	private String printSuperCalls() {
-		if (type.isClass()) {
-			List<IMethodBinding> missing = baseCallMethods(type);
-			for (IMethodBinding decl : missing) {
-				IMethodBinding impl = findImpl(type, decl);
-				if (impl == null) {
-					// Only print super call if an implementation actually
-					// exists
-					assert (Modifier.isAbstract(type.getModifiers()));
-					continue;
-				}
-
-				// Interface methods are always public
+	private void printSuperCalls() {
+		if (type.isInterface()) {
+			List<IMethodBinding> dupes = dupeNames(type);
+			for (IMethodBinding dupe : dupes) {
 				access = printAccess(pw, Modifier.PUBLIC, access);
 
 				pw.print(i1);
 				TransformUtil.printSignature(pw, type,
-						decl.getMethodDeclaration(), impl.getReturnType(),
+						dupe.getMethodDeclaration(), dupe.getReturnType(),
 						softDeps, false);
 				pw.println(";");
+			}
+		}
 
-				method(decl);
+		if (!type.isClass() && !type.isEnum()) {
+			return;
+		}
 
-				if (TransformUtil.returnErased(decl)
-						|| !decl.getMethodDeclaration().getReturnType()
-								.getErasure()
-								.isEqualTo(impl.getReturnType().getErasure())) {
-					hardDep(impl.getReturnType());
+		List<IMethodBinding> missing = baseCallMethods(type);
+		for (IMethodBinding decl : missing) {
+			IMethodBinding impl = findImpl(type, decl);
+			if (impl == null) {
+				// Only print super call if an implementation actually
+				// exists
+				assert (Modifier.isAbstract(type.getModifiers()));
+				continue;
+			}
+
+			// Interface methods are always public
+			access = printAccess(pw, Modifier.PUBLIC, access);
+
+			pw.print(i1);
+			TransformUtil.printSignature(pw, type, decl.getMethodDeclaration(),
+					impl.getReturnType(), softDeps, false);
+			pw.println(";");
+
+			method(decl);
+
+			if (TransformUtil.returnErased(decl)
+					|| !decl.getMethodDeclaration().getReturnType()
+							.getErasure()
+							.isEqualTo(impl.getReturnType().getErasure())) {
+				hardDep(impl.getReturnType());
+			}
+		}
+	}
+
+	public static List<IMethodBinding> dupeNames(ITypeBinding type) {
+		List<IMethodBinding> ret = new ArrayList<IMethodBinding>();
+
+		List<ITypeBinding> bases = TypeUtil.bases(type, null);
+		for (ITypeBinding b0 : bases) {
+			for (ITypeBinding b1 : bases) {
+				if (b0 == b1)
+					continue;
+
+				for (IMethodBinding m0 : b0.getDeclaredMethods()) {
+					for (IMethodBinding m1 : b1.getDeclaredMethods()) {
+						if (m0.isSubsignature(m1)) {
+							boolean found = false;
+							for (IMethodBinding m2 : ret) {
+								if (m2.isSubsignature(m0)) {
+									found = true;
+									break;
+								}
+							}
+
+							if (!found) {
+								ret.add(m0);
+							}
+						}
+					}
 				}
 			}
 		}
 
-		return access;
+		for (IMethodBinding mb : type.getDeclaredMethods()) {
+			for (Iterator<IMethodBinding> i = ret.iterator(); i.hasNext();) {
+				if (mb.isSubsignature(i.next())) {
+					i.remove();
+				}
+			}
+		}
+
+		return ret;
 	}
 
 	public static IMethodBinding findImpl(ITypeBinding type, IMethodBinding mb) {
