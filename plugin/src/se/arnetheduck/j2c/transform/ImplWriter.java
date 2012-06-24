@@ -2278,6 +2278,12 @@ public class ImplWriter extends TransformWriter {
 				if (wasCase) {
 					printi("if(");
 					String sep = "";
+					boolean hasDefault = allCases.get(allCases.size() - 1)
+							.isDefault();
+
+					if (hasDefault) {
+						print("(");
+					}
 					for (SwitchCase x : cases) {
 						print(sep);
 						sep = " || ";
@@ -2286,8 +2292,9 @@ public class ImplWriter extends TransformWriter {
 						print(")");
 					}
 
-					if (allCases.get(allCases.size() - 1).isDefault()) {
-						sep = sep.length() == 0 ? "" : " && ";
+					if (hasDefault) {
+						print(sep);
+						sep = "";
 						print("(");
 						for (SwitchCase x : allCases) {
 							if (!x.isDefault()) {
@@ -2298,7 +2305,7 @@ public class ImplWriter extends TransformWriter {
 								print(")");
 							}
 						}
-						print(")");
+						print("))");
 					}
 
 					println(") {");

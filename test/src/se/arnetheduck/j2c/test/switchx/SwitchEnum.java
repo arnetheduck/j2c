@@ -17,4 +17,14 @@ public class SwitchEnum {
 
 		return 1;
 	}
+
+	public int x(SimpleEnum et) {
+		switch (et) {
+		case RED:
+			return 0;
+		case BLUE:
+		default:
+			return 5;
+		}
+	}
 }
