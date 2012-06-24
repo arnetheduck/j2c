@@ -1,7 +1,7 @@
 #pragma once
 
 %1$s
-#include "java.lang.Error.h"
+#include "java.lang.ArrayStoreException.h"
 
 class %5$sArray
 %3$s{
@@ -51,8 +51,7 @@ private:
     void set0(size_type i, ::java::lang::Object *x) override
     {
         if(!dynamic_cast<value_type>(x)) {
-            // Should be arraystoreexception
-            throw new ::java::lang::Error();
+            throw new ::java::lang::ArrayStoreException();
         }
         
         p[i] = x;

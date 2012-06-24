@@ -24,8 +24,9 @@ public class MakefileWriter {
 		PrintWriter pw = new PrintWriter(fos);
 
 		pw.println("INCLUDES = ");
-		pw.println("CFLAGS = $(INCLUDES) -g");
-		pw.println("CXXFLAGS = $(CFLAGS) -std=gnu++11");
+		pw.println("CPPFLAGS := $(CPPFLAGS) $(INCLUDES)");
+		pw.println("CFLAGS := $(CFLAGS) -g");
+		pw.println("CXXFLAGS := $(CFLAGS) -std=gnu++11");
 		pw.println("SRCS = \\");
 
 		for (String impl : impls) {
@@ -81,7 +82,7 @@ public class MakefileWriter {
 						stubLibName);
 
 				pw.format(
-						"\tg++ -o $@ $(EXTRA) %1$s $(CFLAGS) -L. -l%2$s $(LIBS) -l%2$s%3$s -l%2$s%4$s\n",
+						"\t$(CXX) $(CPPFLAGS) $(CXXFLAGS) -o $@ $(EXTRA) %1$s -L. -l%2$s $(LIBS) -l%2$s%3$s -l%2$s%4$s\n",
 						mainName, name, TransformUtil.STUB,
 						TransformUtil.NATIVE);
 			}

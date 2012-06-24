@@ -837,8 +837,10 @@ public final class TransformUtil {
 	public static boolean baseHasSame(IMethodBinding mb, ITypeBinding tb,
 			Transformer ctx) {
 		for (ITypeBinding ib : tb.getInterfaces()) {
-			if (getSuperMethod(mb, ib) != null) {
-				return true;
+			for (IMethodBinding mb2 : ib.getDeclaredMethods()) {
+				if (sameSignature(mb, mb2)) {
+					return true;
+				}
 			}
 
 			if (baseHasSame(mb, ib, ctx)) {

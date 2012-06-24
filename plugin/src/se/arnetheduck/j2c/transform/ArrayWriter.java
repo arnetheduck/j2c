@@ -57,6 +57,7 @@ public class ArrayWriter {
 		ctx.softDep(type);
 		ctx.hardDep(ctx.resolve(Cloneable.class));
 		ctx.hardDep(ctx.resolve(Serializable.class));
+		ctx.hardDep(ctx.resolve(ArrayStoreException.class));
 		writeHeader();
 		writeImpl();
 	}

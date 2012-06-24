@@ -970,13 +970,29 @@ public class ImplWriter extends TransformWriter {
 
 		if (TransformUtil.same(lht, String.class)
 				&& node.getOperator() == Operator.PLUS_ASSIGN) {
-			lhs.accept(this);
-			print(" = (new ::java::lang::StringBuilder(");
+
+			if (lhs instanceof ArrayAccess) {
+				ArrayAccess aa = (ArrayAccess) lhs;
+				hardDep(aa.getArray().resolveTypeBinding());
+				aa.getArray().accept(this);
+				print("->set(");
+				aa.getIndex().accept(this);
+				print(", ");
+
+			} else {
+				lhs.accept(this);
+				print(" = ");
+			}
+
+			print("(new ::java::lang::StringBuilder(");
 			lhs.accept(this);
 			print("))->append(");
 			rhs.accept(this);
 			print(")->toString()");
 
+			if (lhs instanceof ArrayAccess) {
+				print(")");
+			}
 			hardDep(ctx.resolve(StringBuilder.class));
 
 			return false;

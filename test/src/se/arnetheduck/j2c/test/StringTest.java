@@ -33,6 +33,11 @@ public class StringTest {
 		return str1;
 	}
 
+	public void arrayAssign(String[] x) {
+		x[0] = x[0] + "Test";
+		x[0] += "Test";
+	}
+
 	public String primitives() {
 		return "" + 1 + 1.2 + 'c';
 	}
