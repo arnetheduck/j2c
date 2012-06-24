@@ -157,13 +157,32 @@ public final class TransformUtil {
 		ITypeBinding tbe = tb.getErasure();
 
 		if (tbe.isLocal()) {
+			StringBuilder ret = new StringBuilder();
+
 			Matcher match = lastBin.matcher(tbe.getBinaryName());
-			String extra = match.find() ? match.group(1) : "";
-			String c = tbe.getDeclaringClass() == null ? "c" : name(tbe
-					.getDeclaringClass());
-			String m = tbe.getDeclaringMethod() == null ? "m" : tbe
-					.getDeclaringMethod().getName();
-			return c + "_" + m + extra;
+			String sep = "";
+
+			if (tbe.getDeclaringClass() != null) {
+				ret.append(name(tbe.getDeclaringClass()));
+				sep = "_";
+			}
+
+			if (tbe.getDeclaringMethod() != null
+					&& tbe.getDeclaringMethod().getName().length() > 0) {
+				ret.append(sep + tbe.getDeclaringMethod().getName());
+				sep = "_";
+			}
+
+			if (tbe.getName() != null && tbe.getName().length() > 0) {
+				ret.append(sep + tbe.getName());
+				sep = "_";
+			}
+
+			if (match.find()) {
+				ret.append(sep + match.group(1));
+			}
+
+			return ret.toString();
 		}
 
 		if (tbe.isNested()) {
@@ -272,15 +291,20 @@ public final class TransformUtil {
 			return "Array.h";
 		}
 
-		return qualifiedName(tb) + ".h";
+		return filterName(qualifiedName(tb)) + ".h";
 	}
 
 	public static String implName(ITypeBinding tb, String suffix) {
-		return qualifiedName(tb) + suffix + ".cpp";
+		return filterName(qualifiedName(tb)) + suffix + ".cpp";
 	}
 
 	public static String mainName(ITypeBinding tb) {
-		return qualifiedName(tb) + "-main.cpp";
+		return filterName(qualifiedName(tb)) + "-main.cpp";
+	}
+
+	private static String filterName(String s) {
+		// Annoying character to escape
+		return s.replaceAll("\\$", "_");
 	}
 
 	public static Object constantValue(VariableDeclarationFragment node) {

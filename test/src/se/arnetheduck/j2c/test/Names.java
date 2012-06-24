@@ -19,3 +19,6 @@ public class Names {
 		Object o;
 	}
 }
+
+class Funny$Name {
+}
