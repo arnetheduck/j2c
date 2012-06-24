@@ -30,5 +30,7 @@ public class VarargTest {
 
 	public void m6(java.lang.Object... x) {
 		m6(4, "rte");
+		m6(new Object[] {});
+		m6(new Object[] {}, "");
 	}
 }

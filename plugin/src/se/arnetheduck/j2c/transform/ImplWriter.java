@@ -1915,7 +1915,7 @@ public class ImplWriter extends TransformWriter {
 						.getErasure();
 				ITypeBinding ab = arguments.get(i).resolveTypeBinding();
 
-				if (!ab.isAssignmentCompatible(tb)) {
+				if (!ab.isAssignmentCompatible(tb) || i != arguments.size() - 1) {
 					hardDep(tb);
 					print("new " + TransformUtil.relativeCName(tb, type, true),
 							"({");
