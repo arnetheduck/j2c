@@ -462,7 +462,7 @@ public class Header {
 	}
 
 	private void printMethods() {
-		if (type.isClass()) {
+		if (type.isClass() || type.isEnum()) {
 			for (List<IMethodBinding> e : methods.values()) {
 				for (IMethodBinding mb : e) {
 					access = TransformUtil.declareBridge(pw, type, mb,
