@@ -404,6 +404,10 @@ public abstract class TransformWriter extends ASTVisitor {
 		if (isStatic) {
 			print(TransformUtil.relativeCName(declaringClass, type, true), "::");
 			hardDep(declaringClass);
+		} else if (type.getSuperclass() != null
+				&& type.getSuperclass().getErasure()
+						.isEqualTo(declaringClass.getErasure())) {
+			print("super::");
 		} else {
 			// We will be this-qualifying for each type along the nesting chain
 			for (ITypeBinding x = type; x.getDeclaringClass() != null
