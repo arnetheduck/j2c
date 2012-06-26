@@ -69,8 +69,9 @@ public class Header {
 
 	public void write(IPath root, String body,
 			Collection<IVariableBinding> closures, boolean hasInit,
-			Collection<ITypeBinding> nested) throws IOException {
+			Collection<ITypeBinding> nested, String access) throws IOException {
 
+		this.access = access;
 		String extras = getExtras(closures, hasInit, nested);
 
 		FileOutputStream fos = new FileOutputStream(root.append(
@@ -142,6 +143,12 @@ public class Header {
 		printSuper(type);
 
 		pw.print(body);
+
+		if (!extras.isEmpty()) {
+			pw.println();
+			pw.println(i1 + "// Generated");
+		}
+
 		pw.print(extras);
 
 		pw.println("};");
@@ -153,7 +160,7 @@ public class Header {
 	}
 
 	public static String initialAccess(ITypeBinding type) {
-		return type.isInterface() ? PUBLIC : PRIVATE;
+		return PUBLIC;
 	}
 
 	public static String printAccess(PrintWriter pw, IMethodBinding mb,
@@ -227,8 +234,7 @@ public class Header {
 		if (type.getSuperclass() == null) {
 			return;
 		}
-
-		access = printAccess(pw, Modifier.PRIVATE, access);
+		access = printAccess(pw, Modifier.PUBLIC, access);
 		pw.format(i1 + "typedef %s super;\n",
 				TransformUtil.relativeCName(type.getSuperclass(), type, true));
 	}

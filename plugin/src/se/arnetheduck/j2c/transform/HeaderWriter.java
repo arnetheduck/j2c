@@ -81,7 +81,7 @@ public class HeaderWriter extends TransformWriter {
 		try {
 			String body = getBody(enums, declarations);
 
-			header.write(root, body, closures, hasInit, unitInfo.types);
+			header.write(root, body, closures, hasInit, unitInfo.types, access);
 		} catch (Exception e) {
 			throw new Error(e);
 		}
