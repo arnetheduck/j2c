@@ -565,6 +565,9 @@ public class ImplWriter extends TransformWriter {
 
 		String sep = "";
 		for (int i = 0; i < impl.getParameterTypes().length; ++i) {
+			print(sep);
+			sep = ", ";
+
 			boolean cast = !md.getParameterTypes()[i].getErasure()
 					.isAssignmentCompatible(
 							impl.getParameterTypes()[i].getErasure());
@@ -572,11 +575,10 @@ public class ImplWriter extends TransformWriter {
 				dynamicCast(md.getParameterTypes()[i],
 						impl.getParameterTypes()[i]);
 			}
-			print(sep + TransformUtil.paramName(md, i));
+			print(TransformUtil.paramName(md, i));
 			if (cast) {
 				print(")");
 			}
-			sep = ", ";
 		}
 
 		if (erased) {
@@ -788,22 +790,27 @@ public class ImplWriter extends TransformWriter {
 	}
 
 	private boolean checkBoxNesting(Expression expr) {
-		if (expr.getParent() instanceof ParenthesizedExpression) {
-			assert (((ParenthesizedExpression) expr.getParent())
-					.resolveBoxing() || ((ParenthesizedExpression) expr
-					.getParent()).resolveUnboxing());
+		ASTNode parent = expr.getParent();
+		if (parent instanceof ParenthesizedExpression) {
+			assert (((ParenthesizedExpression) parent).resolveBoxing() || ((ParenthesizedExpression) parent)
+					.resolveUnboxing());
 			return false;
 		}
 
-		if (expr.getParent() instanceof Name) {
+		if (parent instanceof Name) {
 			return false;
 		}
 
-		if (expr.getParent() instanceof MethodInvocation) {
-			MethodInvocation mi = (MethodInvocation) expr.getParent();
+		if (parent instanceof MethodInvocation) {
+			MethodInvocation mi = (MethodInvocation) parent;
 			if (mi.getExpression() == expr || mi.getName() == expr) {
 				return false;
 			}
+		}
+
+		if (parent instanceof FieldAccess
+				&& ((FieldAccess) parent).getName() == expr) {
+			return false;
 		}
 
 		return true;

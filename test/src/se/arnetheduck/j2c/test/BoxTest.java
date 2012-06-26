@@ -1,5 +1,6 @@
 package se.arnetheduck.j2c.test;
 
+
 public class BoxTest {
 	int k;
 
@@ -28,5 +29,9 @@ public class BoxTest {
 
 	public java.lang.Object m0() {
 		return (k);
+	}
+
+	public java.lang.Object m1(java.lang.Object o) {
+		return ((BoxTest) o).k;
 	}
 }
