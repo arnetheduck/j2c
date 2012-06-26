@@ -374,9 +374,7 @@ public abstract class TransformWriter extends ASTVisitor {
 			if (needsQualification(node, vb.getDeclaringClass())) {
 				qualify(vb.getDeclaringClass().getErasure(),
 						TransformUtil.isStatic(vb));
-			}
-
-			if (node.getParent() instanceof SuperFieldAccess) {
+			} else if (node.getParent() instanceof SuperFieldAccess) {
 				print("super::");
 			}
 
@@ -390,9 +388,7 @@ public abstract class TransformWriter extends ASTVisitor {
 			if (needsQualification(node, mb.getDeclaringClass())) {
 				qualify(mb.getDeclaringClass().getErasure(),
 						TransformUtil.isStatic(mb));
-			}
-
-			if (node.getParent() instanceof SuperMethodInvocation) {
+			} else if (node.getParent() instanceof SuperMethodInvocation) {
 				print("super::");
 			}
 
@@ -450,7 +446,7 @@ public abstract class TransformWriter extends ASTVisitor {
 		}
 
 		if (parent instanceof EnumConstantDeclaration) {
-			return false;
+			return ((EnumConstantDeclaration) parent).getName() != node;
 		}
 
 		if (parent instanceof MethodInvocation) {

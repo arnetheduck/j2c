@@ -205,11 +205,29 @@ public final class TransformUtil {
 
 		// Methods can have the same name as the constructor without being a
 		// constructor!
-		if (!mb.isConstructor() && ret.equals(name(mb.getDeclaringClass()))) {
+		if (!mb.isConstructor() && hasName(mb.getDeclaringClass(), ret)) {
 			ret = "_" + ret;
 		}
 
 		return ret;
+	}
+
+	private static boolean hasName(ITypeBinding tb, String ret) {
+		if (tb.getName().equals(ret)) {
+			return true;
+		}
+
+		if (tb.getSuperclass() != null && hasName(tb.getSuperclass(), ret)) {
+			return true;
+		}
+
+		for (ITypeBinding ib : tb.getInterfaces()) {
+			if (hasName(ib, ret)) {
+				return true;
+			}
+		}
+
+		return false;
 	}
 
 	/**

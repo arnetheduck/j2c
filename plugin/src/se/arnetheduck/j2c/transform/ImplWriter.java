@@ -1637,8 +1637,11 @@ public class ImplWriter extends TransformWriter {
 			}
 		}
 
+		boolean cast = false;
 		if (node.getOperator().equals(
 				InfixExpression.Operator.RIGHT_SHIFT_UNSIGNED)) {
+			print("static_cast<" + TransformUtil.name(lt) + ">(");
+			cast = true;
 			if (lt.getName().equals("long")) {
 				print("static_cast<uint64_t>(");
 			} else {
@@ -1667,6 +1670,9 @@ public class ImplWriter extends TransformWriter {
 			}
 		}
 
+		if (cast) {
+			print(")");
+		}
 		return false;
 	}
 

@@ -21,11 +21,18 @@ public class SuperTest extends ConstructorTest {
 	static class Y {
 		Y(String x) {
 		}
+
+		static void m() {
+		}
 	}
 
 	static class X extends Y {
 		X() {
 			super("Test");
+		}
+
+		void n() {
+			super.m();
 		}
 	}
 }
