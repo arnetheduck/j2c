@@ -45,6 +45,8 @@ public class PrimitiveTest {
 		double f1 = 2;
 		double f2 = f0 % f1; // fmod in c++
 		f2 %= f1;
+
+		final int a = 0, b = 1;
 	}
 
 }

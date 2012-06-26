@@ -584,11 +584,15 @@ public final class TransformUtil {
 	}
 
 	public static String constVar(IVariableBinding vb) {
-		if (!vb.isField() && Modifier.isFinal(vb.getModifiers())) {
+		if (isConstVar(vb)) {
 			return "const ";
 		}
 
 		return "";
+	}
+
+	public static boolean isConstVar(IVariableBinding vb) {
+		return !vb.isField() && Modifier.isFinal(vb.getModifiers());
 	}
 
 	public static String ref(Type t) {
