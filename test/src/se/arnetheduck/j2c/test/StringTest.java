@@ -30,12 +30,14 @@ public class StringTest {
 	public String assign() {
 		String str1 = "Test";
 		str1 += "Test2";
+		str1 += null;
 		return str1;
 	}
 
 	public void arrayAssign(String[] x) {
 		x[0] = x[0] + "Test";
 		x[0] += "Test";
+		x[0] += null;
 	}
 
 	public String primitives() {

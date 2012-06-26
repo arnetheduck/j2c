@@ -994,7 +994,7 @@ public class ImplWriter extends TransformWriter {
 			print("(new ::java::lang::StringBuilder(");
 			lhs.accept(this);
 			print("))->append(");
-			rhs.accept(this);
+			castNull(rhs);
 			print(")->toString()");
 
 			if (lhs instanceof ArrayAccess) {
@@ -1175,11 +1175,11 @@ public class ImplWriter extends TransformWriter {
 			sep = ", ";
 		} else if (TransformUtil.hasOuterThis(tb)) {
 			ITypeBinding dce = tb.getDeclaringClass().getErasure();
-			if (type.isSubTypeCompatible(dce.getErasure())) {
+			if (type.getErasure().isSubTypeCompatible(dce.getErasure())) {
 				print("this");
 			} else {
 				String sep2 = "";
-				for (ITypeBinding x = type; x.getDeclaringClass() != null
+				for (ITypeBinding x = type.getErasure(); x.getDeclaringClass() != null
 						&& !x.isSubTypeCompatible(dce); x = x
 						.getDeclaringClass().getErasure()) {
 					hardDep(x.getDeclaringClass());

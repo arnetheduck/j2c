@@ -624,10 +624,15 @@ public final class TransformUtil {
 		if (tb.isLocal()) {
 			IMethodBinding mb = tb.getDeclaringMethod();
 			if (mb == null) {
+				// Could be https://bugs.eclipse.org/bugs/show_bug.cgi?id=383486
 				IJavaElement je = tb.getJavaElement();
 
 				try {
 					while (je != null) {
+						if (je instanceof IMethod) {
+							return !Flags.isStatic(((IMethod) je).getFlags());
+						}
+
 						if (je instanceof IInitializer) {
 							return !Flags.isStatic(((IInitializer) je)
 									.getFlags());
