@@ -673,8 +673,15 @@ public final class TransformUtil {
 
 	/** Filter out C++ keywords and other reserved names */
 	public static String keywords(String name) {
-		if (name.endsWith("Array")) { // We use these
-			return "_" + name;
+		if (name.endsWith("Array")) {
+			String n = name;
+			String prefix = "";
+			while (n.endsWith("Array")) {
+				prefix += "_";
+				n = n.substring(0, n.length() - "Array".length());
+			}
+
+			return prefix + name;
 		}
 
 		if (keywords.contains(name)) {
