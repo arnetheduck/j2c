@@ -751,6 +751,10 @@ public class ImplWriter extends TransformWriter {
 			}
 		}
 
+		if (parent instanceof EnumConstantDeclaration) {
+			return;
+		}
+
 		dynamicCast(vb.getVariableDeclaration().getType().getErasure(),
 				vb.getType());
 		visits.add(new NodeInfo(node, ")"));
