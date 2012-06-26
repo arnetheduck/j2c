@@ -968,6 +968,11 @@ public final class TransformUtil {
 				pw.print(indent(1));
 				if (!isVoid(mb.getReturnType())) {
 					pw.print("return ");
+
+					if (!mb2.getReturnType().getErasure()
+							.isEqualTo(mb.getReturnType().getErasure())) {
+						addDep(mb.getReturnType(), deps);
+					}
 				}
 
 				pw.print(name(mb2));

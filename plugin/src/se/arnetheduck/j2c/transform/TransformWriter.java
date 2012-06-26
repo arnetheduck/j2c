@@ -588,11 +588,12 @@ public abstract class TransformWriter extends ASTVisitor {
 			for (VariableDeclarationFragment fragment : fragments) {
 				printi(TransformUtil.variableModifiers(type,
 						node.getModifiers()));
+				ITypeBinding fb = tb;
 				if (fragment.getExtraDimensions() > 0) {
-					tb = tb.createArrayType(fragment.getExtraDimensions());
+					fb = fb.createArrayType(fragment.getExtraDimensions());
 				}
-				softDep(tb);
-				print(TransformUtil.relativeCName(tb, type, true), " ");
+				softDep(fb);
+				print(TransformUtil.relativeCName(fb, type, true), " ");
 				fragment.accept(this);
 				println(";");
 			}

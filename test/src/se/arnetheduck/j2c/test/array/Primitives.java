@@ -23,6 +23,9 @@ public class Primitives {
 	}
 
 	char[] cc() {
+		int a[], b[];
+		a = new int[0];
+		b = a;
 		return new char[] { 'a', 10 };
 	}
 }
