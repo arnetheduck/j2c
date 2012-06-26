@@ -143,7 +143,7 @@ public final class TransformUtil {
 		return p1 != null && p0.isEqualTo(p1);
 	}
 
-	private static Pattern lastBin = Pattern.compile("\\$(\\d*)$");
+	private static Pattern bin = Pattern.compile("(\\$(\\d|\\$)*)");
 
 	public static String name(ITypeBinding tb) {
 		if (tb.isArray()) {
@@ -159,7 +159,7 @@ public final class TransformUtil {
 		if (tbe.isLocal()) {
 			StringBuilder ret = new StringBuilder();
 
-			Matcher match = lastBin.matcher(tbe.getBinaryName());
+			Matcher match = bin.matcher(tbe.getBinaryName());
 			String sep = "";
 
 			if (tbe.getDeclaringClass() != null) {
@@ -179,7 +179,7 @@ public final class TransformUtil {
 			}
 
 			if (match.find()) {
-				ret.append(sep + match.group(1));
+				ret.append(match.group(1).replaceAll("\\$", "_"));
 			}
 
 			return ret.toString();
