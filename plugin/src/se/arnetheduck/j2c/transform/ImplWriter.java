@@ -755,6 +755,10 @@ public class ImplWriter extends TransformWriter {
 			return;
 		}
 
+		if (parent instanceof MethodInvocation) {
+			return;
+		}
+
 		dynamicCast(vb.getVariableDeclaration().getType().getErasure(),
 				vb.getType());
 		visits.add(new NodeInfo(node, ")"));

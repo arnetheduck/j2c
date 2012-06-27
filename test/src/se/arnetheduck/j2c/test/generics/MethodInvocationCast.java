@@ -1,6 +1,7 @@
 package se.arnetheduck.j2c.test.generics;
 
 import se.arnetheduck.j2c.test.Empty;
+import se.arnetheduck.j2c.test.StringTest;
 
 public class MethodInvocationCast {
 	public interface I<X> {
@@ -19,4 +20,11 @@ public class MethodInvocationCast {
 	void m2(I<Empty> x) {
 		x.m2(null);
 	}
+
+	private static final I<StringTest> canonicalTypes = null;
+
+	static {
+		canonicalTypes.m2(new StringTest());
+	}
+
 }
