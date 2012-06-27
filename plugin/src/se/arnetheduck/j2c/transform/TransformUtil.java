@@ -143,7 +143,7 @@ public final class TransformUtil {
 		return p1 != null && p0.isEqualTo(p1);
 	}
 
-	private static Pattern bin = Pattern.compile("(\\$(\\d|\\$)*)");
+	private static Pattern bin = Pattern.compile("\\$\\d+");
 
 	public static String name(ITypeBinding tb) {
 		if (tb.isArray()) {
@@ -178,8 +178,8 @@ public final class TransformUtil {
 				sep = "_";
 			}
 
-			if (match.find()) {
-				ret.append(match.group(1).replaceAll("\\$", "_"));
+			while (match.find()) {
+				ret.append(match.group(0).replaceAll("\\$", "_"));
 			}
 
 			return ret.toString();
