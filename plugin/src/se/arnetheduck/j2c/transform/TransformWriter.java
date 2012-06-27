@@ -323,20 +323,10 @@ public abstract class TransformWriter extends ASTVisitor {
 			Name qualifier = node.getQualifier();
 			IBinding b = qualifier.resolveBinding();
 			if (b instanceof ITypeBinding) {
-
 				hardDep((ITypeBinding) b);
 				print(TransformUtil.relativeCName((ITypeBinding) b, type, true),
 						"::");
 			} else {
-				if (qualifier instanceof SimpleName
-						&& b instanceof IVariableBinding) {
-					IVariableBinding vb = (IVariableBinding) b;
-					if (TransformUtil.isStatic(vb)
-							&& !type.isSubTypeCompatible(vb.getDeclaringClass())) {
-						print(TransformUtil.relativeCName(
-								vb.getDeclaringClass(), type, true), "::");
-					}
-				}
 				qualifier.accept(this);
 
 				if (b instanceof IPackageBinding) {

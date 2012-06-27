@@ -1,5 +1,7 @@
 package se.arnetheduck.j2c.test.methods;
 
+import static se.arnetheduck.j2c.test.enums.AnonymousConstants.BLUE;
+
 public class StaticInvokes {
 	static class A {
 		static A s() {
@@ -18,5 +20,7 @@ public class StaticInvokes {
 
 		a.m(); // Invoke through instance
 		a.m().m(); // Invoke through returned instance
+
+		BLUE.c.i();
 	}
 }
