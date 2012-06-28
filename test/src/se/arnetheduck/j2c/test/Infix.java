@@ -19,6 +19,11 @@ public class Infix {
 		return s == j;
 	}
 
+	boolean nullComp(Object o) {
+		// This shouldn't require a cast
+		return o == null;
+	}
+
 	boolean m(int i, char c) {
 		return i == c;
 	}

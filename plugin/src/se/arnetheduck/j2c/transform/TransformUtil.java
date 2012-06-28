@@ -1202,8 +1202,9 @@ public final class TransformUtil {
 	}
 
 	public static boolean variableErased(IVariableBinding b) {
-		return !b.getType().isEqualTo(
-				b.getVariableDeclaration().getType().getErasure());
+		return !b.getType().isRawType()
+				&& !b.getType().isEqualTo(
+						b.getVariableDeclaration().getType().getErasure());
 	}
 
 	public static boolean returnErased(IMethodBinding b) {

@@ -25,7 +25,7 @@ public class MakefileWriter {
 
 		pw.println("INCLUDES = ");
 		pw.println("CPPFLAGS := $(CPPFLAGS) $(INCLUDES)");
-		pw.println("CFLAGS := $(CFLAGS) -g");
+		pw.println("CFLAGS := $(CFLAGS) -g -pipe");
 		pw.println("CXXFLAGS := $(CFLAGS) -std=gnu++11");
 		pw.println("SRCS = \\");
 

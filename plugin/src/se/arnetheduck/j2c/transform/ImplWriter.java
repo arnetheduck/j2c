@@ -717,6 +717,10 @@ public class ImplWriter extends TransformWriter {
 			return;
 		}
 
+		if (!vb.getVariableDeclaration().getType().isTypeVariable()) {
+			return;
+		}
+
 		if (!TransformUtil.variableErased(vb)) {
 			return;
 		}
@@ -752,10 +756,6 @@ public class ImplWriter extends TransformWriter {
 		}
 
 		if (parent instanceof EnumConstantDeclaration) {
-			return;
-		}
-
-		if (parent instanceof MethodInvocation) {
 			return;
 		}
 
@@ -1682,7 +1682,7 @@ public class ImplWriter extends TransformWriter {
 
 	private void staticCast(Expression left, ITypeBinding lt,
 			ITypeBinding common) {
-		if (common != null && !lt.isEqualTo(common)) {
+		if (common != null && !lt.isEqualTo(common) && !lt.isNullType()) {
 			print("static_cast< "
 					+ TransformUtil.relativeCName(common, type, true)
 					+ TransformUtil.ref(common) + " >(");
@@ -1865,7 +1865,11 @@ public class ImplWriter extends TransformWriter {
 	@Override
 	public boolean visit(MethodInvocation node) {
 		IMethodBinding b = node.resolveMethodBinding();
-		boolean erased = TransformUtil.returnErased(b)
+		boolean erased = (b.getMethodDeclaration().getReturnType()
+				.isTypeVariable() || b.getMethodDeclaration().getReturnType()
+				.isArray()
+				&& b.getMethodDeclaration().getReturnType().getElementType()
+						.isTypeVariable())
 				&& !(node.getParent() instanceof ExpressionStatement);
 
 		if (erased) {
@@ -1875,12 +1879,14 @@ public class ImplWriter extends TransformWriter {
 
 		Expression expr = node.getExpression();
 		if (expr != null) {
-			IMethodBinding mb = b.getMethodDeclaration();
+			// This cast is need for multiply bounded generic types (<T extends
+			// A & B>)
 			ITypeBinding etb = expr.resolveTypeBinding().getErasure();
-			boolean castExpr = !etb.isSubTypeCompatible(mb.getDeclaringClass());
+			boolean castExpr = !etb.isSubTypeCompatible(b.getDeclaringClass()
+					.getErasure());
 
 			if (castExpr) {
-				dynamicCast(etb, mb.getDeclaringClass());
+				dynamicCast(etb, b.getDeclaringClass());
 			}
 
 			expr.accept(this);

@@ -85,6 +85,14 @@ public class TypeUtil {
 			return tb0;
 		}
 
+		if (tb0.isNullType()) {
+			return tb1;
+		}
+
+		if (tb1.isNullType()) {
+			return tb0;
+		}
+
 		List<ITypeBinding> b0 = allBases(tb0, object);
 		List<ITypeBinding> b1 = allBases(tb1, object);
 		for (ITypeBinding x0 : b0) {

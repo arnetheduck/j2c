@@ -1,6 +1,7 @@
 package se.arnetheduck.j2c.test.generics;
 
 import se.arnetheduck.j2c.test.Empty;
+import se.arnetheduck.j2c.test.Method;
 import se.arnetheduck.j2c.test.StringTest;
 
 public class MethodInvocationCast {
@@ -17,7 +18,8 @@ public class MethodInvocationCast {
 		return i.m();
 	}
 
-	void m2(I<Empty> x) {
+	void m2(I<Empty> x, Fields.A<Method> a) {
+		a.t.m();
 		x.m2(null);
 	}
 
