@@ -1,10 +1,10 @@
 #include <stdint.h>
 
-#include <java.lang.Class.h>
-#include <java.lang.ClassLoader.h>
+#include <java/lang/Class.hpp>
+#include <java/lang/ClassLoader.hpp>
 
-#include <Array.h>
-#include <java.lang.String.h>
+#include <Array.hpp>
+#include <java/lang/String.hpp>
 
 using namespace java::lang;
 

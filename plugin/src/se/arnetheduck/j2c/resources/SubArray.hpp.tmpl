@@ -1,7 +1,7 @@
 #pragma once
 
 %1$s
-#include "java.lang.ArrayStoreException.h"
+#include "java/lang/ArrayStoreException.hpp"
 
 class %5$sArray
 %3$s{
@@ -26,7 +26,7 @@ public:
     }
 
     %2$sArray(const %2$sArray &rhs) : %4$sArray(rhs) { }
-    %2$sArray(%2$sArray &rhs) : %4$sArray(std::move(rhs)) { }
+    %2$sArray(%2$sArray &&rhs) : %4$sArray(std::move(rhs)) { }
 
     %2$sArray &operator=(const %2$sArray &rhs)
     {

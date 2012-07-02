@@ -64,8 +64,9 @@ public class ForwardWriter {
 			boolean hasArray = false;
 			boolean hasPrimitive = false;
 
-			try (FileOutputStream fos = new FileOutputStream(root.append(
-					TransformUtil.packageHeader(e.getKey())).toFile())) {
+			try (FileOutputStream fos = TransformUtil.open(root
+					.append("include")
+					.append(TransformUtil.packageHeader(e.getKey())).toFile())) {
 				PrintWriter pw = new PrintWriter(fos);
 
 				pw.println("// Forward declarations for " + e.getKey());

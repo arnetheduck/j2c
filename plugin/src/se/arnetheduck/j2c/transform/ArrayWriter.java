@@ -5,8 +5,6 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.io.PrintWriter;
 import java.io.Serializable;
-import java.nio.file.Files;
-import java.nio.file.StandardCopyOption;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
@@ -14,11 +12,10 @@ import java.util.List;
 import org.eclipse.core.runtime.IPath;
 import org.eclipse.jdt.core.dom.ITypeBinding;
 
-// TODO ArrayStoreException
 public class ArrayWriter {
-	private static final String ARRAY_H = "/se/arnetheduck/j2c/resources/Array.h";
-	private static final String OBJECT_ARRAY_H = "/se/arnetheduck/j2c/resources/ObjectArray.h";
-	private static final String SUB_ARRAY_H_TMPL = "/se/arnetheduck/j2c/resources/SubArray.h.tmpl";
+	private static final String ARRAY_H = "/se/arnetheduck/j2c/resources/Array.hpp";
+	private static final String OBJECT_ARRAY_H = "/se/arnetheduck/j2c/resources/ObjectArray.hpp";
+	private static final String SUB_ARRAY_HPP_TMPL = "/se/arnetheduck/j2c/resources/SubArray.hpp.tmpl";
 
 	private final IPath root;
 	private final Transformer ctx;
@@ -63,26 +60,24 @@ public class ArrayWriter {
 	}
 
 	public void writeHeader() throws IOException {
+		File target = TransformUtil.headerPath(root, type).toFile();
+
 		ITypeBinding ct = type.getComponentType();
 		if (ct.isPrimitive()) {
 			try (InputStream is = ArrayWriter.class
 					.getResourceAsStream(ARRAY_H)) {
-				Files.copy(is, root.append(TransformUtil.headerName(type))
-						.toFile().toPath(), StandardCopyOption.REPLACE_EXISTING);
+				TransformUtil.writeResource(is, target);
 			}
 
 			return;
 		} else if (ct.getQualifiedName().equals(Object.class.getName())) {
 			try (InputStream is = ArrayWriter.class
 					.getResourceAsStream(OBJECT_ARRAY_H)) {
-				Files.copy(is, root.append(TransformUtil.headerName(type))
-						.toFile().toPath(), StandardCopyOption.REPLACE_EXISTING);
+				TransformUtil.writeResource(is, target);
 			}
 
 			return;
 		}
-
-		File target = root.append(TransformUtil.headerName(type)).toFile();
 
 		List<ITypeBinding> types = getSuperTypes();
 
@@ -111,14 +106,14 @@ public class ArrayWriter {
 		}
 
 		try (InputStream is = ArrayWriter.class
-				.getResourceAsStream(SUB_ARRAY_H_TMPL)) {
+				.getResourceAsStream(SUB_ARRAY_HPP_TMPL)) {
 			TransformUtil.writeTemplate(is, target, includes, name, bases,
 					superName, qname);
 		}
 	}
 
 	private void writeImpl() throws IOException {
-		ctx.impls.add(TransformUtil.implName(type, ""));
+		ctx.addImpl(type);
 		PrintWriter pw = TransformUtil.openImpl(root, type, "");
 
 		TransformUtil.printClassLiteral(pw, type);

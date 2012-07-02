@@ -74,8 +74,8 @@ public class Header {
 		this.access = access;
 		String extras = getExtras(closures, hasInit, nested);
 
-		FileOutputStream fos = new FileOutputStream(root.append(
-				TransformUtil.headerName(type)).toFile());
+		FileOutputStream fos = TransformUtil.open(TransformUtil.headerPath(
+				root, type).toFile());
 
 		pw = new PrintWriter(fos);
 

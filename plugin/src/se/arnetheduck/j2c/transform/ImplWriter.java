@@ -178,7 +178,7 @@ public class ImplWriter extends TransformWriter {
 
 			out.close();
 
-			ctx.impls.add(TransformUtil.implName(type, ""));
+			ctx.addImpl(type);
 
 			if (hasNatives) {
 				StubWriter sw = new StubWriter(root, ctx, type);

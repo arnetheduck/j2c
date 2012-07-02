@@ -11,7 +11,6 @@ import java.util.HashSet;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
-import java.util.Map.Entry;
 import java.util.Set;
 import java.util.TreeMap;
 import java.util.TreeSet;
@@ -64,9 +63,8 @@ public class Transformer {
 		snippets.add(new ReplaceInvocation());
 	}
 
-	public final Set<String> impls = new TreeSet<String>();
-	public final Set<String> stubs = new TreeSet<String>();
-	public final Set<String> natives = new TreeSet<String>();
+	public final Set<ICompilationUnit> selection = new TreeSet<ICompilationUnit>(
+			new ICUComparator());
 
 	/** Compilation units that are scheduled for processing */
 	public final Set<ICompilationUnit> todo = new TreeSet<ICompilationUnit>(
@@ -76,8 +74,14 @@ public class Transformer {
 	private Set<ITypeBinding> hardDeps = new TreeSet<ITypeBinding>(
 			new BindingComparator());
 
-	private final Map<String, ForwardWriter.Info> softDeps = new HashMap<String, ForwardWriter.Info>();
+	private final Map<String, ForwardWriter.Info> forwards = new HashMap<String, ForwardWriter.Info>();
+
 	private final Map<String, MainWriter.Info> mains = new TreeMap<String, MainWriter.Info>();
+
+	private final MakefileWriter.Info sel = new MakefileWriter.Info();
+	private final MakefileWriter.Info ext = new MakefileWriter.Info();
+
+	private MakefileWriter.Info cur;
 
 	private final Set<String> done = new HashSet<String>();
 
@@ -90,20 +94,22 @@ public class Transformer {
 		monitor.subTask("Moving old files");
 		renameOld();
 
-		todo.addAll(Arrays.asList(units));
+		selection.addAll(Arrays.asList(units));
+		todo.addAll(selection);
 
 		while (!todo.isEmpty()) {
 			processSome(monitor);
 		}
 
-		new ForwardWriter(root).write(softDeps.values());
+		new ForwardWriter(root).write(forwards.values());
 
-		for (Entry<String, MainWriter.Info> tb : mains.entrySet()) {
-			MainWriter.write(root, tb.getValue());
+		for (MainWriter.Info main : mains.values()) {
+			MainWriter.write(root, main);
+			sel.mains.add("src/" + main.filename);
 		}
 
 		MakefileWriter mw = new MakefileWriter(root);
-		mw.write(name, impls, stubs, natives, mains.values());
+		mw.write(name, sel, ext);
 
 		monitor.done();
 		System.out.println("Done.");
@@ -115,9 +121,7 @@ public class Transformer {
 
 		File from = new File(p, r.getName() + 5);
 		if (from.exists()) {
-			for (File f : from.listFiles()) {
-				f.delete();
-			}
+			clear(from);
 		}
 
 		for (int i = 4; i > 0; --i) {
@@ -129,15 +133,29 @@ public class Transformer {
 		moveFiles(r, new File(p, r.getName() + 1));
 	}
 
+	private void clear(File from) {
+		for (File f : from.listFiles()) {
+			if (f.isDirectory()) {
+				clear(f);
+			}
+
+			f.delete();
+		}
+	}
+
 	private void moveFiles(File from, File to) throws IOException {
 		if (from.exists()) {
 			to.mkdir();
 
 			for (File f : from.listFiles()) {
-				if (f.getName().endsWith(".o") || f.getName().endsWith(".a")) {
+				if (f.isDirectory()) {
+					moveFiles(f, new File(to, f.getName()));
+					f.delete(); // Will only delete empty folders
+				} else if (f.getName().endsWith(".o")
+						|| f.getName().endsWith(".a")) {
 					f.delete();
 				} else if (f.getName().equals("Makefile")
-						|| f.getName().endsWith(".h")
+						|| f.getName().endsWith(".hpp")
 						|| f.getName().endsWith(".cpp")) {
 					File tf = new File(to, f.getName());
 
@@ -169,15 +187,21 @@ public class Transformer {
 			@Override
 			public void acceptAST(ICompilationUnit source, CompilationUnit ast) {
 				currentAST = ast.getAST();
+				if (selection.contains(source)) {
+					cur = sel;
+				} else {
+					cur = ext;
+				}
+
 				try {
 					if (hasError(ast)) {
 						for (AbstractTypeDeclaration type : (List<AbstractTypeDeclaration>) ast
 								.types()) {
 							ITypeBinding tb = type.resolveBinding();
-							writeHeader(root, tb);
+							writeHeader(source, tb);
 						}
 					} else {
-						writeImpl(monitor, root, ast);
+						writeImpl(monitor, source, ast);
 					}
 				} catch (Throwable e) {
 					e.printStackTrace();
@@ -210,13 +234,15 @@ public class Transformer {
 		parser.createASTs(units, keys, requestor, null);
 	}
 
-	private void writeHeader(IPath root, ITypeBinding tb) throws Exception {
+	private void writeHeader(ICompilationUnit unit, ITypeBinding tb)
+			throws Exception {
 		done.add(tb.getBinaryName());
-		TypeBindingHeaderWriter hw = new TypeBindingHeaderWriter(root, this, tb);
+		TypeBindingHeaderWriter hw = new TypeBindingHeaderWriter(getRoot(unit),
+				this, tb);
 		hw.write();
 	}
 
-	private void writeImpl(IProgressMonitor monitor, IPath root,
+	private void writeImpl(IProgressMonitor monitor, ICompilationUnit unit,
 			CompilationUnit cu) throws Exception {
 		monitor.subTask("Processing "
 				+ cu.getJavaElement().getResource().getProjectRelativePath()
@@ -230,20 +256,20 @@ public class Transformer {
 				.types()) {
 			if (type instanceof TypeDeclaration) {
 				TypeDeclaration td = (TypeDeclaration) type;
-				ImplWriter iw = new ImplWriter(root, this,
+				ImplWriter iw = new ImplWriter(getRoot(unit), this,
 						type.resolveBinding(), ui);
 
 				iw.write(td);
 			} else if (type instanceof AnnotationTypeDeclaration) {
 				AnnotationTypeDeclaration td = (AnnotationTypeDeclaration) type;
-				ImplWriter iw = new ImplWriter(root, this,
+				ImplWriter iw = new ImplWriter(getRoot(unit), this,
 						type.resolveBinding(), ui);
 
 				iw.write(td);
 			} else if (type instanceof EnumDeclaration) {
 				EnumDeclaration td = (EnumDeclaration) type;
 
-				ImplWriter iw = new ImplWriter(root, this,
+				ImplWriter iw = new ImplWriter(getRoot(unit), this,
 						type.resolveBinding(), ui);
 
 				iw.write(td);
@@ -256,9 +282,12 @@ public class Transformer {
 	}
 
 	private void writeDeps(IProgressMonitor monitor) {
+		final Set<ITypeBinding> arrays = new TreeSet<ITypeBinding>(
+				new BindingComparator());
 		while (!hardDeps.isEmpty()) {
-			final List<ITypeBinding> arrays = new ArrayList<ITypeBinding>();
 			final List<ITypeBinding> bindings = new ArrayList<ITypeBinding>();
+
+			cur = ext;
 
 			for (ITypeBinding tb : hardDeps) {
 				if (done.contains(tb.getBinaryName())) {
@@ -292,6 +321,15 @@ public class Transformer {
 
 			hardDeps.clear();
 
+			for (ITypeBinding tb : bindings) {
+				try {
+					writeHeader(null, tb);
+				} catch (Exception e) {
+					e.printStackTrace();
+				}
+			}
+
+			cur = sel;
 			for (ITypeBinding tb : arrays) {
 				try {
 					ArrayWriter aw = new ArrayWriter(root, this, tb);
@@ -300,15 +338,15 @@ public class Transformer {
 					e.printStackTrace();
 				}
 			}
-
-			for (ITypeBinding tb : bindings) {
-				try {
-					writeHeader(root, tb);
-				} catch (Exception e) {
-					e.printStackTrace();
-				}
-			}
 		}
+	}
+
+	private IPath getRoot(ICompilationUnit unit) {
+		if (unit != null && selection.contains(unit)) {
+			return root;
+		}
+
+		return root.append("ext");
 	}
 
 	public void hardDep(ITypeBinding dep) {
@@ -320,7 +358,7 @@ public class Transformer {
 	public void softDep(ITypeBinding dep) {
 		if (dep != null) {
 			ForwardWriter.Info info = new ForwardWriter.Info(dep);
-			softDeps.put(dep.getBinaryName(), info);
+			forwards.put(dep.getBinaryName(), info);
 		}
 	}
 
@@ -358,5 +396,20 @@ public class Transformer {
 		} catch (JavaModelException e) {
 			throw new Error(e);
 		}
+	}
+
+	public void addImpl(ITypeBinding tb) {
+		cur.impls.add(TransformUtil.implPath(root, tb, "").makeRelativeTo(root)
+				.toString());
+	}
+
+	public void addNative(ITypeBinding tb) {
+		cur.natives.add(TransformUtil.implPath(root, tb, TransformUtil.NATIVE)
+				.makeRelativeTo(root).toString());
+	}
+
+	public void addStub(ITypeBinding tb) {
+		cur.stubs.add(TransformUtil.implPath(root, tb, TransformUtil.STUB)
+				.makeRelativeTo(root).toString());
 	}
 }

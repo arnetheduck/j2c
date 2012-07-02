@@ -1,6 +1,7 @@
 package se.arnetheduck.j2c.transform;
 
 import java.io.File;
+import java.io.FileNotFoundException;
 import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
@@ -39,8 +40,8 @@ import org.eclipse.jdt.core.dom.TypeParameter;
 import org.eclipse.jdt.core.dom.VariableDeclarationFragment;
 
 public final class TransformUtil {
-	public static final String NATIVE = "-native";
-	public static final String STUB = "-stub";
+	public static final String NATIVE = "native";
+	public static final String STUB = "stub";
 
 	/** Name of fake static initializer */
 	public static final String STATIC_INIT = "clinit";
@@ -287,8 +288,8 @@ public final class TransformUtil {
 	}
 
 	public static String packageHeader(String packageName) {
-		return packageName == null || packageName.length() == 0 ? "fwd.h"
-				: packageName + ".fwd.h";
+		return packageName == null || packageName.length() == 0 ? "fwd.hpp"
+				: toFileName(packageName) + ".fwd.hpp";
 	}
 
 	public static String qualifiedName(ITypeBinding tb) {
@@ -304,25 +305,42 @@ public final class TransformUtil {
 		return "#include \"" + s + "\"";
 	}
 
+	public static IPath headerPath(IPath root, ITypeBinding tb) {
+		return headerPath(root, headerName(tb));
+	}
+
+	public static IPath headerPath(IPath root, String name) {
+		return root.append("include").append(name);
+	}
+
 	public static String headerName(ITypeBinding tb) {
 		if (isPrimitiveArray(tb)) {
-			return "Array.h";
+			return "Array.hpp";
 		}
 
-		return filterName(qualifiedName(tb)) + ".h";
+		return toFileName(qualifiedName(tb)) + ".hpp";
+	}
+
+	public static IPath implPath(IPath root, ITypeBinding tb, String suffix) {
+		return root.append(suffix.length() == 0 ? "src" : suffix).append(
+				implName(tb, suffix));
 	}
 
 	public static String implName(ITypeBinding tb, String suffix) {
-		return filterName(qualifiedName(tb)) + suffix + ".cpp";
+		if (suffix.length() > 0) {
+			suffix = "-" + suffix;
+		}
+
+		return toFileName(qualifiedName(tb)) + suffix + ".cpp";
 	}
 
 	public static String mainName(ITypeBinding tb) {
-		return filterName(qualifiedName(tb)) + "-main.cpp";
+		return toFileName(qualifiedName(tb)) + "-main.cpp";
 	}
 
-	private static String filterName(String s) {
+	private static String toFileName(String s) {
 		// Annoying character to escape
-		return s.replaceAll("\\$", "_");
+		return s.replaceAll("\\$", "_").replaceAll("\\.", "/");
 	}
 
 	public static Object constantValue(VariableDeclarationFragment node) {
@@ -770,8 +788,7 @@ public final class TransformUtil {
 	public static PrintWriter openImpl(IPath root, ITypeBinding tb,
 			String suffix) throws IOException {
 
-		FileOutputStream fos = new FileOutputStream(root.append(
-				TransformUtil.implName(tb, suffix)).toFile());
+		FileOutputStream fos = open(implPath(root, tb, suffix).toFile());
 
 		PrintWriter pw = new PrintWriter(fos);
 
@@ -1188,9 +1205,26 @@ public final class TransformUtil {
 			Object... params) throws IOException {
 		String format = new Scanner(template).useDelimiter("\\A").next();
 
-		try (PrintWriter pw = new PrintWriter(new FileOutputStream(target))) {
+		try (PrintWriter pw = new PrintWriter(open(target))) {
 			pw.format(format, params);
 		}
+	}
+
+	public static void writeResource(InputStream resource, File target)
+			throws IOException {
+		try (PrintWriter pw = new PrintWriter(open(target))) {
+			String txt = new Scanner(resource).useDelimiter("\\A").next();
+			pw.write(txt);
+		}
+	}
+
+	public static FileOutputStream open(File target)
+			throws FileNotFoundException {
+		if (!target.getParentFile().exists()) {
+			target.getParentFile().mkdirs();
+		}
+
+		return new FileOutputStream(target);
 	}
 
 	public static boolean isPrimitiveArray(ITypeBinding tb) {

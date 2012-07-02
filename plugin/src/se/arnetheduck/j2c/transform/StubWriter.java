@@ -39,10 +39,10 @@ public class StubWriter {
 
 	public void write(boolean natives, boolean privates) throws Exception {
 		if (natives) {
-			ctx.natives.add(TransformUtil.implName(type, TransformUtil.NATIVE));
+			ctx.addNative(type);
 			pw = TransformUtil.openImpl(root, type, TransformUtil.NATIVE);
 		} else {
-			ctx.stubs.add(TransformUtil.implName(type, TransformUtil.STUB));
+			ctx.addStub(type);
 			pw = TransformUtil.openImpl(root, type, TransformUtil.STUB);
 		}
 

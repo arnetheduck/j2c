@@ -3,11 +3,11 @@
 #include <algorithm>
 #include <initializer_list>
 
-#include "fwd.h"
+#include "fwd.hpp"
 
-#include "java.lang.Object.h"
-#include "java.lang.Cloneable.h"
-#include "java.io.Serializable.h"
+#include "java/lang/Object.hpp"
+#include "java/lang/Cloneable.hpp"
+#include "java/io/Serializable.hpp"
 
 template<typename T>
 class Array
