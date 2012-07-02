@@ -94,6 +94,7 @@ public class Transformer {
 		monitor.subTask("Moving old files");
 		renameOld();
 
+		hardDep(resolve(ClassLoader.class));
 		selection.addAll(Arrays.asList(units));
 		todo.addAll(selection);
 

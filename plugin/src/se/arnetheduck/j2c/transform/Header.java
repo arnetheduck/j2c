@@ -546,6 +546,11 @@ public class Header {
 			pw.print(i1);
 			TransformUtil.printSignature(pw, type, decl.getMethodDeclaration(),
 					impl.getReturnType(), softDeps, false);
+
+			if (Modifier.isAbstract(impl.getModifiers())) {
+				pw.print(" = 0");
+			}
+
 			pw.println(";");
 
 			method(decl);

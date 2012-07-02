@@ -456,7 +456,7 @@ public class ImplWriter extends TransformWriter {
 	}
 
 	private void printDtor() {
-		if (type.getQualifiedName().equals(Object.class.getName())) {
+		if (TransformUtil.same(type, Object.class)) {
 			println("::java::lang::Object::~Object()");
 			println("{");
 			println("}");
@@ -529,7 +529,10 @@ public class ImplWriter extends TransformWriter {
 				if (im == null) {
 					// Only print super call if an implementation actually
 					// exists
-					// assert (Modifier.isAbstract(type.getModifiers()));
+					continue;
+				}
+
+				if (Modifier.isAbstract(im.getModifiers())) {
 					continue;
 				}
 

@@ -85,7 +85,8 @@ $(BIN)/$(LIB): $(OBJS) $(STUB_OBJS) $(NATIVE_OBJS)
 $(BIN)/$(EXT_LIB): $(EXT_OBJS) $(EXT_STUB_OBJS) $(EXT_NATIVE_OBJS)
 
 $(MAINS):$(BIN)/%%:$(SRC)/%%-main.cpp $(LIBS)
-	@echo Link $<; mkdir -p $(dir $@); $(CXX) $(CPPFLAGS) $(CXXFLAGS) -L$(BIN)/ -o $@ -l$(NAME) $<
+	@mkdir -p $(dir $@); 
+	$(CXX) $(CPPFLAGS) $(CXXFLAGS) -L$(BIN) -o $@ $< -l$(NAME) $(EXTRA_LIBS)
 
 mains: $(MAINS)
 

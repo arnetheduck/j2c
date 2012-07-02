@@ -3,6 +3,7 @@ package se.arnetheduck.j2c.transform;
 import java.io.PrintWriter;
 import java.io.StringWriter;
 import java.lang.reflect.Modifier;
+import java.util.ArrayList;
 import java.util.Set;
 import java.util.TreeSet;
 
@@ -71,6 +72,7 @@ public class StubWriter {
 			pw.println();
 
 			makeGetClass();
+			makeDtor();
 
 			for (IVariableBinding vb : type.getDeclaredFields()) {
 				printField(vb);
@@ -81,7 +83,7 @@ public class StubWriter {
 
 		for (IMethodBinding mb : type.getDeclaredMethods()) {
 			if (Modifier.isNative(mb.getModifiers()) == natives) {
-				printMethod(type, mb, privates);
+				printMethod(mb, privates);
 			}
 		}
 
@@ -95,6 +97,15 @@ public class StubWriter {
 	private void makeGetClass() {
 		if (type.isClass()) {
 			TransformUtil.printGetClass(pw, type);
+		}
+	}
+
+	private void makeDtor() {
+		if (TransformUtil.same(type, Object.class)) {
+			println("::java::lang::Object::~Object()");
+			println("{");
+			println("}");
+			println("");
 		}
 	}
 
@@ -139,15 +150,15 @@ public class StubWriter {
 		println(asMethod ? "_;" : ";");
 	}
 
-	private void printMethod(ITypeBinding tb, IMethodBinding mb,
-			boolean privates) throws Exception {
+	private void printMethod(IMethodBinding mb, boolean privates)
+			throws Exception {
 		if (Modifier.isAbstract(mb.getModifiers())) {
 			return;
 		}
 
 		if (Modifier.isPrivate(mb.getModifiers()) && !privates) {
 			print("/* private: ");
-			TransformUtil.printSignature(pw, tb, mb, softDeps, true);
+			TransformUtil.printSignature(pw, type, mb, softDeps, true);
 			println(" */");
 			return;
 		}
@@ -160,15 +171,30 @@ public class StubWriter {
 			print(TransformUtil.ref(rt));
 		} else {
 			print("void ");
+			print(TransformUtil.qualifiedCName(type, true));
+			print("::" + TransformUtil.CTOR);
+			TransformUtil.printParams(pw, type, mb, true,
+					new ArrayList<ITypeBinding>());
+			println(" { }");
 		}
 
-		print(TransformUtil.qualifiedCName(tb, true));
+		print(TransformUtil.qualifiedCName(type, true));
 		print("::");
 
-		print(mb.isConstructor() ? TransformUtil.CTOR : TransformUtil.name(mb));
+		print(mb.isConstructor() ? TransformUtil.name(type) : TransformUtil
+				.name(mb));
 
-		TransformUtil.printParams(pw, tb, mb, true, softDeps);
-		pw.println();
+		pw.print("(");
+
+		String sep = mb.isConstructor() ? TransformUtil.printNestedParams(pw,
+				type, new ArrayList<IVariableBinding>()) : "";
+
+		if (mb.getParameterTypes().length > 0) {
+			pw.print(sep);
+			TransformUtil.printParams(pw, type, mb, false, softDeps);
+		}
+
+		pw.println(")");
 		print("{");
 		if (Modifier.isNative(mb.getModifiers())) {
 			println(" /* native */");
@@ -178,6 +204,18 @@ public class StubWriter {
 
 		if (TransformUtil.isStatic(mb)) {
 			println(TransformUtil.indent(1) + TransformUtil.STATIC_INIT + "();");
+		}
+
+		if (mb.isConstructor()) {
+			print(TransformUtil.indent(1) + TransformUtil.CTOR + "(");
+			for (int i = 0; i < mb.getParameterTypes().length; ++i) {
+				if (i > 0) {
+					pw.print(", ");
+				}
+
+				pw.print(TransformUtil.paramName(mb, i));
+			}
+			pw.println(");");
 		}
 
 		boolean hasBody = false;
