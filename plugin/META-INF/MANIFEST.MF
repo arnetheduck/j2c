@@ -2,7 +2,7 @@ Manifest-Version: 1.0
 Bundle-ManifestVersion: 2
 Bundle-Name: j2c
 Bundle-SymbolicName: se.arnetheduck.j2c;singleton:=true
-Bundle-Version: 0.1.0.qualifier
+Bundle-Version: 0.2.0.qualifier
 Bundle-Activator: se.arnetheduck.j2c.Activator
 Require-Bundle: org.eclipse.ui,
  org.eclipse.core.runtime,
@@ -12,4 +12,6 @@ Bundle-ActivationPolicy: lazy
 Bundle-RequiredExecutionEnvironment: JavaSE-1.7
 Export-Package: se.arnetheduck.j2c;uses:="org.eclipse.jface.resource,org.eclipse.ui.plugin,org.osgi.framework",
  se.arnetheduck.j2c.handlers;uses:="org.eclipse.jdt.core,org.eclipse.core.commands",
+ se.arnetheduck.j2c.resources,
+ se.arnetheduck.j2c.snippets;uses:="org.eclipse.jdt.core.dom,se.arnetheduck.j2c.transform",
  se.arnetheduck.j2c.transform;uses:="org.eclipse.jdt.core.dom,org.eclipse.core.runtime,org.eclipse.jdt.core"
