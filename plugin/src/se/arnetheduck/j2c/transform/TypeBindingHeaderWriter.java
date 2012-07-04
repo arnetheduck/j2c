@@ -19,6 +19,7 @@ public class TypeBindingHeaderWriter {
 
 	private String access;
 	private final Header header;
+	private static final String i1 = TransformUtil.indent(1);
 
 	protected final Set<ITypeBinding> hardDeps = new TreeSet<ITypeBinding>(
 			new BindingComparator());
@@ -126,6 +127,22 @@ public class TypeBindingHeaderWriter {
 	}
 
 	private void printMethod(PrintWriter pw, ITypeBinding tb, IMethodBinding mb) {
+		if (Header.baseDeclared(ctx, type, mb)) {
+			// Defining once more will lead to virtual inheritance issues
+			pw.print(i1 + "/*");
+			TransformUtil.printSignature(pw, type, mb, softDeps, false);
+			pw.println("; (already declared) */");
+			return;
+		}
+
+		if (Modifier.isPrivate(mb.getModifiers())) {
+			// Skip implementation details
+			pw.print(i1 + "/*");
+			TransformUtil.printSignature(pw, tb, mb, softDeps, false);
+			pw.println("; (private) */");
+			return;
+		}
+
 		if (mb.isConstructor()) {
 			// The fake ctor should always be protected
 			access = Header.printProtected(pw, access);
@@ -133,28 +150,9 @@ public class TypeBindingHeaderWriter {
 			access = Header.printAccess(pw, mb.getModifiers(), access);
 		}
 
-		if (Header.baseDeclared(ctx, type, mb)) {
-			// Defining once more will lead to virtual inheritance issues
-			pw.print(TransformUtil.indent(1));
-			pw.print("/*");
-			TransformUtil.printSignature(pw, tb, mb, softDeps, false);
-			pw.println("; (already declared) */");
-			return;
-		}
-
-		if (Modifier.isPrivate(mb.getModifiers())) {
-			// Skip implementation details
-			pw.print(TransformUtil.indent(1));
-			pw.print("/*");
-			TransformUtil.printSignature(pw, tb, mb, softDeps, false);
-			pw.println("; (private) */");
-			return;
-		}
-
 		header.method(mb);
 
-		pw.print(TransformUtil.indent(1));
-
+		pw.print(i1);
 		TransformUtil.printSignature(pw, tb, mb, softDeps, false);
 
 		if (Modifier.isAbstract(mb.getModifiers())) {

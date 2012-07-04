@@ -3,7 +3,6 @@ package se.arnetheduck.j2c.transform;
 import java.io.File;
 import java.io.IOException;
 import java.io.InputStream;
-import java.io.PrintWriter;
 import java.io.Serializable;
 import java.util.ArrayList;
 import java.util.Collections;
@@ -11,6 +10,7 @@ import java.util.List;
 
 import org.eclipse.core.runtime.IPath;
 import org.eclipse.jdt.core.dom.ITypeBinding;
+import org.eclipse.jdt.core.dom.IVariableBinding;
 
 public class ArrayWriter {
 	private static final String ARRAY_H = "/se/arnetheduck/j2c/resources/Array.hpp";
@@ -114,12 +114,10 @@ public class ArrayWriter {
 
 	private void writeImpl() throws IOException {
 		ctx.addImpl(type);
-		PrintWriter pw = TransformUtil.openImpl(root, type, "");
+		Impl impl = new Impl(ctx, type, new ArrayList<ITypeBinding>(),
+				new ArrayList<ITypeBinding>());
 
-		TransformUtil.printClassLiteral(pw, type);
-		TransformUtil.printGetClass(pw, type);
-
-		pw.close();
+		impl.write(root, "", "", new ArrayList<IVariableBinding>(), null,
+				false, false);
 	}
-
 }

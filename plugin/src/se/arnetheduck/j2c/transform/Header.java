@@ -398,12 +398,7 @@ public class Header {
 		String name = TransformUtil.name(type);
 
 		if (type.isAnonymous()) {
-			assert (constructors.isEmpty());
-			for (IMethodBinding mb : type.getSuperclass().getDeclaredMethods()) {
-				if (TransformUtil.asBaseConstructor(mb, type)) {
-					constructors.add(mb);
-				}
-			}
+			getBaseConstructors(type, constructors);
 		}
 
 		boolean hasEmpty = false;
@@ -438,13 +433,22 @@ public class Header {
 			pw.println(");");
 
 			access = printProtected(pw, access);
+			pw.println("void " + TransformUtil.CTOR + "();");
+		}
+	}
 
-			pw.println(i1 + "void " + TransformUtil.CTOR + "();");
+	public static void getBaseConstructors(ITypeBinding type,
+			Collection<IMethodBinding> constructors) {
+		assert (constructors.isEmpty());
+		for (IMethodBinding mb : type.getSuperclass().getDeclaredMethods()) {
+			if (TransformUtil.asBaseConstructor(mb, type)) {
+				constructors.add(mb);
+			}
 		}
 	}
 
 	private void printClinit() {
-		if (type.isInterface()) {
+		if (!type.isClass() && !type.isEnum()) {
 			return;
 		}
 

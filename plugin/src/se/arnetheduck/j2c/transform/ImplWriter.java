@@ -1,5 +1,7 @@
 package se.arnetheduck.j2c.transform;
 
+import java.io.IOException;
+import java.io.InputStream;
 import java.io.PrintWriter;
 import java.io.StringWriter;
 import java.util.ArrayList;
@@ -85,6 +87,9 @@ import org.eclipse.jdt.core.dom.VariableDeclarationStatement;
 import org.eclipse.jdt.core.dom.WhileStatement;
 
 public class ImplWriter extends TransformWriter {
+	private static final String FINALLY_HPP = "/se/arnetheduck/j2c/resources/finally.hpp";
+	private static final String SYNCHRONIZED_HPP = "/se/arnetheduck/j2c/resources/synchronized.hpp";
+
 	private final IPath root;
 	private final Set<IVariableBinding> closures;
 
@@ -105,6 +110,10 @@ public class ImplWriter extends TransformWriter {
 
 	private boolean hasNatives;
 
+	private final Impl impl;
+	private final String qcname;
+	private final String name;
+
 	public ImplWriter(IPath root, Transformer ctx, ITypeBinding type,
 			UnitInfo unitInfo) {
 		super(ctx, type, unitInfo);
@@ -112,6 +121,10 @@ public class ImplWriter extends TransformWriter {
 
 		closures = type.isLocal() ? new LinkedHashSet<IVariableBinding>()
 				: null;
+
+		impl = new Impl(ctx, type, softDeps, hardDeps);
+		qcname = TransformUtil.qualifiedCName(type, true);
+		name = TransformUtil.name(type);
 	}
 
 	public void write(AnnotationTypeDeclaration node) throws Exception {
@@ -159,33 +172,20 @@ public class ImplWriter extends TransformWriter {
 
 		visitAll(declarations);
 
-		printSuperCalls();
-
 		out.close();
 		return body.toString();
 	}
 
 	private void writeType(String body) throws Exception {
-		try {
-			String extras = getExtras();
+		String extras = getExtras();
 
-			out = TransformUtil.openImpl(root, type, "");
+		impl.write(root, extras + body, "", closures, clinit, fmod, false);
 
-			makeIncludes();
+		ctx.addImpl(type);
 
-			print(extras); // Body code depends on some extras
-			print(body);
-
-			out.close();
-
-			ctx.addImpl(type);
-
-			if (hasNatives) {
-				StubWriter sw = new StubWriter(root, ctx, type);
-				sw.write(true, true);
-			}
-		} finally {
-			out = null;
+		if (hasNatives) {
+			StubWriter sw = new StubWriter(root, ctx, type);
+			sw.write(true, true);
 		}
 
 		for (ITypeBinding tb : softDeps) {
@@ -193,7 +193,7 @@ public class ImplWriter extends TransformWriter {
 		}
 	}
 
-	private String getExtras() {
+	private String getExtras() throws IOException {
 		StringWriter sw = new StringWriter();
 		out = new PrintWriter(sw);
 
@@ -206,123 +206,36 @@ public class ImplWriter extends TransformWriter {
 			printConstructors();
 		}
 
-		TransformUtil.printClassLiteral(out, type);
-
 		if (!(type.isInterface() || type.isAnnotation())) {
-			printClinit();
-
 			printInit();
-
-			printDtor();
-
-			printGetClass();
 		}
 
 		out.close();
 		out = null;
+
 		return sw.toString();
 	}
 
-	private void makeIncludes() {
-		boolean hasInc = false;
-		boolean hasArray = false;
-
-		for (ITypeBinding dep : getHardDeps()) {
-			if (!dep.isPrimitive()) {
-				hasInc = true;
-				if (TransformUtil.isPrimitiveArray(dep)) {
-					if (hasArray) {
-						continue;
-					}
-
-					hasArray = true;
-				}
-
-				println(TransformUtil.include(dep));
-			}
-		}
-
-		if (fmod) {
-			println("#include <cmath>");
-			hasInc = true;
-		}
-
-		if (hasInc) {
-			println();
-		}
-	}
-
-	private void printFinally() {
+	private void printFinally() throws IOException {
 		if (!needsFinally) {
 			return;
 		}
 
-		println("namespace {");
-		indent++;
-		printlni("template<typename F> struct finally_ {");
-		indent++;
-		printlni("finally_(F f) : f(f), moved(false) { }");
-		printlni("finally_(finally_ &&x) : f(x.f), moved(false) { x.moved = true; }");
-		printlni("~finally_() { if(!moved) f(); }");
-		printlni("private: finally_(const finally_&); finally_& operator=(const finally_&); ");
-		printlni("F f;");
-		printlni("bool moved;");
-		indent--;
-		printlni("};");
-		printlni("template<typename F> finally_<F> finally(F f) { return finally_<F>(f); }");
-		indent--;
-		printlni("}");
-		println();
+		try (InputStream is = ArrayWriter.class
+				.getResourceAsStream(FINALLY_HPP)) {
+			print(TransformUtil.read(is));
+		}
 	}
 
-	private void printSynchronized() {
+	private void printSynchronized() throws IOException {
 		if (!needsSynchronized) {
 			return;
 		}
 
-		println("extern void lock(java::lang::Object *);");
-		println("extern void unlock(java::lang::Object *);");
-		println("namespace {");
-		indent++;
-		printlni("struct synchronized {");
-		indent++;
-		printlni("synchronized(java::lang::Object *o) : o(o) { ::lock(o); }");
-		printlni("~synchronized() { ::unlock(o); }");
-		printlni("private: synchronized(const synchronized&); synchronized& operator=(const synchronized&); ");
-		printlni("java::lang::Object *o;");
-		indent--;
-		printlni("};");
-		indent--;
-		printlni("}");
-		println();
-	}
-
-	private void printClinit() {
-		if (clinit != null) {
-			println("static bool clinit_done;");
+		try (InputStream is = ArrayWriter.class
+				.getResourceAsStream(SYNCHRONIZED_HPP)) {
+			print(TransformUtil.read(is));
 		}
-
-		String cname = TransformUtil.qualifiedCName(type, true);
-		println("void ", cname, "::", TransformUtil.STATIC_INIT, "()");
-		println("{");
-		indent++;
-
-		if (type.getSuperclass() != null) {
-			printlni("super::" + TransformUtil.STATIC_INIT + "();");
-		}
-
-		if (clinit != null) {
-			printlni("if(!::clinit_done) {");
-			indent++;
-			printlni("::clinit_done = true;"); // TODO atomic
-			print(clinit.toString());
-			indent--;
-			printlni("}");
-		}
-
-		indent--;
-		println("}");
-		println();
 	}
 
 	private void printInit() {
@@ -330,8 +243,7 @@ public class ImplWriter extends TransformWriter {
 			return;
 		}
 
-		String cname = TransformUtil.qualifiedCName(type, true);
-		println("void ", cname, "::", TransformUtil.INSTANCE_INIT, "()");
+		println("void ", qcname, "::", TransformUtil.INSTANCE_INIT, "()");
 		println("{");
 		print(init.toString());
 		println("}");
@@ -385,12 +297,9 @@ public class ImplWriter extends TransformWriter {
 			return;
 		}
 
-		String qname = TransformUtil.qualifiedCName(type, true);
-		String name = TransformUtil.name(type);
-
 		boolean hasEmpty = false;
 		for (MethodDeclaration md : constructors) {
-			printi(qname, "::", name, "(");
+			printi(qcname, "::", name, "(");
 
 			String sep = TransformUtil.printNestedParams(out, type, closures);
 
@@ -398,9 +307,9 @@ public class ImplWriter extends TransformWriter {
 				print(sep);
 
 				visitAllCSV(md.parameters(), false);
+			} else {
+				hasEmpty = true;
 			}
-
-			hasEmpty |= md.parameters().isEmpty();
 
 			println(") ", TransformUtil.throwsDecl(md.thrownExceptions()));
 
@@ -416,7 +325,7 @@ public class ImplWriter extends TransformWriter {
 				printlni(TransformUtil.INSTANCE_INIT, "();");
 			}
 
-			printi(TransformUtil.CTOR, "(");
+			printi(TransformUtil.CTOR + "(");
 
 			printNames(md.parameters());
 
@@ -428,46 +337,97 @@ public class ImplWriter extends TransformWriter {
 		}
 
 		if (!hasEmpty) {
-			printi(qname, "::", name, "(");
+			printEmptyConstructor();
+		}
+	}
 
-			TransformUtil.printNestedParams(out, type, closures);
+	private void printBaseConstructors() {
+		if (!type.isClass() && !type.isEnum()) {
+			return;
+		}
+
+		// Synthesize base class constructors
+		List<IMethodBinding> baseConstructors = new ArrayList<IMethodBinding>();
+		Header.getBaseConstructors(type, baseConstructors);
+		boolean hasEmpty = false;
+		for (IMethodBinding mb : baseConstructors) {
+			printi(qcname, "::", name, "(");
+
+			String sep = TransformUtil.printNestedParams(out, type, closures);
+
+			if (mb.getParameterTypes().length > 0) {
+				out.print(sep);
+				TransformUtil.printParams(out, type, mb, false, softDeps);
+			} else {
+				hasEmpty = true;
+			}
 
 			println(")");
-
 			indent++;
-			printFieldInit(": ");
+			String initSep = ": ";
+
+			if (!(type.getSuperclass() != null && TransformUtil
+					.hasOuterThis(type.getSuperclass()))) {
+				printi(initSep);
+				initSep = ", ";
+				print(TransformUtil.relativeCName(type.getSuperclass(), type,
+						true), "(");
+
+				sep = "";
+				for (int i = 0; i < mb.getParameterTypes().length; ++i) {
+					print(sep, TransformUtil.paramName(mb, i));
+					sep = ", ";
+				}
+
+				println(")");
+			}
+
+			printFieldInit(initSep);
+
 			indent--;
 			println("{");
-
 			indent++;
 			printlni(TransformUtil.STATIC_INIT, "();");
 			if (init != null) {
 				printlni(TransformUtil.INSTANCE_INIT, "();");
 			}
 
+			println("}");
 			indent--;
-			println("}");
 			println();
+		}
 
-			println("void ", qname, "::", TransformUtil.CTOR, "()");
-			println("{");
-			println("}");
+		if (!hasEmpty) {
+			printEmptyConstructor();
 		}
 	}
 
-	private void printDtor() {
-		if (TransformUtil.same(type, Object.class)) {
-			println("::java::lang::Object::~Object()");
-			println("{");
-			println("}");
-			println();
-		}
-	}
+	private void printEmptyConstructor() {
+		printi(qcname + "::" + name + "(");
 
-	private void printGetClass() {
-		if (type.isClass()) {
-			TransformUtil.printGetClass(out, type);
+		TransformUtil.printNestedParams(out, type, closures);
+
+		println(")");
+
+		indent++;
+		printFieldInit(": ");
+		indent--;
+		println("{");
+
+		indent++;
+		printlni(TransformUtil.STATIC_INIT, "();");
+		if (init != null) {
+			printlni(TransformUtil.INSTANCE_INIT, "();");
 		}
+
+		indent--;
+		println("}");
+		println();
+
+		println("void " + qcname + "::" + TransformUtil.CTOR + "()");
+		println("{");
+		println("}");
+		println();
 	}
 
 	private void printFieldInit(String sep) {
@@ -521,137 +481,6 @@ public class ImplWriter extends TransformWriter {
 		}
 	}
 
-	private void printSuperCalls() {
-		if (type.isClass()) {
-			List<IMethodBinding> missing = Header.baseCallMethods(type);
-			for (IMethodBinding mb : missing) {
-				IMethodBinding im = Header.findImpl(type, mb);
-				if (im == null) {
-					// Only print super call if an implementation actually
-					// exists
-					continue;
-				}
-
-				if (Modifier.isAbstract(im.getModifiers())) {
-					continue;
-				}
-
-				printSuperCall(mb, im);
-			}
-		}
-	}
-
-	private void printSuperCall(IMethodBinding decl, IMethodBinding impl) {
-		IMethodBinding md = decl.getMethodDeclaration();
-		TransformUtil.printSignature(out, type, md, impl.getReturnType(),
-				softDeps, true);
-		println();
-		println("{");
-		indent++;
-		printi();
-
-		boolean erased = TransformUtil.returnErased(impl);
-
-		if (TransformUtil.isVoid(impl.getReturnType())) {
-			out.format("%s::%s(", TransformUtil.name(impl.getDeclaringClass()),
-					TransformUtil.name(impl));
-		} else {
-			print("return ");
-			if (erased) {
-				dynamicCast(impl.getMethodDeclaration().getReturnType()
-						.getErasure(), impl.getReturnType());
-			}
-
-			out.format("%s::%s(", TransformUtil.name(impl.getDeclaringClass()),
-					TransformUtil.name(impl));
-		}
-
-		String sep = "";
-		for (int i = 0; i < impl.getParameterTypes().length; ++i) {
-			print(sep);
-			sep = ", ";
-
-			boolean cast = !md.getParameterTypes()[i].getErasure()
-					.isAssignmentCompatible(
-							impl.getParameterTypes()[i].getErasure());
-			if (cast) {
-				dynamicCast(md.getParameterTypes()[i],
-						impl.getParameterTypes()[i]);
-			}
-			print(TransformUtil.paramName(md, i));
-			if (cast) {
-				print(")");
-			}
-		}
-
-		if (erased) {
-			print(")");
-		}
-
-		println(");");
-		indent--;
-		println("}");
-		println();
-	}
-
-	private void printBaseConstructors() {
-		if (!type.isClass() && !type.isEnum()) {
-			return;
-		}
-
-		// Synthesize base class constructors
-		String qname = TransformUtil.qualifiedCName(type, true);
-		String name = TransformUtil.name(type);
-		for (IMethodBinding mb : type.getSuperclass().getDeclaredMethods()) {
-			if (!TransformUtil.asBaseConstructor(mb, type)) {
-				continue;
-			}
-
-			printi(qname, "::", name, "(");
-
-			String sep = TransformUtil.printNestedParams(out, type, closures);
-
-			for (int i = 0; i < mb.getParameterTypes().length; ++i) {
-				ITypeBinding pb = mb.getParameterTypes()[i];
-				softDep(pb);
-
-				print(sep, TransformUtil.relativeCName(pb, type, true), " ",
-						TransformUtil.ref(pb), TransformUtil.paramName(mb, i));
-				sep = ", ";
-			}
-
-			println(")");
-			indent++;
-			String initSep = ": ";
-
-			if (!(type.getSuperclass() != null && TransformUtil
-					.hasOuterThis(type.getSuperclass()))) {
-				printi(initSep);
-				initSep = ", ";
-				print(TransformUtil.relativeCName(type.getSuperclass(), type,
-						true), "(");
-
-				sep = "";
-				for (int i = 0; i < mb.getParameterTypes().length; ++i) {
-					print(sep, TransformUtil.paramName(mb, i));
-					sep = ", ";
-				}
-
-				println(")");
-			}
-
-			printFieldInit(initSep);
-
-			indent--;
-			println("{");
-			indent++;
-			printlni(TransformUtil.STATIC_INIT, "();");
-			println("}");
-			indent--;
-			println();
-		}
-	}
-
 	private void printInit(String n) {
 		println(n, "(", n, ")");
 	}
@@ -666,7 +495,7 @@ public class ImplWriter extends TransformWriter {
 		}
 	}
 
-	List<NodeInfo> visits = new ArrayList<NodeInfo>();
+	private final List<NodeInfo> visits = new ArrayList<NodeInfo>();
 
 	@Override
 	public boolean preVisit2(ASTNode node) {
@@ -1359,8 +1188,7 @@ public class ImplWriter extends TransformWriter {
 
 	@Override
 	public boolean visit(EnumConstantDeclaration node) {
-		String qcn = TransformUtil.qualifiedCName(type, true);
-		print(qcn, " *", qcn, "::");
+		print(qcname, " *", qcname, "::");
 
 		node.getName().accept(this);
 
@@ -1453,7 +1281,7 @@ public class ImplWriter extends TransformWriter {
 
 				print(TransformUtil.ref(tb));
 
-				print("&", TransformUtil.qualifiedCName(type, false), "::");
+				print("&" + qcname + "::");
 
 				print(TransformUtil.name(vb));
 
@@ -1474,11 +1302,9 @@ public class ImplWriter extends TransformWriter {
 					.getExtraDimensions()) : tb;
 			print(TransformUtil.qualifiedCName(tb, true));
 
-			print(" ");
+			print(" " + TransformUtil.ref(tb));
 
-			print(TransformUtil.ref(tb));
-
-			print(TransformUtil.qualifiedCName(type, false), "::");
+			print(qcname + "::");
 
 			if (asMethod) {
 				println(TransformUtil.name(vb), "_;");
@@ -1822,15 +1648,14 @@ public class ImplWriter extends TransformWriter {
 		if (node.isConstructor()) {
 			constructors.add(node);
 
-			printi("void ", TransformUtil.qualifiedCName(type, true), "::",
-					TransformUtil.CTOR);
+			printi("void " + qcname + "::" + TransformUtil.CTOR);
 		} else {
 			ITypeBinding rt = TransformUtil.returnType(node);
 			softDep(rt);
 			print(TransformUtil.qualifiedCName(rt, true), " ",
 					TransformUtil.ref(rt));
 
-			print(TransformUtil.qualifiedCName(type, true), "::");
+			print(qcname + "::");
 
 			node.getName().accept(this);
 		}

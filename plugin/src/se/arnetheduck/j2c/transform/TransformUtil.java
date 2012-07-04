@@ -785,25 +785,6 @@ public final class TransformUtil {
 		return "";
 	}
 
-	public static PrintWriter openImpl(IPath root, ITypeBinding tb,
-			String suffix) throws IOException {
-
-		FileOutputStream fos = open(implPath(root, tb, suffix).toFile());
-
-		PrintWriter pw = new PrintWriter(fos);
-
-		if (tb.getJavaElement() != null) {
-			pw.println("// Generated from " + tb.getJavaElement().getPath());
-		} else {
-			pw.println("// Generated");
-		}
-
-		pw.println(include(tb));
-		pw.println();
-
-		return pw;
-	}
-
 	public static void print(PrintWriter out, Object... objects) {
 		for (Object o : objects) {
 			out.print(o);
@@ -1102,7 +1083,13 @@ public final class TransformUtil {
 			IMethodBinding mb, ITypeBinding rt,
 			Collection<ITypeBinding> softDeps, boolean qualified) {
 		if (mb.isConstructor()) {
-			pw.print("void " + CTOR);
+			pw.print("void ");
+			if (qualified) {
+				pw.print(qualifiedCName(tb, true));
+				pw.print("::");
+			}
+
+			pw.print(CTOR);
 		} else {
 			addDep(rt, softDeps);
 
@@ -1148,7 +1135,7 @@ public final class TransformUtil {
 	}
 
 	public static boolean isVoid(ITypeBinding tb) {
-		return tb.getName().equals("void");
+		return tb == null || tb.getName().equals("void");
 	}
 
 	public static boolean isMain(IMethodBinding mb) {
@@ -1171,39 +1158,9 @@ public final class TransformUtil {
 		pw.println();
 	}
 
-	public static void printClassLiteral(PrintWriter out, ITypeBinding type) {
-		out.println("extern ::java::lang::Class *class_(const char16_t *c, int n);");
-		out.println();
-		if (type.isArray() && type.getComponentType().isPrimitive()) {
-			out.println("template<>");
-		}
-		out.println("::java::lang::Class *" + qualifiedCName(type, false)
-				+ "::class_()");
-		out.println("{");
-		out.println("    static ::java::lang::Class *c = ::class_(u\""
-				+ type.getQualifiedName() + "\", "
-				+ type.getQualifiedName().length() + ");");
-		out.println("    return c;");
-
-		out.println("}");
-		out.println();
-	}
-
-	public static void printGetClass(PrintWriter pw, ITypeBinding type) {
-		if (type.isArray() && type.getComponentType().isPrimitive()) {
-			pw.println("template<>");
-		}
-		pw.println("::java::lang::Class *" + qualifiedCName(type, true) + "::"
-				+ GET_CLASS + "()");
-		pw.println("{");
-		pw.println(indent(1) + "return class_();");
-		pw.println("}");
-		pw.println();
-	}
-
 	public static void writeTemplate(InputStream template, File target,
 			Object... params) throws IOException {
-		String format = new Scanner(template).useDelimiter("\\A").next();
+		String format = read(template);
 
 		try (PrintWriter pw = new PrintWriter(open(target))) {
 			pw.format(format, params);
@@ -1213,9 +1170,13 @@ public final class TransformUtil {
 	public static void writeResource(InputStream resource, File target)
 			throws IOException {
 		try (PrintWriter pw = new PrintWriter(open(target))) {
-			String txt = new Scanner(resource).useDelimiter("\\A").next();
+			String txt = read(resource);
 			pw.write(txt);
 		}
+	}
+
+	public static String read(InputStream resource) {
+		return new Scanner(resource).useDelimiter("\\A").next();
 	}
 
 	public static FileOutputStream open(File target)
