@@ -50,6 +50,15 @@
                style="push">
          </command>
       </menuContribution>
+      <menuContribution
+            allPopups="false"
+            locationURI="popup:org.eclipse.ui.navigator.ProjectExplorer#PopupMenu?after=additions">
+         <command
+               commandId="se.arnetheduck.j2c.commands.Translate"
+               label="Translate to C++"
+               style="push">
+         </command>
+      </menuContribution>
    </extension>
 
 </plugin>
