@@ -1,61 +1,70 @@
 package se.arnetheduck.j2c.handlers;
 
+import java.util.Collection;
+
 import org.eclipse.core.commands.AbstractHandler;
 import org.eclipse.core.commands.ExecutionEvent;
 import org.eclipse.core.commands.ExecutionException;
+import org.eclipse.core.resources.IProject;
 import org.eclipse.jdt.core.ICompilationUnit;
 import org.eclipse.jdt.core.IJavaProject;
 import org.eclipse.jdt.core.IPackageFragment;
+import org.eclipse.jdt.core.IPackageFragmentRoot;
+import org.eclipse.jdt.core.JavaCore;
 import org.eclipse.jface.dialogs.MessageDialog;
 import org.eclipse.jface.viewers.IStructuredSelection;
 import org.eclipse.ui.handlers.HandlerUtil;
 
-/**
- * Our sample handler extends AbstractHandler, an IHandler base class.
- * 
- * @see org.eclipse.core.commands.IHandler
- * @see org.eclipse.core.commands.AbstractHandler
- */
 public class TransformHandler extends AbstractHandler {
-	/**
-	 * The constructor.
-	 */
 	public TransformHandler() {
 	}
 
-	/**
-	 * the command has been executed, so extract extract the needed information
-	 * from the application context.
-	 */
 	@Override
 	public Object execute(ExecutionEvent event) throws ExecutionException {
-		IStructuredSelection selection = (IStructuredSelection) HandlerUtil
-				.getActiveMenuSelection(event);
+		try {
+			IStructuredSelection selection = (IStructuredSelection) HandlerUtil
+					.getActiveMenuSelection(event);
 
-		Object firstElement = selection.getFirstElement();
-		if (firstElement instanceof IJavaProject) {
-			try {
-				HandlerHelper.process((IJavaProject) firstElement);
-			} catch (Exception e) {
-				e.printStackTrace();
+			Object element = selection.getFirstElement();
+			IJavaProject project = null;
+			Collection<ICompilationUnit> units = null;
+			if (element instanceof IJavaProject) {
+				project = (IJavaProject) element;
+				units = HandlerHelper.units(project);
+			} else if (element instanceof IPackageFragmentRoot) {
+				IPackageFragmentRoot pfr = (IPackageFragmentRoot) element;
+				project = pfr.getJavaProject();
+				units = HandlerHelper.units(pfr);
+			} else if (element instanceof IPackageFragment) {
+				IPackageFragment pf = (IPackageFragment) element;
+				project = pf.getJavaProject();
+				units = HandlerHelper.units(pf);
+			} else if (element instanceof ICompilationUnit) {
+				ICompilationUnit cu = (ICompilationUnit) element;
+				project = cu.getJavaProject();
+				units = HandlerHelper.units(cu);
+			} else if (element instanceof IProject) {
+				IProject p = (IProject) element;
+				if (p.isOpen() && p.hasNature(JavaCore.NATURE_ID)) {
+					project = JavaCore.create(p);
+					units = HandlerHelper.units(project);
+				}
 			}
-		} else if (firstElement instanceof IPackageFragment) {
-			try {
-				HandlerHelper.process((IPackageFragment) firstElement);
-			} catch (Exception e) {
-				e.printStackTrace();
+
+			if (project != null && units != null) {
+				HandlerHelper.process(project, units);
+			} else {
+				MessageDialog.openInformation(
+						HandlerUtil.getActiveShell(event), "Invalid selection",
+						"Please select a Java project, package or source file");
 			}
-		} else if (firstElement instanceof ICompilationUnit) {
-			try {
-				HandlerHelper.process((ICompilationUnit) firstElement);
-			} catch (Exception e) {
-				e.printStackTrace();
-			}
-		} else {
-			MessageDialog.openInformation(HandlerUtil.getActiveShell(event),
-					"Information",
-					"Please select a Java project, package or source file");
+		} catch (Exception e) {
+			e.printStackTrace();
+			MessageDialog.openError(HandlerUtil.getActiveShell(event),
+					"Error processing selection", e.getMessage());
 		}
+
 		return null;
 	}
+
 }

@@ -1,5 +1,7 @@
 package se.arnetheduck.j2c.handlers;
 
+import java.util.Collection;
+
 import org.eclipse.core.commands.AbstractHandler;
 import org.eclipse.core.commands.ExecutionEvent;
 import org.eclipse.core.commands.ExecutionException;
@@ -7,6 +9,8 @@ import org.eclipse.core.resources.IProject;
 import org.eclipse.core.resources.IWorkspace;
 import org.eclipse.core.resources.IWorkspaceRoot;
 import org.eclipse.core.resources.ResourcesPlugin;
+import org.eclipse.jdt.core.ICompilationUnit;
+import org.eclipse.jdt.core.IJavaProject;
 import org.eclipse.jdt.core.JavaCore;
 
 public class TestHandler extends AbstractHandler {
@@ -21,8 +25,7 @@ public class TestHandler extends AbstractHandler {
 		for (IProject project : projects) {
 			try {
 				if (!project.isOpen()
-						|| !project
-								.isNatureEnabled("org.eclipse.jdt.core.javanature")) {
+						|| !project.isNatureEnabled(JavaCore.NATURE_ID)) {
 					continue;
 				}
 
@@ -30,7 +33,9 @@ public class TestHandler extends AbstractHandler {
 					continue;
 				}
 
-				HandlerHelper.process(JavaCore.create(project));
+				IJavaProject jp = JavaCore.create(project);
+				Collection<ICompilationUnit> units = HandlerHelper.units(jp);
+				HandlerHelper.process(jp, units);
 			} catch (Exception e) {
 				e.printStackTrace();
 			}

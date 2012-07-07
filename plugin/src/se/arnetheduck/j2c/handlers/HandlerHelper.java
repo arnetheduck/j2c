@@ -2,6 +2,7 @@ package se.arnetheduck.j2c.handlers;
 
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Collection;
 import java.util.List;
 
 import org.eclipse.core.runtime.IPath;
@@ -10,52 +11,77 @@ import org.eclipse.core.runtime.IStatus;
 import org.eclipse.core.runtime.Status;
 import org.eclipse.core.runtime.jobs.Job;
 import org.eclipse.jdt.core.ICompilationUnit;
+import org.eclipse.jdt.core.IJavaElement;
 import org.eclipse.jdt.core.IJavaProject;
 import org.eclipse.jdt.core.IPackageFragment;
 import org.eclipse.jdt.core.IPackageFragmentRoot;
+import org.eclipse.jdt.core.JavaModelException;
 import org.eclipse.jface.dialogs.MessageDialog;
+import org.eclipse.ui.handlers.HandlerUtil;
 
 import se.arnetheduck.j2c.transform.Transformer;
 
 public class HandlerHelper {
-	public static void process(IJavaProject project) throws Exception {
+	public static Collection<ICompilationUnit> units(IJavaProject project)
+			throws JavaModelException {
 		List<ICompilationUnit> units = new ArrayList<ICompilationUnit>();
 		IPackageFragment[] packages = project.getPackageFragments();
-		for (IPackageFragment mypackage : packages) {
-			if (mypackage.getKind() == IPackageFragmentRoot.K_SOURCE) {
-				for (ICompilationUnit u : mypackage.getCompilationUnits()) {
-					units.add(u);
-				}
+		for (IPackageFragment pf : packages) {
+			add(units, pf);
+		}
+
+		return units;
+	}
+
+	public static Collection<ICompilationUnit> units(IPackageFragmentRoot pfr)
+			throws JavaModelException {
+		List<ICompilationUnit> units = new ArrayList<ICompilationUnit>();
+		for (IJavaElement pf : pfr.getChildren()) {
+			if (pf instanceof IPackageFragment) {
+				add(units, (IPackageFragment) pf);
 			}
 		}
 
-		process(project, units);
+		return units;
 	}
 
-	public static void process(IPackageFragment mypackage) throws Exception {
+	public static Collection<ICompilationUnit> units(IPackageFragment pf)
+			throws JavaModelException {
 		List<ICompilationUnit> units = new ArrayList<ICompilationUnit>();
-		if (mypackage.getKind() == IPackageFragmentRoot.K_SOURCE) {
-			for (ICompilationUnit u : mypackage.getCompilationUnits()) {
-				units.add(u);
-			}
-		}
-		process(mypackage.getJavaProject(), units);
+		add(units, pf);
+		return units;
 	}
 
-	public static void process(IJavaProject project, ICompilationUnit unit)
-			throws Exception {
+	public static Collection<ICompilationUnit> units(ICompilationUnit unit) {
 		List<ICompilationUnit> units = new ArrayList<ICompilationUnit>();
 
-		if (unit == null) {
-		} else {
+		if (unit != null) {
 			units.add(unit);
 		}
 
-		process(project, units);
+		return units;
 	}
 
-	private static void process(final IJavaProject project,
-			final List<ICompilationUnit> units) throws Exception {
+	private static void add(Collection<ICompilationUnit> units,
+			IPackageFragment pf) throws JavaModelException {
+		if (pf.getKind() == IPackageFragmentRoot.K_SOURCE) {
+			add(units, pf.getCompilationUnits());
+		}
+	}
+
+	private static void add(Collection<ICompilationUnit> units,
+			ICompilationUnit... u) {
+		units.addAll(Arrays.asList(u));
+	}
+
+	public static void process(final IJavaProject project,
+			final Collection<ICompilationUnit> units) {
+		if (units.isEmpty()) {
+			MessageDialog.openInformation(HandlerUtil.getActiveShell(null),
+					"No sources", "No Java source code found in selection");
+			return;
+		}
+
 		// We will write to the source folder prefixed with "c"
 		final IPath p = project.getProject().getLocation()
 				.removeLastSegments(1)
@@ -91,9 +117,5 @@ public class HandlerHelper {
 			job.setPriority(Job.BUILD);
 			job.schedule();
 		}
-	}
-
-	public static void process(ICompilationUnit unit) throws Exception {
-		process(unit.getJavaProject(), Arrays.asList(unit));
 	}
 }
