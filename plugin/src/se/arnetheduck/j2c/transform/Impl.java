@@ -123,10 +123,6 @@ public class Impl {
 			return;
 		}
 
-		if (clinit != null) {
-			pw.println("static bool clinit_done;");
-		}
-
 		pw.println("void " + qcname + "::" + TransformUtil.STATIC_INIT + "()");
 		pw.println("{");
 
@@ -135,10 +131,13 @@ public class Impl {
 		}
 
 		if (clinit != null) {
-			pw.println(i1 + "if(!::clinit_done) {");
-			pw.println(i2 + "::clinit_done = true;"); // TODO atomic
+			pw.println("struct clinit_ {");
+			pw.println(i1 + "clinit_() {");
 			pw.print(clinit.toString());
-			pw.println("}");
+			pw.println(i1 + "}");
+			pw.println("};");
+			pw.println();
+			pw.println("static clinit_ clinit_instance;");
 		}
 
 		pw.println("}");
