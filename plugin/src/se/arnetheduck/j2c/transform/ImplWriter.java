@@ -939,12 +939,31 @@ public class ImplWriter extends TransformWriter {
 			printi("goto ");
 			printLabelName(node.getLabel());
 			print("_break");
+		} else if (!enumSwitches.isEmpty()
+				&& breakEnclosingStatement(node) == enumSwitches
+						.get(enumSwitches.size() - 1)) {
+			printi("goto " + enumSwitchLabel() + ";");
+
 		} else {
 			printi("break");
 		}
 
 		println(";");
 		return false;
+	}
+
+	private boolean isLoopStatement(ASTNode node) {
+		return node instanceof ForStatement || node instanceof WhileStatement
+				|| node instanceof DoStatement;
+	}
+
+	private Statement breakEnclosingStatement(ASTNode node) {
+		assert (node != null); // Break without enclosing statement?
+		if (node instanceof SwitchStatement || isLoopStatement(node)) {
+			return (Statement) node;
+		}
+
+		return breakEnclosingStatement(node.getParent());
 	}
 
 	@Override
@@ -2100,6 +2119,9 @@ public class ImplWriter extends TransformWriter {
 		return false;
 	}
 
+	private final List<SwitchStatement> enumSwitches = new ArrayList<SwitchStatement>();
+	private int enumSwitchCount = 0;
+
 	private void enumSwitch(SwitchStatement node, List<Statement> statements) {
 		// Enum constants as we translate them are not C++ constexpr:s so we
 		// have to rewrite the switch to if:s
@@ -2111,6 +2133,7 @@ public class ImplWriter extends TransformWriter {
 
 		List<SwitchCase> cases = new ArrayList<SwitchCase>();
 		List<SwitchCase> allCases = new ArrayList<SwitchCase>();
+		enumSwitches.add(node);
 
 		boolean wasCase = false;
 		boolean indented = false;
@@ -2172,9 +2195,7 @@ public class ImplWriter extends TransformWriter {
 				if (s instanceof BreakStatement || s instanceof ReturnStatement) {
 					cases.clear();
 				}
-				if (!(s instanceof BreakStatement)) {
-					s.accept(this);
-				}
+				s.accept(this);
 			}
 
 		}
@@ -2184,8 +2205,16 @@ public class ImplWriter extends TransformWriter {
 			printlni("}");
 		}
 
+		String label = enumSwitchLabel();
+		println(label + ":;");
+		enumSwitches.remove(enumSwitches.size() - 1);
+		enumSwitchCount++;
 		indent--;
 		printlni("}");
+	}
+
+	private String enumSwitchLabel() {
+		return "end_switch" + enumSwitchCount;
 	}
 
 	private void nativeSwitch(SwitchStatement node, List<Statement> statements) {
