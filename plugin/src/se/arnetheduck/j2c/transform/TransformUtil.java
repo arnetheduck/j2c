@@ -593,7 +593,7 @@ public final class TransformUtil {
 			return;
 		}
 
-		if (dep.isNullType()) {
+		if (dep.isNullType() || isVoid(dep)) {
 			return;
 		}
 

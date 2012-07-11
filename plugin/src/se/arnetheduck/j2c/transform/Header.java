@@ -586,12 +586,14 @@ public class Header {
 	 * @param type
 	 * @return
 	 */
-	public static List<IMethodBinding> dupeNames(ITypeBinding type) {
+	private List<IMethodBinding> dupeNames(ITypeBinding type) {
 		List<IMethodBinding> ret = new ArrayList<IMethodBinding>();
 
 		List<ITypeBinding> bases = TypeUtil.bases(type, null);
 		for (ITypeBinding b0 : bases) {
+			b0 = b0.getErasure(); // This will get us erased method declarations
 			for (ITypeBinding b1 : bases) {
+				b1 = b1.getErasure();
 				if (b0 == b1)
 					continue;
 
@@ -599,11 +601,23 @@ public class Header {
 					for (IMethodBinding m1 : b1.getDeclaredMethods()) {
 						if (m0.getName().equals(m1.getName())) {
 							boolean found = false;
-							for (IMethodBinding m2 : ret) {
-								// Only one copy of each signature
+							for (int i = 0; i < ret.size(); ++i) {
+								IMethodBinding m2 = ret.get(i);
 								if (m2.isSubsignature(m0)) {
 									found = true;
-									break;
+
+									// If two methods have different return
+									// type, use the method with the most
+									// derived return type for return covariance
+									// to work properly
+									if (m0.getReturnType()
+											.getErasure()
+											.isSubTypeCompatible(
+													m2.getReturnType()
+															.getErasure())) {
+										hardDep(m0.getReturnType());
+										m2 = ret.set(i, m0);
+									}
 								}
 							}
 
@@ -698,7 +712,7 @@ public class Header {
 	}
 
 	private void printFriends(Collection<ITypeBinding> nested) {
-		if (type.isInterface() || type.isNested()) {
+		if (type.isInterface()) {
 			return; // Everything is public in these
 		}
 

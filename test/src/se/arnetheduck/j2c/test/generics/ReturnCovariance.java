@@ -41,6 +41,10 @@ public class ReturnCovariance {
 		}
 	}
 
+	public interface Both extends I<Empty>, J {
+
+	}
+
 	// Make sure all variants that need it get a dependency on Empty
 	public class USIJ<T extends Empty> extends SI<T> implements J {
 	}
@@ -64,5 +68,11 @@ public class ReturnCovariance {
 	}
 
 	public class UTJI extends TJ implements I<Empty> {
+	}
+
+	public class UBothI extends TI implements Both {
+	}
+
+	public class UBothJ extends TJ implements Both {
 	}
 }
