@@ -540,31 +540,40 @@ public class Header {
 			if (impl == null) {
 				// Only print super call if an implementation actually
 				// exists
-				assert (Modifier.isAbstract(type.getModifiers()));
 				continue;
 			}
 
-			// Interface methods are always public
-			access = printAccess(pw, Modifier.PUBLIC, access);
-
-			pw.print(i1);
-			TransformUtil.printSignature(pw, type, decl.getMethodDeclaration(),
-					impl.getReturnType(), softDeps, false);
-
 			if (Modifier.isAbstract(impl.getModifiers())) {
-				pw.print(" = 0");
+				continue;
 			}
 
-			pw.println(";");
+			printSuperCall(decl, impl);
+		}
+	}
 
-			method(decl);
+	private void printSuperCall(IMethodBinding decl, IMethodBinding impl) {
+		// Interface methods are always public
+		access = printAccess(pw, Modifier.PUBLIC, access);
 
-			if (TransformUtil.returnErased(decl)
-					|| !decl.getMethodDeclaration().getReturnType()
-							.getErasure()
-							.isEqualTo(impl.getReturnType().getErasure())) {
-				hardDep(impl.getReturnType());
-			}
+		pw.print(i1);
+		ITypeBinding irt = impl.getReturnType();
+		TransformUtil.printSignature(pw, type, decl.getMethodDeclaration(),
+				irt, softDeps, false);
+
+		if (Modifier.isAbstract(impl.getModifiers())) {
+			pw.print(" = 0");
+		}
+
+		pw.println(";");
+
+		method(decl);
+		ITypeBinding irte = irt.getErasure();
+
+		if (!irte.isEqualTo(decl.getMethodDeclaration().getReturnType()
+				.getErasure())
+				|| !irte.isEqualTo(impl.getMethodDeclaration().getReturnType()
+						.getErasure())) {
+			hardDep(irt);
 		}
 	}
 
@@ -689,6 +698,10 @@ public class Header {
 	}
 
 	private void printFriends(Collection<ITypeBinding> nested) {
+		if (type.isInterface() || type.isNested()) {
+			return; // Everything is public in these
+		}
+
 		for (ITypeBinding nb : nested) {
 			TransformUtil.addDep(nb, softDeps);
 			if (!nb.isEqualTo(type)) {

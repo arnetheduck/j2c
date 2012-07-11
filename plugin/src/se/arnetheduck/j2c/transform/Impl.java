@@ -193,26 +193,25 @@ public class Impl {
 	}
 
 	private void printSuperCalls() {
-		if (isNative || !type.isClass()) {
+		if (isNative || !type.isClass() && !type.isEnum()) {
 			return;
 		}
 
 		List<IMethodBinding> missing = Header.baseCallMethods(type);
-		for (IMethodBinding mb : missing) {
-			IMethodBinding im = Header.findImpl(type, mb);
-			if (im == null) {
+		for (IMethodBinding decl : missing) {
+			IMethodBinding impl = Header.findImpl(type, decl);
+			if (impl == null) {
 				// Only print super call if an implementation actually
 				// exists
 				continue;
 			}
 
-			if (Modifier.isAbstract(im.getModifiers())) {
+			if (Modifier.isAbstract(impl.getModifiers())) {
 				continue;
 			}
 
-			printSuperCall(mb, im);
+			printSuperCall(decl, impl);
 		}
-
 	}
 
 	private void printSuperCall(IMethodBinding decl, IMethodBinding impl) {

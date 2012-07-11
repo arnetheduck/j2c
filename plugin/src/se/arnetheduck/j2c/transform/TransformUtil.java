@@ -661,6 +661,10 @@ public final class TransformUtil {
 	}
 
 	public static boolean hasOuterThis(ITypeBinding tb) {
+		if (tb.isArray() || tb.isInterface() || tb.isAnnotation()) {
+			return false;
+		}
+
 		if (tb.isLocal()) {
 			IMethodBinding mb = tb.getDeclaringMethod();
 			if (mb == null) {
@@ -951,18 +955,16 @@ public final class TransformUtil {
 
 	public static String declareBridge(PrintWriter pw, ITypeBinding tb,
 			IMethodBinding mb, Collection<ITypeBinding> softDeps, String access) {
-		if (!mb.isConstructor()) {
-			IMethodBinding mb2 = getSuperMethod(mb);
-			if (needsBridge(mb, mb2)) {
-				mb2 = mb2.getMethodDeclaration();
+		IMethodBinding mb2 = getSuperMethod(mb);
+		if (needsBridge(mb, mb2)) {
+			mb2 = mb2.getMethodDeclaration();
 
-				access = Header.printAccess(pw, mb2, access);
-				pw.print(TransformUtil.indent(1));
+			access = Header.printAccess(pw, mb2, access);
+			pw.print(TransformUtil.indent(1));
 
-				TransformUtil.printSignature(pw, tb, mb2, softDeps, false);
+			TransformUtil.printSignature(pw, tb, mb2, softDeps, false);
 
-				pw.println(";");
-			}
+			pw.println(";");
 		}
 
 		return access;
@@ -1035,12 +1037,8 @@ public final class TransformUtil {
 	}
 
 	private static boolean sameReturn(IMethodBinding mb, IMethodBinding mb2) {
-		return mb
-				.getMethodDeclaration()
-				.getReturnType()
-				.getErasure()
-				.isEqualTo(
-						mb2.getMethodDeclaration().getReturnType().getErasure());
+		return mb.getReturnType().getErasure()
+				.isEqualTo(mb2.getReturnType().getErasure());
 
 	}
 
