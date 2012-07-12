@@ -116,6 +116,10 @@ public class Header {
 		}
 
 		for (ITypeBinding dep : hardDeps) {
+			if (dep.isNullType() || dep.isPrimitive()) {
+				continue;
+			}
+
 			if (!bases.contains(dep)) {
 				pw.println(TransformUtil.include(dep));
 				hasIncludes = true;

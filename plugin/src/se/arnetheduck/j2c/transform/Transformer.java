@@ -297,7 +297,7 @@ public class Transformer {
 
 				done.add(tb.getBinaryName());
 
-				if (tb.isPrimitive()) {
+				if (tb.isPrimitive() || tb.isNullType()) {
 					continue;
 				}
 

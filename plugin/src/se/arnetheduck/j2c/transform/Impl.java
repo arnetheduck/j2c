@@ -94,18 +94,20 @@ public class Impl {
 				continue;
 			}
 
-			if (!dep.isPrimitive()) {
-				if (TransformUtil.isPrimitiveArray(dep)) {
-					if (hasArray) {
-						continue;
-					}
+			if (dep.isNullType() || dep.isPrimitive()) {
+				continue;
+			}
 
-					hasArray = true;
+			if (TransformUtil.isPrimitiveArray(dep)) {
+				if (hasArray) {
+					continue;
 				}
 
-				pw.println(TransformUtil.include(dep));
-				hasInc = true;
+				hasArray = true;
 			}
+
+			pw.println(TransformUtil.include(dep));
+			hasInc = true;
 		}
 
 		if (fmod) {
