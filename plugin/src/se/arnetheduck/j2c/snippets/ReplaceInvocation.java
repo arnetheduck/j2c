@@ -8,7 +8,7 @@ import org.eclipse.jdt.core.dom.TypeLiteral;
 
 import se.arnetheduck.j2c.transform.EmptySnippet;
 import se.arnetheduck.j2c.transform.ImplWriter;
-import se.arnetheduck.j2c.transform.TransformUtil;
+import se.arnetheduck.j2c.transform.CName;
 import se.arnetheduck.j2c.transform.Transformer;
 
 public class ReplaceInvocation extends EmptySnippet {
@@ -50,7 +50,7 @@ public class ReplaceInvocation extends EmptySnippet {
 		TypeLiteral tl = (TypeLiteral) node.arguments().get(0);
 		ITypeBinding tb = tl.getType().resolveBinding();
 		w.hardDep(tb);
-		w.print(TransformUtil.relativeCName(tb, w.type, true), "::clinit()");
+		w.print(CName.relative(tb, w.type, true), "::clinit()");
 
 		return true;
 	}

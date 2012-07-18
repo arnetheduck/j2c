@@ -88,10 +88,10 @@ public class ArrayWriter {
 			includes.append(TransformUtil.include(tb) + "\n");
 		}
 
-		String name = TransformUtil.name(ct);
-		String qname = TransformUtil.qualifiedCName(ct, false);
+		String name = CName.of(ct);
+		String qname = CName.qualified(ct, false);
 		String superName = ct.getSuperclass() == null ? "::java::lang::Object"
-				: TransformUtil.relativeCName(ct.getSuperclass(), ct, true);
+				: CName.relative(ct.getSuperclass(), ct, true);
 		ctx.hardDep(ct);
 		includes.append(TransformUtil.include(ct) + "\n");
 
@@ -101,7 +101,7 @@ public class ArrayWriter {
 		for (ITypeBinding tb : types) {
 			bases.append(sep);
 			sep = "    , public virtual ";
-			bases.append(TransformUtil.relativeCName(tb, type, true));
+			bases.append(CName.relative(tb, type, true));
 			bases.append("\n");
 		}
 

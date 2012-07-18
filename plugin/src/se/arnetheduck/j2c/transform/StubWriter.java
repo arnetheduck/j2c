@@ -44,8 +44,8 @@ public class StubWriter {
 		this.type = type;
 
 		impl = new Impl(ctx, type, softDeps, hardDeps);
-		qcname = TransformUtil.qualifiedCName(type, true);
-		name = TransformUtil.name(type);
+		qcname = CName.qualified(type, true);
+		name = CName.of(type);
 	}
 
 	public void write(boolean natives, boolean privates) throws Exception {
@@ -139,11 +139,11 @@ public class StubWriter {
 			printFieldInit(": ");
 
 			println("{");
-			pw.println(i1 + TransformUtil.STATIC_INIT + "();");
+			pw.println(i1 + CName.STATIC_INIT + "();");
 
 			if (!type.isAnonymous()) {
 				// Anonymous types don't have their own constructors
-				pw.print(i1 + TransformUtil.CTOR + "(");
+				pw.print(i1 + CName.CTOR + "(");
 
 				sep = "";
 				for (int i = 0; i < mb.getParameterTypes().length; ++i) {
@@ -174,12 +174,12 @@ public class StubWriter {
 		printFieldInit(": ");
 		println("{");
 
-		pw.println(i1 + TransformUtil.STATIC_INIT + "();");
+		pw.println(i1 + CName.STATIC_INIT + "();");
 
 		pw.println("}");
 		pw.println();
 
-		println("void " + qcname + "::" + TransformUtil.CTOR + "()");
+		println("void " + qcname + "::" + CName.CTOR + "()");
 		println("{");
 		println("}");
 		println();
@@ -225,7 +225,7 @@ public class StubWriter {
 				continue;
 			}
 
-			pw.print(i1 + sep + TransformUtil.name(vb));
+			pw.print(i1 + sep + CName.of(vb));
 
 			println("()");
 			sep = ", ";
@@ -245,9 +245,9 @@ public class StubWriter {
 		boolean asMethod = TransformUtil.asMethod(vb);
 
 		ITypeBinding vt = vb.getType();
-		String vname = TransformUtil.name(vb);
+		String vname = CName.of(vb);
 		if (asMethod) {
-			print(TransformUtil.qualifiedCName(vt, true));
+			print(CName.qualified(vt, true));
 
 			print(" ");
 
@@ -259,15 +259,14 @@ public class StubWriter {
 
 			pw.println("()");
 			pw.println("{");
-			pw.println(TransformUtil.indent(1) + TransformUtil.STATIC_INIT
-					+ "();");
+			pw.println(TransformUtil.indent(1) + CName.STATIC_INIT + "();");
 			pw.println(TransformUtil.indent(1) + "return " + vname + "_;");
 			println("}");
 		}
 
 		print(TransformUtil.fieldModifiers(type, vb.getModifiers(), false,
 				cv != null));
-		print(TransformUtil.qualifiedCName(vt, true));
+		print(CName.qualified(vt, true));
 		print(" ");
 
 		print(TransformUtil.ref(vt));
@@ -303,7 +302,7 @@ public class StubWriter {
 		}
 
 		if (TransformUtil.isStatic(mb)) {
-			println(i1 + TransformUtil.STATIC_INIT + "();");
+			println(i1 + CName.STATIC_INIT + "();");
 		}
 
 		boolean hasBody = false;

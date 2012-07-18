@@ -77,7 +77,6 @@ public class HeaderWriter extends TransformWriter {
 
 	private void writeType(List<EnumConstantDeclaration> enums,
 			List<BodyDeclaration> declarations) {
-
 		try {
 			String body = getBody(enums, declarations);
 
@@ -166,7 +165,7 @@ public class HeaderWriter extends TransformWriter {
 	@Override
 	public boolean visit(EnumConstantDeclaration node) {
 		access = Header.printAccess(out, node.getModifiers(), access);
-		printi("static ", TransformUtil.name(type), " *");
+		printi("static ", CName.of(type), " *");
 
 		node.getName().accept(this);
 		println(";");
@@ -193,8 +192,7 @@ public class HeaderWriter extends TransformWriter {
 				printi(TransformUtil.fieldModifiers(type, node.getModifiers(),
 						true, TransformUtil.constantValue(f) != null));
 
-				print(TransformUtil.relativeCName(vb.getType(), type, true),
-						" ");
+				print(CName.relative(vb.getType(), type, true), " ");
 
 				f.accept(this);
 
@@ -206,7 +204,7 @@ public class HeaderWriter extends TransformWriter {
 			printi(TransformUtil.fieldModifiers(type, node.getModifiers(),
 					true, hasInitilializer(fragments)));
 
-			print(TransformUtil.relativeCName(tb, type, true), " ");
+			print(CName.relative(tb, type, true), " ");
 
 			visitAllCSV(fragments, false);
 
@@ -281,7 +279,7 @@ public class HeaderWriter extends TransformWriter {
 		if (node.isConstructor()) {
 			access = Header.printProtected(out, access);
 
-			printi("void ", TransformUtil.CTOR);
+			printi("void ", CName.CTOR);
 		} else {
 			access = Header.printAccess(out, mb, access);
 
@@ -290,8 +288,7 @@ public class HeaderWriter extends TransformWriter {
 
 			ITypeBinding rt = TransformUtil.returnType(node);
 			softDep(rt);
-			print(TransformUtil.relativeCName(rt, type, true), " ",
-					TransformUtil.ref(rt));
+			print(CName.relative(rt, type, true), " ", TransformUtil.ref(rt));
 
 			node.getName().accept(this);
 
@@ -319,7 +316,7 @@ public class HeaderWriter extends TransformWriter {
 		IBinding b = node.resolveBinding();
 		if (b instanceof ITypeBinding) {
 			softDep((ITypeBinding) b);
-			print(TransformUtil.relativeCName((ITypeBinding) b, type, false));
+			print(CName.relative((ITypeBinding) b, type, false));
 			return false;
 		}
 		return super.visit(node);
@@ -329,7 +326,7 @@ public class HeaderWriter extends TransformWriter {
 	public boolean visit(SimpleType node) {
 		ITypeBinding b = node.resolveBinding();
 		softDep(b);
-		print(TransformUtil.relativeCName(b, type, false));
+		print(CName.relative(b, type, false));
 		return false;
 	}
 
@@ -338,7 +335,7 @@ public class HeaderWriter extends TransformWriter {
 		IBinding b = node.resolveBinding();
 		if (b instanceof ITypeBinding) {
 			softDep((ITypeBinding) b);
-			print(TransformUtil.relativeCName((ITypeBinding) b, type, false));
+			print(CName.relative((ITypeBinding) b, type, false));
 			return false;
 		}
 		return super.visit(node);
@@ -348,7 +345,7 @@ public class HeaderWriter extends TransformWriter {
 	public boolean visit(QualifiedType node) {
 		ITypeBinding b = node.resolveBinding();
 		softDep(b);
-		print(TransformUtil.relativeCName(b, type, false));
+		print(CName.relative(b, type, false));
 		return false;
 	}
 
@@ -363,10 +360,10 @@ public class HeaderWriter extends TransformWriter {
 
 		if (node.isVarargs()) {
 			tb = tb.createArrayType(1);
-			print(TransformUtil.relativeCName(tb, type, true));
+			print(CName.relative(tb, type, true));
 			print("/*...*/");
 		} else {
-			print(TransformUtil.relativeCName(tb, type, true));
+			print(CName.relative(tb, type, true));
 		}
 
 		print(" ", TransformUtil.ref(tb));

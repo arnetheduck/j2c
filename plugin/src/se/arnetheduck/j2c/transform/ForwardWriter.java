@@ -28,9 +28,8 @@ public class ForwardWriter {
 			isPrimitive = tb.isPrimitive();
 			isPrimitiveArray = TransformUtil.isPrimitiveArray(tb);
 
-			packageName = TransformUtil.packageName(tb);
-			className = TransformUtil.name(isPrimitiveArray ? tb
-					.getComponentType() : tb);
+			packageName = CName.packageOf(tb);
+			className = CName.of(isPrimitiveArray ? tb.getComponentType() : tb);
 		}
 
 		@Override

@@ -5,6 +5,7 @@ import org.eclipse.jdt.core.dom.ITypeBinding;
 import org.eclipse.jdt.core.dom.IVariableBinding;
 
 import se.arnetheduck.j2c.transform.EmptySnippet;
+import se.arnetheduck.j2c.transform.CName;
 import se.arnetheduck.j2c.transform.StubWriter;
 import se.arnetheduck.j2c.transform.TransformUtil;
 import se.arnetheduck.j2c.transform.Transformer;
@@ -46,7 +47,7 @@ public class GetSetSnippet extends EmptySnippet {
 								mb.getParameterTypes()[0])) {
 					w.print(TransformUtil.indent(1));
 					if (ms) {
-						w.print(TransformUtil.name(tb) + "::");
+						w.print(CName.of(tb) + "::");
 					} else {
 						w.print("this->");
 					}

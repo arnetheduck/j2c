@@ -111,7 +111,7 @@ public class TypeBindingHeaderWriter {
 		pw.print(TransformUtil.fieldModifiers(type, vb.getModifiers(), true,
 				cv != null));
 
-		pw.print(TransformUtil.relativeCName(vb.getType(),
+		pw.print(CName.relative(vb.getType(),
 				vb.getDeclaringClass(), true));
 		pw.print(" ");
 

@@ -9,7 +9,6 @@ import java.io.PrintWriter;
 import java.lang.reflect.Modifier;
 import java.text.Annotation;
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.Collection;
 import java.util.HashMap;
 import java.util.List;
@@ -43,31 +42,6 @@ public final class TransformUtil {
 	public static final String NATIVE = "native";
 	public static final String STUB = "stub";
 
-	/** Name of fake static initializer */
-	public static final String STATIC_INIT = "clinit";
-	/** Name of fake instance initializer */
-	public static final String INSTANCE_INIT = "init";
-
-	/** Name of fake constructor */
-	public static final String CTOR = "ctor";
-
-	/** Virtual method that returns the dynamic class of the current object */
-	public static final String GET_CLASS = "getClass0";
-
-	/** C++ keywords + special method names - java keywords */
-	private static Collection<String> keywords = Arrays.asList("alignas",
-			"alignof", "and", "and_eq", "asm", "auto", "bitand", "bitor",
-			"bool", "char16_t", "char32_t", "compl", "const", "constexpre",
-			"const_cast", "decltype", "delete", "dynamic_cast", "explicit",
-			"export", "extern", "friend", "goto", "inline", "mutable",
-			"namespace", "noexcept", "not", "not_eq", "nullptr", "operator",
-			"or", "or_eq", "register", "reinterpret_cast", "signed", "sizeof",
-			"static_assert", "static_cast", "struct", "template",
-			"thread_local", "typedef", "typeid", "typename", "union",
-			"unsigned", "using", "wchar_t", "xor", "xor_eq", CTOR,
-			INSTANCE_INIT, STATIC_INIT, GET_CLASS, "int8_t", "int16_t",
-			"int32_t", "int64_t");
-
 	public static final Map<String, String> primitives = new HashMap<String, String>() {
 		{
 			put("boolean", "java.lang.Boolean");
@@ -89,212 +63,21 @@ public final class TransformUtil {
 		}
 	};
 
-	public static String cname(String jname) {
-		return jname.replace(".", "::");
-	}
-
-	public static String qualifiedCName(ITypeBinding tb, boolean global) {
-		IPackageBinding pkg = elementPackage(tb);
-		return (global && !tb.isPrimitive() ? "::" : "")
-				+ cname(pkg == null ? name(tb) : (name(pkg) + "." + name(tb)));
-	}
-
-	public static String relativeCName(ITypeBinding tb, ITypeBinding root,
-			boolean global) {
-		if (!samePackage(tb, root)) {
-			return qualifiedCName(tb, global);
-		}
-
-		String tbn = name(tb);
-		if (tbn.equals(Object.class.getSimpleName()) && !same(tb, Object.class)) {
-			// Intefaces have null superclass but inherit (conceptually) from
-			// Object
-			return qualifiedCName(tb, global);
-		}
-
-		// In C++, unqualified names in a class are looked up in base
-		// classes before the own namespace
-		List<ITypeBinding> bases = TypeUtil.allBases(root, null);
-		for (ITypeBinding sb : bases) {
-			if (tb.getErasure().isEqualTo(sb.getErasure())) {
-				return tbn;
-			}
-
-			if (name(sb).equals(tbn)) {
-				return qualifiedCName(tb, global);
-			}
-		}
-
-		return tbn;
-	}
-
-	private static IPackageBinding elementPackage(ITypeBinding tb) {
-		// When processing generics, only the erasure will have a package
-		return tb.isArray() ? tb.getElementType().getErasure().getPackage()
-				: tb.getErasure().getPackage();
-	}
-
-	private static boolean samePackage(ITypeBinding tb0, ITypeBinding tb1) {
-		IPackageBinding p0 = elementPackage(tb0);
-		IPackageBinding p1 = elementPackage(tb1);
-		if (p0 == null) {
-			return p1 == null;
-		}
-
-		return p1 != null && p0.isEqualTo(p1);
-	}
-
-	private static Pattern bin = Pattern.compile("\\$\\d+");
-
-	public static String name(ITypeBinding tb) {
-		if (tb.isArray()) {
-			return name(tb.getComponentType()) + "Array";
-		}
-
-		if (tb.isPrimitive()) {
-			return primitive(tb.getName());
-		}
-
-		ITypeBinding tbe = tb.getErasure();
-
-		if (tbe.isLocal()) {
-			StringBuilder ret = new StringBuilder();
-
-			Matcher match = bin.matcher(tbe.getBinaryName());
-			String sep = "";
-
-			if (tbe.getDeclaringClass() != null) {
-				ret.append(name(tbe.getDeclaringClass()));
-				sep = "_";
-			}
-
-			if (tbe.getDeclaringMethod() != null
-					&& tbe.getDeclaringMethod().getName().length() > 0) {
-				ret.append(sep + tbe.getDeclaringMethod().getName());
-				sep = "_";
-			}
-
-			if (tbe.getName() != null && tbe.getName().length() > 0) {
-				ret.append(sep + tbe.getName());
-				sep = "_";
-			}
-
-			while (match.find()) {
-				ret.append(match.group(0).replaceAll("\\$", "_"));
-			}
-
-			return ret.toString();
-		}
-
-		if (tbe.isNested()) {
-			return name(tbe.getDeclaringClass()) + "_" + tbe.getName();
-		}
-
-		return keywords(tbe.getName());
-	}
-
-	public static String name(IMethodBinding mb) {
-		// private methods mess up using statements that import methods
-		// from base classes
-		String ret = keywords(mb.getName());
-		ret = Modifier.isPrivate(mb.getModifiers()) ? "_" + ret : ret;
-
-		IMethodBinding lastOverride = couldOverrideDefault(mb, ret);
-		if (lastOverride != null) {
-			ret = name(lastOverride.getDeclaringClass()) + "_" + ret;
-		}
-
-		// Methods can have the same name as the constructor without being a
-		// constructor!
-		if (!mb.isConstructor() && hasName(mb.getDeclaringClass(), ret)) {
-			ret = "_" + ret;
-		}
-
-		return ret;
-	}
-
-	private static boolean hasName(ITypeBinding tb, String ret) {
-		if (tb.getName().equals(ret)) {
-			return true;
-		}
-
-		if (tb.getSuperclass() != null && hasName(tb.getSuperclass(), ret)) {
-			return true;
-		}
-
-		for (ITypeBinding ib : tb.getInterfaces()) {
-			if (hasName(ib, ret)) {
-				return true;
-			}
-		}
-
-		return false;
-	}
-
-	/**
-	 * In Java, if a method has the same name as a package-private method in a
-	 * base class, it will not override the base class member. In C++, we have
-	 * nothing of the sort so we have to rename the non-overriding method
-	 */
-	public static IMethodBinding couldOverrideDefault(IMethodBinding mb,
-			String ret) {
-		ITypeBinding tb = mb.getDeclaringClass();
-		if (tb != null) {
-			IMethodBinding last = mb;
-			for (ITypeBinding tbx = tb.getSuperclass(); tbx != null; tbx = tbx
-					.getSuperclass()) {
-				boolean samePackage = samePackage(tb, tbx);
-
-				for (IMethodBinding mbx : tbx.getDeclaredMethods()) {
-					if (!samePackage && isDefault(mbx.getModifiers())
-							&& mbx.getName().equals(mb.getName())
-							&& sameParameters(mb, mbx, true)) {
-						return last;
-					}
-
-					if (last.overrides(mbx)) {
-						// This will give the final name of the method
-						last = mbx;
-					}
-				}
-			}
-		}
-
-		return null;
-	}
-
-	public static String name(IVariableBinding vb) {
-		// Methods and variables can have the same name so we postfix all
-		// variables
-		return vb.getName() + "_";
-	}
-
-	public static String name(IPackageBinding pb) {
-		String[] n = pb.getNameComponents();
-		StringBuilder ret = new StringBuilder();
-		String sep = "";
-		for (int i = 0; i < n.length; ++i) {
-			ret.append(sep);
-			sep = ".";
-			ret.append(keywords(n[i]));
-		}
-
-		return ret.toString();
-	}
-
-	public static String packageName(ITypeBinding tb) {
-		IPackageBinding pkg = elementPackage(tb);
-		return pkg == null ? "" : name(pkg);
-	}
-
 	public static String packageHeader(String packageName) {
 		return packageName == null || packageName.length() == 0 ? "fwd.hpp"
 				: toFileName(packageName) + ".fwd.hpp";
 	}
 
 	public static String qualifiedName(ITypeBinding tb) {
-		IPackageBinding pkg = elementPackage(tb);
-		return pkg == null ? name(tb) : (name(pkg) + "." + name(tb));
+		IPackageBinding pkg = TransformUtil.elementPackage(tb);
+		return pkg == null ? CName.of(tb)
+				: (CName.of(pkg) + "." + CName.of(tb));
+	}
+
+	public static IPackageBinding elementPackage(ITypeBinding tb) {
+		// When processing generics, only the erasure will have a package
+		return tb.isArray() ? tb.getElementType().getErasure().getPackage()
+				: tb.getErasure().getPackage();
 	}
 
 	public static String include(ITypeBinding tb) {
@@ -616,7 +399,7 @@ public final class TransformUtil {
 	}
 
 	public static String refName(IVariableBinding vb) {
-		return ref(vb.getType()) + name(vb);
+		return ref(vb.getType()) + CName.of(vb);
 	}
 
 	public static String constVar(IVariableBinding vb) {
@@ -708,8 +491,8 @@ public final class TransformUtil {
 	}
 
 	public static String outerThis(ITypeBinding tb) {
-		return TransformUtil.relativeCName(tb.getDeclaringClass(), tb, false)
-				+ " *" + outerThisName(tb);
+		return CName.relative(tb.getDeclaringClass(), tb, false) + " *"
+				+ outerThisName(tb);
 	}
 
 	public static String outerThisName(ITypeBinding tb) {
@@ -717,27 +500,7 @@ public final class TransformUtil {
 	}
 
 	public static String thisName(ITypeBinding tb) {
-		return TransformUtil.name(tb) + "_this";
-	}
-
-	/** Filter out C++ keywords and other reserved names */
-	public static String keywords(String name) {
-		if (name.endsWith("Array")) {
-			String n = name;
-			String prefix = "";
-			while (n.endsWith("Array")) {
-				prefix += "_";
-				n = n.substring(0, n.length() - "Array".length());
-			}
-
-			return prefix + name;
-		}
-
-		if (keywords.contains(name)) {
-			return "_" + name;
-		}
-
-		return name;
+		return CName.of(tb) + "_this";
 	}
 
 	public static Set<IMethodBinding> allMethods(ITypeBinding tb, String name,
@@ -823,7 +586,7 @@ public final class TransformUtil {
 			ITypeBinding pb = mb.getParameterTypes()[i];
 			addDep(pb, deps);
 
-			out.print(relativeCName(pb, tb, true));
+			out.print(CName.relative(pb, tb, true));
 			out.print(" ");
 			out.print(ref(pb));
 
@@ -993,7 +756,7 @@ public final class TransformUtil {
 					}
 				}
 
-				pw.print(name(mb2));
+				pw.print(CName.of(mb2));
 				pw.print("(");
 				for (int i = 0; i < mb2.getParameterTypes().length; ++i) {
 					if (i > 0)
@@ -1004,7 +767,7 @@ public final class TransformUtil {
 					if (!pb.isEqualTo(pb2)) {
 						deps.add(pb);
 						pw.print("dynamic_cast< ");
-						pw.print(relativeCName(pb, tb, false));
+						pw.print(CName.relative(pb, tb, false));
 						pw.print(ref(pb));
 						pw.print(" >(");
 						pw.print(TransformUtil.paramName(mb2, i));
@@ -1083,30 +846,30 @@ public final class TransformUtil {
 		if (mb.isConstructor()) {
 			pw.print("void ");
 			if (qualified) {
-				pw.print(qualifiedCName(tb, true));
+				pw.print(CName.qualified(tb, true));
 				pw.print("::");
 			}
 
-			pw.print(CTOR);
+			pw.print(CName.CTOR);
 		} else {
 			addDep(rt, softDeps);
 
 			if (!qualified) {
 				pw.print(methodModifiers(mb));
-				pw.print(relativeCName(rt, tb, true));
+				pw.print(CName.relative(rt, tb, true));
 			} else {
-				pw.print(qualifiedCName(rt, true));
+				pw.print(CName.qualified(rt, true));
 			}
 
 			pw.print(" ");
 			pw.print(ref(rt));
 
 			if (qualified) {
-				pw.print(qualifiedCName(tb, true));
+				pw.print(CName.qualified(tb, true));
 				pw.print("::");
 			}
 
-			pw.print(name(mb));
+			pw.print(CName.of(mb));
 		}
 
 		printParams(pw, tb, mb, true, softDeps);
@@ -1122,9 +885,8 @@ public final class TransformUtil {
 
 		if (closures != null) {
 			for (IVariableBinding closure : closures) {
-				pw.print(sep
-						+ TransformUtil.relativeCName(closure.getType(), type,
-								true) + " " + TransformUtil.refName(closure));
+				pw.print(sep + CName.relative(closure.getType(), type, true)
+						+ " " + TransformUtil.refName(closure));
 				sep = ", ";
 			}
 		}

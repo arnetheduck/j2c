@@ -19,7 +19,7 @@ public class MainWriter {
 		public Info(ITypeBinding tb) {
 			filename = TransformUtil.mainName(tb);
 			include = TransformUtil.include(tb);
-			qcname = TransformUtil.qualifiedCName(tb, true);
+			qcname = CName.qualified(tb, true);
 			qname = TransformUtil.qualifiedName(tb);
 		}
 	}

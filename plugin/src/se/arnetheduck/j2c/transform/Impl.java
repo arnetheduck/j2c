@@ -20,7 +20,6 @@ public class Impl {
 	private final Collection<ITypeBinding> hardDeps;
 
 	private final String qcname;
-	private final String name;
 
 	private static final String i1 = TransformUtil.indent(1);
 	private static final String i2 = TransformUtil.indent(2);
@@ -35,8 +34,7 @@ public class Impl {
 		this.softDeps = softDeps;
 		this.hardDeps = hardDeps;
 
-		qcname = TransformUtil.qualifiedCName(type, true);
-		name = TransformUtil.name(type);
+		qcname = CName.qualified(type, true);
 	}
 
 	public void write(IPath root, String body, String suffix,
@@ -125,11 +123,11 @@ public class Impl {
 			return;
 		}
 
-		pw.println("void " + qcname + "::" + TransformUtil.STATIC_INIT + "()");
+		pw.println("void " + qcname + "::" + CName.STATIC_INIT + "()");
 		pw.println("{");
 
 		if (type.getSuperclass() != null) {
-			pw.println(i1 + "super::" + TransformUtil.STATIC_INIT + "();");
+			pw.println(i1 + "super::" + CName.STATIC_INIT + "();");
 		}
 
 		if (clinit != null) {
@@ -176,8 +174,8 @@ public class Impl {
 			pw.println("template<>");
 		}
 
-		pw.println("::java::lang::Class *" + qcname + "::"
-				+ TransformUtil.GET_CLASS + "()");
+		pw.println("::java::lang::Class *" + qcname + "::" + CName.GET_CLASS
+				+ "()");
 		pw.println("{");
 		pw.println(i1 + "return class_();");
 		pw.println("}");
@@ -226,9 +224,8 @@ public class Impl {
 		boolean erased = TransformUtil.returnErased(impl);
 
 		if (TransformUtil.isVoid(impl.getReturnType())) {
-			pw.format(i1 + "%s::%s(",
-					TransformUtil.name(impl.getDeclaringClass()),
-					TransformUtil.name(impl));
+			pw.format(i1 + "%s::%s(", CName.of(impl.getDeclaringClass()),
+					CName.of(impl));
 		} else {
 			pw.print(i1 + "return ");
 			if (erased) {
@@ -236,8 +233,8 @@ public class Impl {
 						.getErasure(), impl.getReturnType());
 			}
 
-			pw.format("%s::%s(", TransformUtil.name(impl.getDeclaringClass()),
-					TransformUtil.name(impl));
+			pw.format("%s::%s(", CName.of(impl.getDeclaringClass()),
+					CName.of(impl));
 		}
 
 		String sep = "";
@@ -270,8 +267,7 @@ public class Impl {
 	private void dynamicCast(ITypeBinding source, ITypeBinding target) {
 		hardDep(source);
 		hardDep(target);
-		pw.print("dynamic_cast< "
-				+ TransformUtil.relativeCName(target, type, true) + "* >(");
+		pw.print("dynamic_cast< " + CName.relative(target, type, true) + "* >(");
 	}
 
 	private void hardDep(ITypeBinding dep) {
