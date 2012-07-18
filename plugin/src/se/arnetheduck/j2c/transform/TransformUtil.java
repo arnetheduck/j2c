@@ -14,8 +14,6 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Scanner;
-import java.util.Set;
-import java.util.TreeSet;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
@@ -505,40 +503,6 @@ public final class TransformUtil {
 		return CName.of(tb) + "_this";
 	}
 
-	public static Set<IMethodBinding> allMethods(ITypeBinding tb, String name,
-			ITypeBinding object) {
-		Set<IMethodBinding> ret = new TreeSet<IMethodBinding>(
-				new BindingComparator());
-
-		methods(tb, name, ret);
-
-		ret.addAll(baseMethods(tb, name, object));
-
-		return ret;
-	}
-
-	public static List<IMethodBinding> baseMethods(ITypeBinding tb,
-			String name, ITypeBinding object) {
-		List<IMethodBinding> ret = new ArrayList<IMethodBinding>();
-
-		// Order significant in case an interface is inherited multiple times
-		Collection<ITypeBinding> bases = TypeUtil.allBases(tb, object);
-		for (ITypeBinding base : bases) {
-			methods(base, name, ret);
-		}
-
-		return ret;
-	}
-
-	private static void methods(ITypeBinding tb, String name,
-			Collection<IMethodBinding> ret) {
-		for (IMethodBinding mb : tb.getDeclaredMethods()) {
-			if (mb.getName().equals(name)) {
-				ret.add(mb);
-			}
-		}
-	}
-
 	public static String indent(int n) {
 		String ret = "";
 		for (int i = 0; i < n; i++)
@@ -609,34 +573,9 @@ public final class TransformUtil {
 		}
 	}
 
-	public static IMethodBinding getSuperMethod(IMethodBinding mb,
-			ITypeBinding tb) {
-		for (IMethodBinding mb2 : tb.getDeclaredMethods()) {
-			if (mb.overrides(mb2)) {
-				return mb2;
-			}
-		}
-
-		if (tb.getSuperclass() != null) {
-			IMethodBinding mb2 = getSuperMethod(mb, tb.getSuperclass());
-			if (mb2 != null) {
-				return mb2;
-			}
-		}
-
-		for (ITypeBinding ib : tb.getInterfaces()) {
-			IMethodBinding mb2 = getSuperMethod(mb, ib);
-			if (mb2 != null) {
-				return mb2;
-			}
-		}
-
-		return null;
-	}
-
 	/** Check if super-interface (or Object) has the same method already */
 	public static boolean baseHasSame(IMethodBinding mb, ITypeBinding tb,
-			Transformer ctx) {
+			ITypeBinding object) {
 		for (ITypeBinding ib : tb.getInterfaces()) {
 			for (IMethodBinding mb2 : ib.getDeclaredMethods()) {
 				if (sameSignature(mb, mb2)) {
@@ -644,14 +583,13 @@ public final class TransformUtil {
 				}
 			}
 
-			if (baseHasSame(mb, ib, ctx)) {
+			if (baseHasSame(mb, ib, object)) {
 				return true;
 			}
 		}
 
 		if (tb.isInterface()) {
-			ITypeBinding ob = ctx.resolve(Object.class);
-			for (IMethodBinding mb2 : ob.getDeclaredMethods()) {
+			for (IMethodBinding mb2 : object.getDeclaredMethods()) {
 				if (sameSignature(mb, mb2)) {
 					return true;
 				}
@@ -682,12 +620,17 @@ public final class TransformUtil {
 	}
 
 	public static Collection<ITypeBinding> returnDeps(ITypeBinding type,
-			ITypeBinding object, IMethodBinding mb) {
+			IMethodBinding mb, ITypeBinding object) {
 		List<ITypeBinding> ret = new ArrayList<ITypeBinding>();
-		Collection<ITypeBinding> bases = TypeUtil.allBases(type, object);
-		for (ITypeBinding base : bases) {
-			IMethodBinding mb2 = getSuperMethod(mb, base);
-			if (mb2 != null && returnCovariant(mb, mb2)) {
+		if (mb.isConstructor()) {
+			return ret;
+		}
+
+		List<IMethodBinding> methods = TypeUtil.methods(
+				TypeUtil.allBases(type, object), TypeUtil.overrides(mb));
+
+		for (IMethodBinding mb2 : methods) {
+			if (!mb2.isConstructor() && returnCovariant(mb, mb2)) {
 				addDep(mb.getReturnType(), ret);
 			}
 		}
@@ -695,41 +638,22 @@ public final class TransformUtil {
 		return ret;
 	}
 
-	public static IMethodBinding getSuperMethod(IMethodBinding mb) {
-		if (isStatic(mb) || mb.isConstructor()) {
-			return null;
-		}
-
-		if (mb.getDeclaringClass().getSuperclass() != null) {
-			IMethodBinding mb2 = getSuperMethod(mb, mb.getDeclaringClass()
-					.getSuperclass());
-			if (mb2 != null) {
-				return mb2;
-			}
-		}
-
-		for (ITypeBinding tb : mb.getDeclaringClass().getInterfaces()) {
-			IMethodBinding mb2 = getSuperMethod(mb, tb);
-			if (mb2 != null) {
-				return mb2;
-			}
-		}
-
-		return null;
-	}
-
 	public static String declareBridge(PrintWriter pw, ITypeBinding tb,
 			IMethodBinding mb, Collection<ITypeBinding> softDeps, String access) {
-		IMethodBinding mb2 = getSuperMethod(mb);
-		if (needsBridge(mb, mb2)) {
-			mb2 = mb2.getMethodDeclaration();
+		List<IMethodBinding> methods = TypeUtil.methods(
+				TypeUtil.allBases(tb, null), TypeUtil.overrides(mb));
+		for (IMethodBinding mb2 : methods) {
+			if (needsBridge(mb, mb2)) {
+				mb2 = mb2.getMethodDeclaration();
 
-			access = Header.printAccess(pw, mb2, access);
-			pw.print(TransformUtil.indent(1));
+				access = Header.printAccess(pw, mb2, access);
+				pw.print(TransformUtil.indent(1));
 
-			TransformUtil.printSignature(pw, tb, mb2, softDeps, false);
+				TransformUtil.printSignature(pw, tb, mb2, softDeps, false);
 
-			pw.println(";");
+				pw.println(";");
+				break;
+			}
 		}
 
 		return access;
@@ -739,8 +663,9 @@ public final class TransformUtil {
 			ITypeBinding tb, IMethodBinding mb,
 			Collection<ITypeBinding> softDeps) {
 		List<ITypeBinding> deps = new ArrayList<ITypeBinding>();
-		if (!mb.isConstructor()) {
-			IMethodBinding mb2 = getSuperMethod(mb);
+		List<IMethodBinding> methods = TypeUtil.methods(
+				TypeUtil.allBases(tb, null), TypeUtil.overrides(mb));
+		for (IMethodBinding mb2 : methods) {
 			if (needsBridge(mb, mb2)) {
 				mb2 = mb2.getMethodDeclaration();
 
@@ -782,6 +707,7 @@ public final class TransformUtil {
 				pw.println(");");
 				pw.println("}");
 				pw.println("");
+				break;
 			}
 		}
 
@@ -789,7 +715,8 @@ public final class TransformUtil {
 	}
 
 	private static boolean needsBridge(IMethodBinding mb, IMethodBinding mb2) {
-		return mb2 != null && !sameSignature(mb, mb2.getMethodDeclaration())
+		return !mb.isConstructor() && mb2 != null
+				&& !sameSignature(mb, mb2.getMethodDeclaration())
 				&& !returnCovariant(mb, mb2.getMethodDeclaration());
 	}
 
@@ -802,8 +729,12 @@ public final class TransformUtil {
 	}
 
 	private static boolean sameReturn(IMethodBinding mb, IMethodBinding mb2) {
-		return mb.getReturnType().getErasure()
-				.isEqualTo(mb2.getReturnType().getErasure());
+		return mb
+				.getMethodDeclaration()
+				.getReturnType()
+				.getErasure()
+				.isEqualTo(
+						mb2.getMethodDeclaration().getReturnType().getErasure());
 
 	}
 

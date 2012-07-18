@@ -111,8 +111,7 @@ public class TypeBindingHeaderWriter {
 		pw.print(TransformUtil.fieldModifiers(type, vb.getModifiers(), true,
 				cv != null));
 
-		pw.print(CName.relative(vb.getType(),
-				vb.getDeclaringClass(), true));
+		pw.print(CName.relative(vb.getType(), vb.getDeclaringClass(), true));
 		pw.print(" ");
 
 		pw.print(TransformUtil.refName(vb));
@@ -161,8 +160,8 @@ public class TypeBindingHeaderWriter {
 
 		pw.println(";");
 
-		for (ITypeBinding rd : TransformUtil.returnDeps(type,
-				ctx.resolve(Object.class), mb)) {
+		for (ITypeBinding rd : TransformUtil.returnDeps(type, mb,
+				ctx.resolve(Object.class))) {
 			hardDep(rd);
 		}
 	}

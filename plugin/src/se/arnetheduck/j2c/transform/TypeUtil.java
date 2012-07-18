@@ -1,22 +1,61 @@
 package se.arnetheduck.j2c.transform;
 
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.Collection;
 import java.util.List;
 
 import org.eclipse.jdt.core.dom.IMethodBinding;
 import org.eclipse.jdt.core.dom.ITypeBinding;
+import org.eclipse.jdt.core.dom.IVariableBinding;
 
 /** Utilities for traversing the type hierarchy */
 public class TypeUtil {
+	public static Predicate<Object> named(final String name) {
+		return new Predicate<Object>() {
+			@Override
+			public boolean apply(Object t) {
+				if (t instanceof ITypeBinding) {
+					ITypeBinding tb = (ITypeBinding) t;
+					return tb.getName().equals(name);
+				}
+
+				if (t instanceof IMethodBinding) {
+					IMethodBinding mb = (IMethodBinding) t;
+					return mb.getName().equals(name);
+				}
+
+				if (t instanceof IVariableBinding) {
+					IVariableBinding vb = (IVariableBinding) t;
+					return vb.getName().equals(name);
+				}
+
+				return false;
+			}
+		};
+	}
+
+	/** Predicate that returns true for any method that mb overrides */
+	public static Predicate<IMethodBinding> overrides(final IMethodBinding mb) {
+		return new Predicate<IMethodBinding>() {
+			@Override
+			public boolean apply(IMethodBinding t) {
+				return mb.getMethodDeclaration().overrides(
+						t.getMethodDeclaration());
+			}
+		};
+	}
+
+	/** tb and all bases */
+	public static List<ITypeBinding> types(ITypeBinding tb, ITypeBinding object) {
+		List<ITypeBinding> ret = new ArrayList<ITypeBinding>();
+		ret.add(tb);
+		ret.addAll(allBases(tb, object));
+		return ret;
+	}
+
 	/** Superclasses of tb, including java.lang.Object but not tb itself */
 	public static List<ITypeBinding> superClasses(ITypeBinding tb) {
 		List<ITypeBinding> ret = new ArrayList<ITypeBinding>();
-		if (tb.getSuperclass() == null) {
-			return ret;
-		}
-
 		superClasses(tb, ret);
 		return ret;
 	}
@@ -37,10 +76,6 @@ public class TypeUtil {
 	 */
 	public static List<ITypeBinding> interfaces(ITypeBinding tb) {
 		List<ITypeBinding> ret = new ArrayList<ITypeBinding>();
-		if (tb.getInterfaces().length == 0) {
-			return ret;
-		}
-
 		interfaces(tb, ret);
 		return ret;
 	}
@@ -48,15 +83,26 @@ public class TypeUtil {
 	public static void interfaces(ITypeBinding tb, Collection<ITypeBinding> c) {
 		for (ITypeBinding ib : tb.getInterfaces()) {
 			c.add(ib);
-			c.addAll(interfaces(ib));
+			interfaces(ib, c);
 		}
 	}
 
 	/** Union of all methods defined by the supplied types */
 	public static List<IMethodBinding> methods(Collection<ITypeBinding> types) {
+		return methods(types, null);
+	}
+
+	/** Union of all methods defined by the supplied types matching p */
+	public static List<IMethodBinding> methods(Collection<ITypeBinding> types,
+			Predicate<? super IMethodBinding> predicate) {
+
 		List<IMethodBinding> ret = new ArrayList<IMethodBinding>();
-		for (ITypeBinding ib : types) {
-			ret.addAll(Arrays.asList(ib.getDeclaredMethods()));
+		for (ITypeBinding tb : types) {
+			for (IMethodBinding mb : tb.getDeclaredMethods()) {
+				if (predicate == null || predicate.apply(mb)) {
+					ret.add(mb);
+				}
+			}
 		}
 
 		return ret;
@@ -66,14 +112,17 @@ public class TypeUtil {
 	public static List<ITypeBinding> bases(ITypeBinding tb, ITypeBinding object) {
 		List<ITypeBinding> ret = new ArrayList<ITypeBinding>();
 
-		TransformUtil.addDep(tb.getSuperclass(), ret);
-
-		for (ITypeBinding ib : tb.getInterfaces()) {
-			TransformUtil.addDep(ib, ret);
+		if (tb.getSuperclass() != null) {
+			ret.add(tb.getSuperclass());
 		}
 
-		if (ret.isEmpty() && !TransformUtil.same(tb, Object.class)) {
-			TransformUtil.addDep(object, ret);
+		for (ITypeBinding ib : tb.getInterfaces()) {
+			ret.add(ib);
+		}
+
+		if (object != null && ret.isEmpty()
+				&& !TransformUtil.same(tb, Object.class)) {
+			ret.add(object);
 		}
 
 		return ret;
@@ -93,8 +142,8 @@ public class TypeUtil {
 			return tb0;
 		}
 
-		List<ITypeBinding> b0 = allBases(tb0, object);
-		List<ITypeBinding> b1 = allBases(tb1, object);
+		List<ITypeBinding> b0 = types(tb0, object);
+		List<ITypeBinding> b1 = types(tb1, object);
 		for (ITypeBinding x0 : b0) {
 			for (ITypeBinding x1 : b1) {
 				if (x0.isEqualTo(x1)) {
@@ -111,29 +160,19 @@ public class TypeUtil {
 			ITypeBinding object) {
 		List<ITypeBinding> ret = new ArrayList<ITypeBinding>();
 
-		TransformUtil.addDep(tb.getSuperclass(), ret);
-		if (tb.getSuperclass() != null) {
-			for (ITypeBinding a : allBases(tb.getSuperclass(), object)) {
-				TransformUtil.addDep(a, ret);
-			}
-		} else {
-			TransformUtil.addDep(object, ret);
+		List<ITypeBinding> supers = superClasses(tb);
+		ret.addAll(supers);
+		interfaces(tb, ret);
+
+		for (ITypeBinding b : supers) {
+			interfaces(b, ret);
 		}
 
-		for (ITypeBinding ib : tb.getInterfaces()) {
-			TransformUtil.addDep(ib, ret);
-
-			for (ITypeBinding a : allBases(ib, object)) {
-				TransformUtil.addDep(a, ret);
-			}
+		if (object != null && !TransformUtil.same(tb, Object.class)
+				&& !ret.contains(object)) {
+			ret.add(object);
 		}
 
 		return ret;
-	}
-
-	public static ITypeBinding objectBinding(ITypeBinding tb) {
-		assert (TransformUtil.same(tb.createArrayType(1).getSuperclass(),
-				Object.class));
-		return tb.createArrayType(1).getSuperclass();
 	}
 }

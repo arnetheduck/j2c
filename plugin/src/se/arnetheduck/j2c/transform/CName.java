@@ -236,14 +236,14 @@ public class CName {
 				prefix += "_";
 				n = n.substring(0, n.length() - "Array".length());
 			}
-	
+
 			return prefix + name;
 		}
-	
+
 		if (keywords.contains(name)) {
 			return "_" + name;
 		}
-	
+
 		return name;
 	}
 }

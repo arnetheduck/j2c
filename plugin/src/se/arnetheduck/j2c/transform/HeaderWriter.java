@@ -292,8 +292,8 @@ public class HeaderWriter extends TransformWriter {
 
 			node.getName().accept(this);
 
-			for (ITypeBinding rd : TransformUtil.returnDeps(type,
-					ctx.resolve(Object.class), mb)) {
+			for (ITypeBinding rd : TransformUtil.returnDeps(type, mb,
+					ctx.resolve(Object.class))) {
 				hardDep(rd);
 			}
 		}

@@ -258,7 +258,7 @@ public class Header {
 		Set<IMethodBinding> im = new TreeSet<IMethodBinding>(
 				new BindingComparator());
 
-		im.addAll(TypeUtil.methods(TypeUtil.interfaces(tb)));
+		im.addAll(TypeUtil.methods(TypeUtil.interfaces(tb), null));
 
 		List<IMethodBinding> missing = new ArrayList<IMethodBinding>(im);
 
@@ -284,7 +284,8 @@ public class Header {
 	public static boolean baseDeclared(Transformer ctx, ITypeBinding type,
 			IMethodBinding mb) {
 		return (Modifier.isAbstract(mb.getModifiers()) || type.isInterface())
-				&& TransformUtil.baseHasSame(mb, type, ctx);
+				&& TransformUtil.baseHasSame(mb, type,
+						ctx.resolve(Object.class));
 	}
 
 	private String getExtras(Collection<IVariableBinding> closures,
@@ -437,7 +438,7 @@ public class Header {
 			pw.println(");");
 
 			access = printProtected(pw, access);
-			pw.println("void " + CName.CTOR + "();");
+			pw.println(i1 + "void " + CName.CTOR + "();");
 		}
 	}
 
@@ -593,7 +594,8 @@ public class Header {
 	private List<IMethodBinding> dupeNames(ITypeBinding type) {
 		List<IMethodBinding> ret = new ArrayList<IMethodBinding>();
 
-		List<ITypeBinding> bases = TypeUtil.bases(type, null);
+		List<ITypeBinding> bases = TypeUtil.bases(type,
+				ctx.resolve(Object.class));
 		for (ITypeBinding b0 : bases) {
 			b0 = b0.getErasure(); // This will get us erased method declarations
 			for (ITypeBinding b1 : bases) {

@@ -1827,8 +1827,9 @@ public class ImplWriter extends TransformWriter {
 	}
 
 	private boolean isOverloaded(IMethodBinding b) {
-		Collection<IMethodBinding> methods = TransformUtil.allMethods(
-				b.getDeclaringClass(), b.getName(), ctx.resolve(Object.class));
+		Collection<IMethodBinding> methods = TypeUtil.methods(TypeUtil.types(
+				b.getDeclaringClass(), ctx.resolve(Object.class)), TypeUtil
+				.named(b.getName()));
 		if (methods.size() < 2) {
 			return false;
 		}

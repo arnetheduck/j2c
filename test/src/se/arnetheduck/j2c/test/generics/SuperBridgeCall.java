@@ -15,6 +15,9 @@ public class SuperBridgeCall {
 	public class T extends S implements I<Empty> {
 	}
 
+	public class U extends T implements I<Empty> {
+	}
+
 	T m() {
 		return new T();
 	}
