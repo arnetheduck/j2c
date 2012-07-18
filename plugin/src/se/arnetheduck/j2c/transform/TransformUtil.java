@@ -191,8 +191,10 @@ public final class TransformUtil {
 				return "u'\\\\'";
 			}
 
-			if (ch >= 0xd800 && ch <= 0xdfff || ch == 0xffff) {
+			if (ch >= 0xd800 && ch <= 0xdfff || ch == 0x0000 || ch == 0xffff) {
 				// These are not valid for the \\u syntax
+				// 0x0000 is a G++ bug:
+				// http://gcc.gnu.org/bugzilla/show_bug.cgi?id=53690
 				// 0xffff is a G++ bug:
 				// http://gcc.gnu.org/bugzilla/show_bug.cgi?id=41698
 				return String.format("char16_t(0x%04x)", (int) ch);
