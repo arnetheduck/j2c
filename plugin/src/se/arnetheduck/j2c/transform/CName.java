@@ -13,14 +13,33 @@ import org.eclipse.jdt.core.dom.ITypeBinding;
 import org.eclipse.jdt.core.dom.IVariableBinding;
 
 public class CName {
-	/** Name of fake static initializer */
+	/**
+	 * Name of fake static initializer - method that intializes static fields
+	 * and runs static initializer blocks
+	 */
 	public static final String STATIC_INIT = "clinit";
-	/** Name of fake instance initializer */
+
+	/**
+	 * Name of fake instance initializer - method that initializes fields and
+	 * runs instance initializer blocks
+	 */
 	public static final String INSTANCE_INIT = "init";
-	/** Name of fake constructor */
+
+	/**
+	 * Name of fake constructor containing the body of the Java constructor,
+	 * necessary to simulate Java initialization order
+	 */
 	public static final String CTOR = "ctor";
+
 	/** Virtual method that returns the dynamic class of the current object */
 	public static final String GET_CLASS = "getClass0";
+
+	/**
+	 * The default-init constructor takes care of the first phase of Java object
+	 * initialization, namely to initialize all fields to 0, and of calling
+	 * clinit to make sure the class is initialized.
+	 */
+	public static final String DEFAULT_INIT_TAG = "default_init_tag";
 
 	/** C++ keywords + special method names - java keywords */
 	static Collection<String> keywords = Arrays.asList("alignas", "alignof",

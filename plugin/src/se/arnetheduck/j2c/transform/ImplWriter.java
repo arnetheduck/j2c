@@ -200,11 +200,9 @@ public class ImplWriter extends TransformWriter {
 		printFinally();
 		printSynchronized();
 
-		if (type.isAnonymous()) {
-			printBaseConstructors();
-		} else {
-			printConstructors();
-		}
+		printDefaultInitCtor();
+		printCtors();
+		printAnonCtors();
 
 		if (!(type.isInterface() || type.isAnnotation())) {
 			printInit();
@@ -292,14 +290,14 @@ public class ImplWriter extends TransformWriter {
 		out = old;
 	}
 
-	private void printConstructors() {
-		if (!type.isClass() && !type.isEnum()) {
+	private void printCtors() {
+		if (!TypeUtil.isClassLike(type) || type.isAnonymous()) {
 			return;
 		}
 
 		boolean hasEmpty = false;
 		for (MethodDeclaration md : constructors) {
-			printi(qcname, "::", name, "(");
+			printi(qcname + "::" + name + "(");
 
 			String sep = TransformUtil.printNestedParams(out, type, closures);
 
@@ -314,16 +312,27 @@ public class ImplWriter extends TransformWriter {
 			println(") ", TransformUtil.throwsDecl(md.thrownExceptions()));
 
 			indent++;
-			printFieldInit(": ");
+			printi(": " + name + "(");
+			sep = "";
+			if (TransformUtil.hasOuterThis(type)) {
+				print(TransformUtil.outerThisName(type));
+				sep = ", ";
+			}
+
+			if (closures != null) {
+				for (IVariableBinding closure : closures) {
+					print(sep + CName.of(closure));
+					sep = ", ";
+				}
+			}
+
+			println(sep + "*static_cast< ::" + CName.DEFAULT_INIT_TAG
+					+ "* >(0))");
+
 			indent--;
 
 			println("{");
 			indent++;
-			printlni(CName.STATIC_INIT, "();");
-
-			if (init != null) {
-				printlni(CName.INSTANCE_INIT, "();");
-			}
 
 			printi(CName.CTOR + "(");
 
@@ -337,19 +346,19 @@ public class ImplWriter extends TransformWriter {
 		}
 
 		if (!hasEmpty) {
-			printEmptyConstructor();
+			printEmptyCtor();
 		}
 	}
 
-	private void printBaseConstructors() {
-		if (!type.isClass() && !type.isEnum()) {
+	private void printAnonCtors() {
+		if (!type.isAnonymous()) {
 			return;
 		}
 
-		// Synthesize base class constructors
+		// In reality, we should only synthesize the constructor actually being
+		// used, but...
 		List<IMethodBinding> baseConstructors = new ArrayList<IMethodBinding>();
 		Header.getBaseConstructors(type, baseConstructors);
-		boolean hasEmpty = false;
 		for (IMethodBinding mb : baseConstructors) {
 			printi(qcname, "::", name, "(");
 
@@ -358,63 +367,32 @@ public class ImplWriter extends TransformWriter {
 			if (mb.getParameterTypes().length > 0) {
 				out.print(sep);
 				TransformUtil.printParams(out, type, mb, false, softDeps);
-			} else {
-				hasEmpty = true;
 			}
 
 			println(")");
-			indent++;
-			String initSep = ": ";
-
-			if (!(type.getSuperclass() != null && TransformUtil
-					.hasOuterThis(type.getSuperclass()))) {
-				printi(initSep);
-				initSep = ", ";
-				print(CName.relative(type.getSuperclass(), type, true), "(");
-
-				sep = "";
-				for (int i = 0; i < mb.getParameterTypes().length; ++i) {
-					print(sep, TransformUtil.paramName(mb, i));
-					sep = ", ";
-				}
-
-				println(")");
-			}
-
-			printFieldInit(initSep);
-
-			indent--;
-			println("{");
-			indent++;
-			printlni(CName.STATIC_INIT, "();");
-			if (init != null) {
-				printlni(CName.INSTANCE_INIT, "();");
-			}
-
-			println("}");
-			indent--;
-			println();
+			printAnonCtorBody();
 		}
 
-		if (!hasEmpty) {
-			printEmptyConstructor();
+		if (baseConstructors.isEmpty()) {
+			printi(qcname, "::", name, "(");
+
+			TransformUtil.printNestedParams(out, type, closures);
+
+			println(")");
+			printAnonCtorBody();
 		}
 	}
 
-	private void printEmptyConstructor() {
-		printi(qcname + "::" + name + "(");
-
-		TransformUtil.printNestedParams(out, type, closures);
-
-		println(")");
-
+	private void printAnonCtorBody() {
 		indent++;
 		printFieldInit(": ");
 		indent--;
-		println("{");
 
+		println("{");
 		indent++;
+
 		printlni(CName.STATIC_INIT, "();");
+
 		if (init != null) {
 			printlni(CName.INSTANCE_INIT, "();");
 		}
@@ -422,9 +400,43 @@ public class ImplWriter extends TransformWriter {
 		indent--;
 		println("}");
 		println();
+	}
+
+	private void printDefaultInitCtor() {
+		if (!TypeUtil.isClassLike(type) || type.isAnonymous()) {
+			return;
+		}
+
+		print(qcname + "::" + name + "(");
+		print(TransformUtil.printNestedParams(out, type, closures));
+		println("const ::" + CName.DEFAULT_INIT_TAG + "&)");
+
+		indent++;
+		printFieldInit(": ");
+		indent--;
+
+		println("{");
+		indent++;
+		printlni(CName.STATIC_INIT, "();");
+		indent--;
+		println("}");
+		println();
+
+	}
+
+	private void printEmptyCtor() {
+		if (type.isAnonymous()) {
+			return;
+		}
 
 		println("void " + qcname + "::" + CName.CTOR + "()");
 		println("{");
+		indent++;
+		printlni("super::" + CName.CTOR + "();");
+		if (init != null) {
+			printlni(CName.INSTANCE_INIT + "();");
+		}
+		indent--;
 		println("}");
 		println();
 	}
@@ -1675,7 +1687,30 @@ public class ImplWriter extends TransformWriter {
 
 		println(TransformUtil.throwsDecl(node.thrownExceptions()));
 
-		node.getBody().accept(this);
+		if (node.isConstructor()) {
+			println("{");
+			indent++;
+			Statement first = null;
+			if (!node.getBody().statements().isEmpty()) {
+				first = (Statement) node.getBody().statements().get(0);
+			}
+
+			if (!(first instanceof ConstructorInvocation)) {
+				if (!(first instanceof SuperConstructorInvocation)) {
+					printlni("super::" + CName.CTOR + "();");
+				}
+
+				if (init != null) {
+					printlni(CName.INSTANCE_INIT, "();");
+				}
+			}
+
+			visitAll(node.getBody().statements());
+			indent--;
+			print("}");
+		} else {
+			node.getBody().accept(this);
+		}
 
 		println();
 		println();

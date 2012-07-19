@@ -130,6 +130,8 @@ public class Header {
 			pw.println();
 		}
 
+		printDefaultInitTag();
+
 		pw.print(type.isInterface() ? "struct " : "class ");
 
 		pw.println(CName.qualified(type, false));
@@ -294,6 +296,7 @@ public class Header {
 		pw = new PrintWriter(sw);
 
 		printConstructors(closures);
+		printDefaultInitCtor(closures);
 
 		printClassLiteral();
 		printClinit();
@@ -316,6 +319,28 @@ public class Header {
 		return sw.toString();
 	}
 
+	private void printDefaultInitTag() {
+		if (!TypeUtil.isClassLike(type)) {
+			return;
+		}
+
+		pw.println("struct " + CName.DEFAULT_INIT_TAG + ";");
+		pw.println();
+	}
+
+	private void printDefaultInitCtor(Collection<IVariableBinding> closures) {
+		if (!TypeUtil.isClassLike(type) || type.isAnonymous()) {
+			return;
+		}
+
+		access = printProtected(pw, access);
+
+		pw.print(i1 + CName.of(type) + "(");
+		pw.print(TransformUtil.printNestedParams(pw, type, closures));
+		pw.println("const ::" + CName.DEFAULT_INIT_TAG + "&);");
+		pw.println();
+	}
+
 	private void printStringOperator() {
 		if (TransformUtil.same(type, String.class)) {
 			pw.println(i1
@@ -324,7 +349,7 @@ public class Header {
 	}
 
 	private void printGetClass() {
-		if (!type.isClass() && !type.isEnum()) {
+		if (!TypeUtil.isClassLike(type)) {
 			return;
 		}
 
@@ -396,7 +421,7 @@ public class Header {
 	}
 
 	private void printConstructors(Collection<IVariableBinding> closures) {
-		if (!type.isClass() && !type.isEnum()) {
+		if (!TypeUtil.isClassLike(type)) {
 			return;
 		}
 
@@ -424,7 +449,7 @@ public class Header {
 			pw.println(");");
 		}
 
-		if (!hasEmpty) {
+		if (!hasEmpty && (!type.isAnonymous() || constructors.isEmpty())) {
 			if (constructors.size() > 0) {
 				access = printProtected(pw, access);
 			} else {
@@ -453,7 +478,7 @@ public class Header {
 	}
 
 	private void printClinit() {
-		if (!type.isClass() && !type.isEnum()) {
+		if (!TypeUtil.isClassLike(type)) {
 			return;
 		}
 
@@ -471,7 +496,7 @@ public class Header {
 	}
 
 	private void printMethods() {
-		if (type.isClass() || type.isEnum()) {
+		if (TypeUtil.isClassLike(type)) {
 			for (List<IMethodBinding> e : methods.values()) {
 				for (IMethodBinding mb : e) {
 					access = TransformUtil.declareBridge(pw, type, mb,
@@ -535,7 +560,7 @@ public class Header {
 			}
 		}
 
-		if (!type.isClass() && !type.isEnum()) {
+		if (!TypeUtil.isClassLike(type)) {
 			return;
 		}
 

@@ -68,11 +68,9 @@ public class StubWriter {
 		StringWriter sw = new StringWriter();
 		pw = new PrintWriter(sw);
 
-		// printFinally();
-		// printSynchronized();
-
 		if (!natives) {
-			printConstructors();
+			printDefaultInitCtor();
+			printCtors();
 		}
 
 		if (!(type.isInterface() || type.isAnnotation())) {
@@ -110,8 +108,8 @@ public class StubWriter {
 		return ret.toString();
 	}
 
-	private void printConstructors() {
-		if (!type.isClass() && !type.isEnum()) {
+	private void printCtors() {
+		if (!TypeUtil.isClassLike(type)) {
 			return;
 		}
 
@@ -128,7 +126,6 @@ public class StubWriter {
 
 			if (mb.getParameterTypes().length > 0) {
 				print(sep);
-
 				TransformUtil.printParams(pw, type, mb, false, softDeps);
 			} else {
 				hasEmpty = true;
@@ -136,51 +133,63 @@ public class StubWriter {
 
 			println(")");
 
-			printFieldInit(": ");
+			print(i1 + ": " + name + "(");
+			sep = "";
+			if (TransformUtil.hasOuterThis(type)) {
+				print(TransformUtil.outerThisName(type));
+				sep = ", ";
+			}
+
+			println(sep + "*static_cast< ::" + CName.DEFAULT_INIT_TAG
+					+ "* >(0))");
 
 			println("{");
-			pw.println(i1 + CName.STATIC_INIT + "();");
+			pw.print(i1 + CName.CTOR + "(");
 
-			if (!type.isAnonymous()) {
-				// Anonymous types don't have their own constructors
-				pw.print(i1 + CName.CTOR + "(");
-
-				sep = "";
-				for (int i = 0; i < mb.getParameterTypes().length; ++i) {
-					pw.print(sep + TransformUtil.paramName(mb, i));
-					sep = ", ";
-				}
-
-				println(");");
+			sep = "";
+			for (int i = 0; i < mb.getParameterTypes().length; ++i) {
+				pw.print(sep + TransformUtil.paramName(mb, i));
+				sep = ", ";
 			}
+
+			println(");");
 
 			pw.println("}");
 			pw.println();
 		}
 
 		if (!hasEmpty) {
-			printEmptyConstructor();
+			printEmptyCtor();
 		}
 	}
 
-	private void printEmptyConstructor() {
-		pw.print(qcname + "::" + name + "(");
+	private void printDefaultInitCtor() {
+		if (!TypeUtil.isClassLike(type) || type.isAnonymous()) {
+			return;
+		}
 
-		TransformUtil.printNestedParams(pw, type,
-				new ArrayList<IVariableBinding>());
-
-		println(")");
+		print(qcname + "::" + name + "(");
+		print(TransformUtil.printNestedParams(pw, type,
+				new ArrayList<IVariableBinding>()));
+		println("const ::" + CName.DEFAULT_INIT_TAG + "&)");
 
 		printFieldInit(": ");
+
 		println("{");
+		println(i1 + CName.STATIC_INIT + "();");
+		println("}");
+		println();
 
-		pw.println(i1 + CName.STATIC_INIT + "();");
+	}
 
-		pw.println("}");
-		pw.println();
+	private void printEmptyCtor() {
+		if (type.isAnonymous()) {
+			return;
+		}
 
 		println("void " + qcname + "::" + CName.CTOR + "()");
 		println("{");
+		println(i1 + "super::" + CName.CTOR + "();");
 		println("}");
 		println();
 	}
@@ -303,6 +312,10 @@ public class StubWriter {
 
 		if (TransformUtil.isStatic(mb)) {
 			println(i1 + CName.STATIC_INIT + "();");
+		}
+
+		if (mb.isConstructor() && type.getSuperclass() != null) {
+			println(i1 + "super::" + CName.CTOR + "();");
 		}
 
 		boolean hasBody = false;

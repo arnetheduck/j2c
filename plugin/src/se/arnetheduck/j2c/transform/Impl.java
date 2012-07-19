@@ -22,7 +22,6 @@ public class Impl {
 	private final String qcname;
 
 	private static final String i1 = TransformUtil.indent(1);
-	private static final String i2 = TransformUtil.indent(2);
 
 	private PrintWriter pw;
 	private boolean isNative;
@@ -68,6 +67,7 @@ public class Impl {
 			StringWriter clinit) {
 		StringWriter sw = new StringWriter();
 		pw = new PrintWriter(sw);
+
 		printClassLiteral();
 		printClinit(clinit);
 		printSuperCalls();
@@ -119,7 +119,7 @@ public class Impl {
 	}
 
 	private void printClinit(StringWriter clinit) {
-		if (isNative || !type.isClass() && !type.isEnum()) {
+		if (isNative || !TypeUtil.isClassLike(type)) {
 			return;
 		}
 
@@ -193,7 +193,7 @@ public class Impl {
 	}
 
 	private void printSuperCalls() {
-		if (isNative || !type.isClass() && !type.isEnum()) {
+		if (isNative || !TypeUtil.isClassLike(type)) {
 			return;
 		}
 

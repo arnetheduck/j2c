@@ -175,4 +175,8 @@ public class TypeUtil {
 
 		return ret;
 	}
+
+	public static boolean isClassLike(ITypeBinding type) {
+		return type.isClass() || type.isEnum();
+	}
 }
