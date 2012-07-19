@@ -271,6 +271,7 @@ public class Impl {
 		println("template<typename T, typename U>");
 		println("static T java_cast(U* u)");
 		println("{");
+		println(i1 + "if(!u) return static_cast<T>(nullptr);");
 		println(i1 + "auto t = dynamic_cast<T>(u);");
 		println(i1 + "if(!t) throw new ::java::lang::ClassCastException();");
 		println(i1 + "return t;");
