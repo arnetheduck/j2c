@@ -30,8 +30,8 @@ public class Header {
 
 	private final ITypeBinding type;
 	private final Transformer ctx;
-	private final Collection<ITypeBinding> softDeps;
-	private final Collection<ITypeBinding> hardDeps;
+
+	private final DepInfo deps;
 
 	private final List<IMethodBinding> constructors = new ArrayList<IMethodBinding>();
 	private final Map<String, List<IMethodBinding>> methods = new TreeMap<String, List<IMethodBinding>>();
@@ -41,12 +41,10 @@ public class Header {
 
 	private PrintWriter out;
 
-	public Header(Transformer ctx, ITypeBinding type,
-			Collection<ITypeBinding> softDeps, Collection<ITypeBinding> hardDeps) {
+	public Header(Transformer ctx, ITypeBinding type, DepInfo deps) {
 		this.ctx = ctx;
 		this.type = type;
-		this.softDeps = softDeps;
-		this.hardDeps = hardDeps;
+		this.deps = deps;
 	}
 
 	public void method(IMethodBinding mb) {
@@ -94,7 +92,7 @@ public class Header {
 
 		Set<String> packages = new TreeSet<String>();
 		packages.add(CName.packageOf(type));
-		for (ITypeBinding tb : softDeps) {
+		for (ITypeBinding tb : deps.getSoftDeps()) {
 			packages.add(CName.packageOf(tb));
 		}
 
@@ -115,7 +113,7 @@ public class Header {
 			hasIncludes = true;
 		}
 
-		for (ITypeBinding dep : hardDeps) {
+		for (ITypeBinding dep : deps.getHardDeps()) {
 			if (dep.isNullType() || dep.isPrimitive()) {
 				continue;
 			}
@@ -391,13 +389,13 @@ public class Header {
 			if (!hasValues && isValues(mb)) {
 				access = printAccess(out, Modifier.PUBLIC, access);
 				print(i1);
-				TransformUtil.printSignature(out, type, mb, softDeps, false);
+				TransformUtil.printSignature(out, type, mb, deps, false);
 				println(" { return nullptr; /* TODO */ }");
 				hasValues = true;
 			} else if (!hasValueOf && isValueOf(mb)) {
 				access = printAccess(out, Modifier.PUBLIC, access);
 				print(i1);
-				TransformUtil.printSignature(out, type, mb, softDeps, false);
+				TransformUtil.printSignature(out, type, mb, deps, false);
 				println(" { return nullptr; /* TODO */ }");
 				hasValueOf = true;
 			}
@@ -440,7 +438,7 @@ public class Header {
 
 			if (mb.getParameterTypes().length > 0) {
 				print(sep);
-				TransformUtil.printParams(out, type, mb, false, softDeps);
+				TransformUtil.printParams(out, type, mb, false, deps);
 			} else {
 				hasEmpty = true;
 			}
@@ -500,8 +498,8 @@ public class Header {
 		if (TypeUtil.isClassLike(type)) {
 			for (List<IMethodBinding> e : methods.values()) {
 				for (IMethodBinding mb : e) {
-					access = TransformUtil.declareBridge(out, type, mb,
-							softDeps, access);
+					access = TransformUtil.declareBridge(out, type, mb, deps,
+							access);
 				}
 			}
 		}
@@ -556,7 +554,7 @@ public class Header {
 				print(i1);
 				TransformUtil.printSignature(out, type,
 						dupe.getMethodDeclaration(), dupe.getReturnType(),
-						softDeps, false);
+						deps, false);
 				println(" = 0;");
 			}
 		}
@@ -589,7 +587,7 @@ public class Header {
 		print(i1);
 		ITypeBinding irt = impl.getReturnType();
 		TransformUtil.printSignature(out, type, decl.getMethodDeclaration(),
-				irt, softDeps, false);
+				irt, deps, false);
 
 		if (Modifier.isAbstract(impl.getModifiers())) {
 			print(" = 0");
@@ -710,14 +708,14 @@ public class Header {
 					|| sb.getDeclaringClass() != null
 					&& !type.getDeclaringClass().getErasure()
 							.isEqualTo(sb.getDeclaringClass().getErasure())) {
-				TransformUtil.addDep(type.getDeclaringClass(), softDeps);
+				deps.soft(type.getDeclaringClass());
 				println(i1 + TransformUtil.outerThis(type) + ";");
 			}
 		}
 
 		if (closures != null) {
 			for (IVariableBinding closure : closures) {
-				TransformUtil.addDep(closure.getType(), softDeps);
+				deps.soft(closure.getType());
 				println(i1 + CName.relative(closure.getType(), type, true)
 						+ " " + TransformUtil.refName(closure) + ";");
 			}
@@ -747,7 +745,7 @@ public class Header {
 		}
 
 		for (ITypeBinding nb : nested) {
-			TransformUtil.addDep(nb, softDeps);
+			deps.soft(nb);
 			if (!nb.isEqualTo(type)) {
 				println(i1 + "friend class " + CName.of(nb) + ";");
 			}
@@ -760,8 +758,7 @@ public class Header {
 	}
 
 	public void hardDep(ITypeBinding dep) {
-		TransformUtil.addDep(dep, hardDeps);
-		ctx.hardDep(dep);
+		deps.hard(dep);
 	}
 
 	public void print(String string) {

@@ -1,0 +1,42 @@
+package se.arnetheduck.j2c.transform;
+
+import java.util.Set;
+import java.util.TreeSet;
+
+import org.eclipse.jdt.core.dom.ITypeBinding;
+
+public class DepInfo {
+	private final Transformer ctx;
+
+	private final Set<ITypeBinding> hardDeps = new TreeSet<ITypeBinding>(
+			new BindingComparator());
+	private final Set<ITypeBinding> softDeps = new TreeSet<ITypeBinding>(
+			new BindingComparator());
+
+	public DepInfo(Transformer ctx) {
+		this.ctx = ctx;
+	}
+
+	/** Soft dependency, forward declaration sufficient */
+	public void soft(ITypeBinding dep) {
+		if (TransformUtil.addDep(dep, softDeps)) {
+			ctx.softDep(dep);
+		}
+	}
+
+	/** Hard dependency, class declaration required */
+	public void hard(ITypeBinding dep) {
+		if (TransformUtil.addDep(dep, hardDeps)) {
+			ctx.hardDep(dep);
+			soft(dep);
+		}
+	}
+
+	public Set<ITypeBinding> getHardDeps() {
+		return hardDeps;
+	}
+
+	public Set<ITypeBinding> getSoftDeps() {
+		return softDeps;
+	}
+}

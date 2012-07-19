@@ -383,13 +383,13 @@ public final class TransformUtil {
 		}
 	}
 
-	public static void addDep(ITypeBinding dep, Collection<ITypeBinding> deps) {
+	public static boolean addDep(ITypeBinding dep, Collection<ITypeBinding> deps) {
 		if (dep == null) {
-			return;
+			return false;
 		}
 
 		if (dep.isNullType() || isVoid(dep)) {
-			return;
+			return false;
 		}
 
 		dep = dep.getErasure();
@@ -403,7 +403,7 @@ public final class TransformUtil {
 			}
 		}
 
-		deps.add(dep);
+		return deps.add(dep);
 	}
 
 	public static String ref(ITypeBinding tb) {
@@ -541,7 +541,7 @@ public final class TransformUtil {
 	}
 
 	public static void printParams(PrintWriter out, ITypeBinding tb,
-			IMethodBinding mb, boolean parens, Collection<ITypeBinding> deps) {
+			IMethodBinding mb, boolean parens, DepInfo deps) {
 		if (parens) {
 			out.print("(");
 		}
@@ -551,7 +551,7 @@ public final class TransformUtil {
 				out.print(", ");
 
 			ITypeBinding pb = mb.getParameterTypes()[i];
-			addDep(pb, deps);
+			deps.soft(pb);
 
 			out.print(CName.relative(pb, tb, true));
 			out.print(" ");
@@ -640,7 +640,7 @@ public final class TransformUtil {
 	}
 
 	public static String declareBridge(PrintWriter pw, ITypeBinding tb,
-			IMethodBinding mb, Collection<ITypeBinding> softDeps, String access) {
+			IMethodBinding mb, DepInfo deps, String access) {
 		List<IMethodBinding> methods = TypeUtil.methods(
 				TypeUtil.allBases(tb, null), TypeUtil.overrides(mb));
 		for (IMethodBinding mb2 : methods) {
@@ -650,7 +650,7 @@ public final class TransformUtil {
 				access = Header.printAccess(pw, mb2, access);
 				pw.print(TransformUtil.indent(1));
 
-				TransformUtil.printSignature(pw, tb, mb2, softDeps, false);
+				printSignature(pw, tb, mb2, deps, false);
 
 				pw.println(";");
 				break;
@@ -660,17 +660,15 @@ public final class TransformUtil {
 		return access;
 	}
 
-	public static List<ITypeBinding> defineBridge(PrintWriter pw,
-			ITypeBinding tb, IMethodBinding mb,
-			Collection<ITypeBinding> softDeps) {
-		List<ITypeBinding> deps = new ArrayList<ITypeBinding>();
+	public static void defineBridge(PrintWriter pw, ITypeBinding tb,
+			IMethodBinding mb, DepInfo deps) {
 		List<IMethodBinding> methods = TypeUtil.methods(
 				TypeUtil.allBases(tb, null), TypeUtil.overrides(mb));
 		for (IMethodBinding mb2 : methods) {
 			if (needsBridge(mb, mb2)) {
 				mb2 = mb2.getMethodDeclaration();
 
-				printSignature(pw, tb, mb2, softDeps, true);
+				printSignature(pw, tb, mb2, deps, true);
 
 				pw.println();
 				pw.println("{ ");
@@ -680,7 +678,7 @@ public final class TransformUtil {
 
 					if (!mb2.getReturnType().getErasure()
 							.isEqualTo(mb.getReturnType().getErasure())) {
-						addDep(mb.getReturnType(), deps);
+						deps.hard(mb.getReturnType());
 					}
 				}
 
@@ -693,7 +691,7 @@ public final class TransformUtil {
 					ITypeBinding pb2 = mb2.getParameterTypes()[i];
 
 					if (!pb.isEqualTo(pb2)) {
-						deps.add(pb);
+						deps.hard(pb);
 						pw.print("dynamic_cast< ");
 						pw.print(CName.relative(pb, tb, false));
 						pw.print(ref(pb));
@@ -711,8 +709,6 @@ public final class TransformUtil {
 				break;
 			}
 		}
-
-		return deps;
 	}
 
 	private static boolean needsBridge(IMethodBinding mb, IMethodBinding mb2) {
@@ -769,14 +765,12 @@ public final class TransformUtil {
 	}
 
 	public static void printSignature(PrintWriter pw, ITypeBinding tb,
-			IMethodBinding mb, Collection<ITypeBinding> softDeps,
-			boolean qualified) {
-		printSignature(pw, tb, mb, mb.getReturnType(), softDeps, qualified);
+			IMethodBinding mb, DepInfo deps, boolean qualified) {
+		printSignature(pw, tb, mb, mb.getReturnType(), deps, qualified);
 	}
 
 	public static void printSignature(PrintWriter pw, ITypeBinding tb,
-			IMethodBinding mb, ITypeBinding rt,
-			Collection<ITypeBinding> softDeps, boolean qualified) {
+			IMethodBinding mb, ITypeBinding rt, DepInfo deps, boolean qualified) {
 		if (mb.isConstructor()) {
 			pw.print("void ");
 			if (qualified) {
@@ -786,7 +780,7 @@ public final class TransformUtil {
 
 			pw.print(CName.CTOR);
 		} else {
-			addDep(rt, softDeps);
+			deps.soft(rt);
 
 			if (!qualified) {
 				pw.print(methodModifiers(mb));
@@ -806,7 +800,7 @@ public final class TransformUtil {
 			pw.print(CName.of(mb));
 		}
 
-		printParams(pw, tb, mb, true, softDeps);
+		printParams(pw, tb, mb, true, deps);
 	}
 
 	public static String printNestedParams(PrintWriter pw, ITypeBinding type,

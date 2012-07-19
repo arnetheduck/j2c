@@ -4,8 +4,6 @@ import java.io.PrintWriter;
 import java.io.StringWriter;
 import java.lang.reflect.Modifier;
 import java.util.ArrayList;
-import java.util.Set;
-import java.util.TreeSet;
 
 import org.eclipse.core.runtime.IPath;
 import org.eclipse.jdt.core.dom.IMethodBinding;
@@ -17,14 +15,11 @@ public class TypeBindingHeaderWriter {
 	private final ITypeBinding type;
 	private final Transformer ctx;
 
+	private final DepInfo deps;
+
 	private String access;
 	private final Header header;
 	private static final String i1 = TransformUtil.indent(1);
-
-	protected final Set<ITypeBinding> hardDeps = new TreeSet<ITypeBinding>(
-			new BindingComparator());
-	protected final Set<ITypeBinding> softDeps = new TreeSet<ITypeBinding>(
-			new BindingComparator());
 
 	public TypeBindingHeaderWriter(IPath root, Transformer ctx,
 			ITypeBinding type) {
@@ -32,9 +27,10 @@ public class TypeBindingHeaderWriter {
 		this.ctx = ctx;
 		this.type = type;
 
+		deps = new DepInfo(ctx);
 		access = Header.initialAccess(type);
 		softDep(type);
-		header = new Header(ctx, type, softDeps, hardDeps);
+		header = new Header(ctx, type, deps);
 	}
 
 	public void write() throws Exception {
@@ -47,10 +43,6 @@ public class TypeBindingHeaderWriter {
 				sw = new StubWriter(root, ctx, type);
 				sw.write(true, false);
 			}
-		}
-
-		for (ITypeBinding tb : softDeps) {
-			ctx.softDep(tb);
 		}
 	}
 
@@ -93,7 +85,7 @@ public class TypeBindingHeaderWriter {
 		out.println();
 
 		for (IMethodBinding mb : type.getDeclaredMethods()) {
-			printMethod(out, type, mb);
+			printMethod(out, mb);
 		}
 
 		return sw.toString();
@@ -107,7 +99,7 @@ public class TypeBindingHeaderWriter {
 				asMethod ? Modifier.PRIVATE : vb.getModifiers(), access);
 		pw.print(TransformUtil.indent(1));
 
-		Object cv = TransformUtil.constantValue(vb);
+		String cv = TransformUtil.constantValue(vb);
 		pw.print(TransformUtil.fieldModifiers(type, vb.getModifiers(), true,
 				cv != null));
 
@@ -125,11 +117,11 @@ public class TypeBindingHeaderWriter {
 		pw.println(";");
 	}
 
-	private void printMethod(PrintWriter pw, ITypeBinding tb, IMethodBinding mb) {
+	private void printMethod(PrintWriter pw, IMethodBinding mb) {
 		if (Header.baseDeclared(ctx, type, mb)) {
 			// Defining once more will lead to virtual inheritance issues
 			pw.print(i1 + "/*");
-			TransformUtil.printSignature(pw, type, mb, softDeps, false);
+			TransformUtil.printSignature(pw, type, mb, deps, false);
 			pw.println("; (already declared) */");
 			return;
 		}
@@ -137,7 +129,7 @@ public class TypeBindingHeaderWriter {
 		if (Modifier.isPrivate(mb.getModifiers())) {
 			// Skip implementation details
 			pw.print(i1 + "/*");
-			TransformUtil.printSignature(pw, tb, mb, softDeps, false);
+			TransformUtil.printSignature(pw, type, mb, deps, false);
 			pw.println("; (private) */");
 			return;
 		}
@@ -152,7 +144,7 @@ public class TypeBindingHeaderWriter {
 		header.method(mb);
 
 		pw.print(i1);
-		TransformUtil.printSignature(pw, tb, mb, softDeps, false);
+		TransformUtil.printSignature(pw, type, mb, deps, false);
 
 		if (Modifier.isAbstract(mb.getModifiers())) {
 			pw.print(" = 0");
@@ -167,12 +159,10 @@ public class TypeBindingHeaderWriter {
 	}
 
 	public void hardDep(ITypeBinding dep) {
-		TransformUtil.addDep(dep, hardDeps);
-		ctx.hardDep(dep);
+		deps.hard(dep);
 	}
 
 	public void softDep(ITypeBinding dep) {
-		TransformUtil.addDep(dep, softDeps);
-		ctx.softDep(dep);
+		deps.soft(dep);
 	}
 }

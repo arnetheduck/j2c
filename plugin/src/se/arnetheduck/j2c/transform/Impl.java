@@ -18,20 +18,18 @@ public class Impl {
 
 	private final ITypeBinding type;
 	private final Transformer ctx;
-	private final Collection<ITypeBinding> softDeps;
-	private final Collection<ITypeBinding> hardDeps;
+
+	private final DepInfo deps;
 
 	private final String qcname;
 
 	private PrintWriter out;
 	private boolean isNative;
 
-	public Impl(Transformer ctx, ITypeBinding type,
-			Collection<ITypeBinding> softDeps, Collection<ITypeBinding> hardDeps) {
+	public Impl(Transformer ctx, ITypeBinding type, DepInfo deps) {
 		this.ctx = ctx;
 		this.type = type;
-		this.softDeps = softDeps;
-		this.hardDeps = hardDeps;
+		this.deps = deps;
 
 		qcname = CName.qualified(type, true);
 	}
@@ -87,7 +85,7 @@ public class Impl {
 		boolean hasInc = false;
 		boolean hasArray = false;
 
-		for (ITypeBinding dep : hardDeps) {
+		for (ITypeBinding dep : deps.getHardDeps()) {
 			if (dep.isEqualTo(type)) {
 				continue;
 			}
@@ -216,8 +214,8 @@ public class Impl {
 
 	private void printSuperCall(IMethodBinding decl, IMethodBinding impl) {
 		IMethodBinding md = decl.getMethodDeclaration();
-		TransformUtil.printSignature(out, type, md, impl.getReturnType(),
-				softDeps, true);
+		TransformUtil.printSignature(out, type, md, impl.getReturnType(), deps,
+				true);
 		println();
 		println("{");
 
@@ -271,8 +269,7 @@ public class Impl {
 	}
 
 	private void hardDep(ITypeBinding dep) {
-		TransformUtil.addDep(dep, hardDeps);
-		ctx.hardDep(dep);
+		deps.hard(dep);
 	}
 
 	public void print(String string) {

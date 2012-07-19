@@ -4,8 +4,6 @@ import java.io.PrintWriter;
 import java.util.Collection;
 import java.util.Iterator;
 import java.util.List;
-import java.util.Set;
-import java.util.TreeSet;
 
 import org.eclipse.jdt.core.dom.ASTNode;
 import org.eclipse.jdt.core.dom.ASTVisitor;
@@ -61,15 +59,11 @@ public abstract class TransformWriter extends ASTVisitor {
 	protected final Transformer ctx;
 	public final ITypeBinding type;
 	protected final UnitInfo unitInfo;
+	protected final DepInfo deps;
 
 	protected int indent;
 
 	protected PrintWriter out;
-
-	protected final Set<ITypeBinding> hardDeps = new TreeSet<ITypeBinding>(
-			new BindingComparator());
-	protected final Set<ITypeBinding> softDeps = new TreeSet<ITypeBinding>(
-			new BindingComparator());
 
 	protected TransformWriter(Transformer ctx, final ITypeBinding type,
 			final UnitInfo unitInfo) {
@@ -77,20 +71,17 @@ public abstract class TransformWriter extends ASTVisitor {
 		this.ctx = ctx;
 		this.unitInfo = unitInfo;
 
+		deps = new DepInfo(ctx);
+
 		softDep(type);
 	}
 
-	public Set<ITypeBinding> getHardDeps() {
-		return hardDeps;
-	}
-
 	public void softDep(ITypeBinding dep) {
-		TransformUtil.addDep(dep, softDeps);
+		deps.soft(dep);
 	}
 
 	public void hardDep(ITypeBinding dep) {
-		TransformUtil.addDep(dep, hardDeps);
-		ctx.hardDep(dep);
+		deps.hard(dep);
 	}
 
 	protected void hardDep(Type type, Collection<ITypeBinding> deps) {

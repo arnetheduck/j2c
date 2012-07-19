@@ -114,8 +114,7 @@ public class ArrayWriter {
 
 	private void writeImpl() throws IOException {
 		ctx.addImpl(type);
-		Impl impl = new Impl(ctx, type, new ArrayList<ITypeBinding>(),
-				new ArrayList<ITypeBinding>());
+		Impl impl = new Impl(ctx, type, new DepInfo(ctx));
 
 		impl.write(root, "", "", new ArrayList<IVariableBinding>(), null,
 				false, false);

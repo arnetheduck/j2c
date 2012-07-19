@@ -6,8 +6,6 @@ import java.io.StringWriter;
 import java.lang.reflect.Modifier;
 import java.util.ArrayList;
 import java.util.Collection;
-import java.util.Set;
-import java.util.TreeSet;
 
 import org.eclipse.core.runtime.IPath;
 import org.eclipse.jdt.core.dom.IMethodBinding;
@@ -21,10 +19,7 @@ public class StubWriter {
 	private final Transformer ctx;
 	private final ITypeBinding type;
 
-	private final Set<ITypeBinding> hardDeps = new TreeSet<ITypeBinding>(
-			new BindingComparator());
-	private final Set<ITypeBinding> softDeps = new TreeSet<ITypeBinding>(
-			new BindingComparator());
+	private final DepInfo deps;
 
 	private Collection<IMethodBinding> constructors = new ArrayList<IMethodBinding>();
 
@@ -43,7 +38,8 @@ public class StubWriter {
 		this.ctx = ctx;
 		this.type = type;
 
-		impl = new Impl(ctx, type, softDeps, hardDeps);
+		deps = new DepInfo(ctx);
+		impl = new Impl(ctx, type, deps);
 		qcname = CName.qualified(type, true);
 		name = CName.of(type);
 	}
@@ -124,7 +120,7 @@ public class StubWriter {
 
 			if (mb.getParameterTypes().length > 0) {
 				print(sep);
-				TransformUtil.printParams(out, type, mb, false, softDeps);
+				TransformUtil.printParams(out, type, mb, false, deps);
 			} else {
 				hasEmpty = true;
 			}
@@ -277,7 +273,7 @@ public class StubWriter {
 
 		if (Modifier.isPrivate(mb.getModifiers()) && !privates) {
 			print("/* private: ");
-			TransformUtil.printSignature(out, type, mb, softDeps, true);
+			TransformUtil.printSignature(out, type, mb, deps, true);
 			println(" */");
 			return;
 		}
@@ -286,7 +282,7 @@ public class StubWriter {
 			constructors.add(mb);
 		}
 
-		TransformUtil.printSignature(out, type, mb, softDeps, true);
+		TransformUtil.printSignature(out, type, mb, deps, true);
 
 		println();
 		print("{");
@@ -321,15 +317,11 @@ public class StubWriter {
 		println("}");
 		println();
 
-		for (ITypeBinding dep : TransformUtil.defineBridge(out, type, mb,
-				softDeps)) {
-			hardDep(dep);
-		}
+		TransformUtil.defineBridge(out, type, mb, deps);
 	}
 
 	private void hardDep(ITypeBinding dep) {
-		TransformUtil.addDep(dep, hardDeps);
-		ctx.hardDep(dep);
+		deps.hard(dep);
 	}
 
 	public void print(String string) {

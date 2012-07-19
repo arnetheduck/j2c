@@ -124,7 +124,7 @@ public class ImplWriter extends TransformWriter {
 		closures = type.isLocal() ? new LinkedHashSet<IVariableBinding>()
 				: null;
 
-		impl = new Impl(ctx, type, softDeps, hardDeps);
+		impl = new Impl(ctx, type, deps);
 		qcname = CName.qualified(type, true);
 		name = CName.of(type);
 	}
@@ -188,10 +188,6 @@ public class ImplWriter extends TransformWriter {
 		if (hasNatives) {
 			StubWriter sw = new StubWriter(root, ctx, type);
 			sw.write(true, true);
-		}
-
-		for (ITypeBinding tb : softDeps) {
-			ctx.softDep(tb);
 		}
 	}
 
@@ -368,7 +364,7 @@ public class ImplWriter extends TransformWriter {
 
 			if (mb.getParameterTypes().length > 0) {
 				out.print(sep);
-				TransformUtil.printParams(out, type, mb, false, softDeps);
+				TransformUtil.printParams(out, type, mb, false, deps);
 			}
 
 			println(")");
@@ -1706,10 +1702,7 @@ public class ImplWriter extends TransformWriter {
 		println();
 		println();
 
-		for (ITypeBinding dep : TransformUtil.defineBridge(out, type, mb,
-				softDeps)) {
-			hardDep(dep);
-		}
+		TransformUtil.defineBridge(out, type, mb, deps);
 
 		return false;
 	}

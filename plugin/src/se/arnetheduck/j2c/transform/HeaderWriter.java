@@ -52,7 +52,7 @@ public class HeaderWriter extends TransformWriter {
 
 		access = Header.initialAccess(type);
 
-		header = new Header(ctx, type, softDeps, hardDeps);
+		header = new Header(ctx, type, deps);
 	}
 
 	public void write(AnnotationTypeDeclaration node) throws Exception {
@@ -83,10 +83,6 @@ public class HeaderWriter extends TransformWriter {
 			header.write(root, body, closures, hasInit, unitInfo.types, access);
 		} catch (Exception e) {
 			throw new Error(e);
-		}
-
-		for (ITypeBinding tb : softDeps) {
-			ctx.softDep(tb);
 		}
 	}
 
@@ -130,8 +126,8 @@ public class HeaderWriter extends TransformWriter {
 	@Override
 	public boolean visit(AnnotationTypeMemberDeclaration node) {
 		printi();
-		TransformUtil.printSignature(out, type, node.resolveBinding(),
-				softDeps, false);
+		TransformUtil.printSignature(out, type, node.resolveBinding(), deps,
+				false);
 		// TODO defaults
 		println(" = 0;");
 		return false;
@@ -269,7 +265,7 @@ public class HeaderWriter extends TransformWriter {
 		if (Header.baseDeclared(ctx, type, mb)) {
 			// Defining once more will lead to virtual inheritance issues
 			printi("/*");
-			TransformUtil.printSignature(out, type, mb, softDeps, false);
+			TransformUtil.printSignature(out, type, mb, deps, false);
 			println("; (already declared) */");
 			return false;
 		}

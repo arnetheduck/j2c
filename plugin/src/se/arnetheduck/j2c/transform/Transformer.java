@@ -351,13 +351,14 @@ public class Transformer {
 	}
 
 	public void hardDep(ITypeBinding dep) {
-		if (dep != null && !done.contains(dep.getBinaryName())) {
+		if (dep != null && !done.contains(dep.getErasure().getBinaryName())) {
 			TransformUtil.addDep(dep, hardDeps);
 		}
 	}
 
 	public void softDep(ITypeBinding dep) {
-		if (dep != null) {
+		if (dep != null && !dep.isNullType()) {
+			dep = dep.getErasure();
 			ForwardWriter.Info info = new ForwardWriter.Info(dep);
 			forwards.put(dep.getBinaryName(), info);
 		}
