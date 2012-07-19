@@ -32,7 +32,7 @@ public class StubWriter {
 	private final String qcname;
 	private final String name;
 
-	private PrintWriter pw;
+	private PrintWriter out;
 
 	public StubWriter(IPath root, Transformer ctx, ITypeBinding type) {
 		if (type.isInterface()) {
@@ -65,27 +65,25 @@ public class StubWriter {
 
 	private String getExtras(boolean natives, boolean privates)
 			throws IOException {
+		if (natives) {
+			return "";
+		}
+
 		StringWriter sw = new StringWriter();
-		pw = new PrintWriter(sw);
+		out = new PrintWriter(sw);
 
-		if (!natives) {
-			printDefaultInitCtor();
-			printCtors();
-		}
+		printDefaultInitCtor();
+		printCtors();
 
-		if (!(type.isInterface() || type.isAnnotation())) {
-			// printInit();
-		}
-
-		pw.close();
-		pw = null;
+		out.close();
+		out = null;
 
 		return sw.toString();
 	}
 
 	private String getBody(boolean natives, boolean privates) throws Exception {
 		StringWriter ret = new StringWriter();
-		pw = new PrintWriter(ret);
+		out = new PrintWriter(ret);
 
 		if (!natives) {
 			for (IVariableBinding vb : type.getDeclaredFields()) {
@@ -93,7 +91,7 @@ public class StubWriter {
 			}
 		}
 
-		pw.println();
+		println();
 
 		for (IMethodBinding mb : type.getDeclaredMethods()) {
 			if (Modifier.isNative(mb.getModifiers()) == natives) {
@@ -101,9 +99,9 @@ public class StubWriter {
 			}
 		}
 
-		pw.close();
+		out.close();
 
-		pw = null;
+		out = null;
 
 		return ret.toString();
 	}
@@ -114,19 +112,19 @@ public class StubWriter {
 		}
 
 		if (type.isAnonymous()) {
-			Header.getBaseConstructors(type, constructors);
+			Header.getAnonCtors(type, constructors);
 		}
 
 		boolean hasEmpty = false;
 		for (IMethodBinding mb : constructors) {
-			pw.print(qcname + "::" + name + "(");
+			print(qcname + "::" + name + "(");
 
-			String sep = TransformUtil.printNestedParams(pw, type,
+			String sep = TransformUtil.printNestedParams(out, type,
 					new ArrayList<IVariableBinding>());
 
 			if (mb.getParameterTypes().length > 0) {
 				print(sep);
-				TransformUtil.printParams(pw, type, mb, false, softDeps);
+				TransformUtil.printParams(out, type, mb, false, softDeps);
 			} else {
 				hasEmpty = true;
 			}
@@ -144,18 +142,18 @@ public class StubWriter {
 					+ "* >(0))");
 
 			println("{");
-			pw.print(i1 + CName.CTOR + "(");
+			print(i1 + CName.CTOR + "(");
 
 			sep = "";
 			for (int i = 0; i < mb.getParameterTypes().length; ++i) {
-				pw.print(sep + TransformUtil.paramName(mb, i));
+				print(sep + TransformUtil.paramName(mb, i));
 				sep = ", ";
 			}
 
 			println(");");
 
-			pw.println("}");
-			pw.println();
+			println("}");
+			println();
 		}
 
 		if (!hasEmpty) {
@@ -169,8 +167,7 @@ public class StubWriter {
 		}
 
 		print(qcname + "::" + name + "(");
-		print(TransformUtil.printNestedParams(pw, type,
-				new ArrayList<IVariableBinding>()));
+		print(TransformUtil.printNestedParams(out, type, null));
 		println("const ::" + CName.DEFAULT_INIT_TAG + "&)");
 
 		printFieldInit(": ");
@@ -197,7 +194,7 @@ public class StubWriter {
 	private void printFieldInit(String sep) {
 		ITypeBinding sb = type.getSuperclass();
 		if (sb != null && TransformUtil.hasOuterThis(sb)) {
-			pw.print(i1 + sep);
+			print(i1 + sep);
 			print("super(");
 			String sepx = "";
 			for (ITypeBinding tb = type; tb.getDeclaringClass() != null; tb = tb
@@ -234,7 +231,7 @@ public class StubWriter {
 				continue;
 			}
 
-			pw.print(i1 + sep + CName.of(vb));
+			print(i1 + sep + CName.of(vb));
 
 			println("()");
 			sep = ", ";
@@ -242,7 +239,7 @@ public class StubWriter {
 	}
 
 	private void printInit(String n) {
-		pw.println(n + "(" + n + ")");
+		println(n + "(" + n + ")");
 	}
 
 	private void printField(IVariableBinding vb) {
@@ -255,31 +252,20 @@ public class StubWriter {
 
 		ITypeBinding vt = vb.getType();
 		String vname = CName.of(vb);
+		String qvtname = CName.qualified(vt, true);
 		if (asMethod) {
-			print(CName.qualified(vt, true));
-
-			print(" ");
-
-			print(TransformUtil.ref(vt));
-
-			print("&" + qcname + "::");
-
-			print(vname);
-
-			pw.println("()");
-			pw.println("{");
-			pw.println(TransformUtil.indent(1) + CName.STATIC_INIT + "();");
-			pw.println(TransformUtil.indent(1) + "return " + vname + "_;");
+			print(qvtname + " " + TransformUtil.ref(vt));
+			println("&" + qcname + "::" + vname + "()");
+			println("{");
+			println(i1 + CName.STATIC_INIT + "();");
+			println(i1 + "return " + vname + "_;");
 			println("}");
 		}
 
 		print(TransformUtil.fieldModifiers(type, vb.getModifiers(), false,
 				cv != null));
-		print(CName.qualified(vt, true));
-		print(" ");
 
-		print(TransformUtil.ref(vt));
-		print(qcname + "::" + vname);
+		print(qvtname + " " + TransformUtil.ref(vt) + qcname + "::" + vname);
 		println(asMethod ? "_;" : ";");
 	}
 
@@ -291,7 +277,7 @@ public class StubWriter {
 
 		if (Modifier.isPrivate(mb.getModifiers()) && !privates) {
 			print("/* private: ");
-			TransformUtil.printSignature(pw, type, mb, softDeps, true);
+			TransformUtil.printSignature(out, type, mb, softDeps, true);
 			println(" */");
 			return;
 		}
@@ -300,9 +286,9 @@ public class StubWriter {
 			constructors.add(mb);
 		}
 
-		TransformUtil.printSignature(pw, type, mb, softDeps, true);
+		TransformUtil.printSignature(out, type, mb, softDeps, true);
 
-		pw.println();
+		println();
 		print("{");
 		if (Modifier.isNative(mb.getModifiers())) {
 			println(" /* native */");
@@ -333,9 +319,9 @@ public class StubWriter {
 		}
 
 		println("}");
-		pw.println();
+		println();
 
-		for (ITypeBinding dep : TransformUtil.defineBridge(pw, type, mb,
+		for (ITypeBinding dep : TransformUtil.defineBridge(out, type, mb,
 				softDeps)) {
 			hardDep(dep);
 		}
@@ -347,14 +333,14 @@ public class StubWriter {
 	}
 
 	public void print(String string) {
-		pw.print(string);
+		out.print(string);
 	}
 
 	public void println(String string) {
-		pw.println(string);
+		out.println(string);
 	}
 
 	public void println() {
-		pw.println();
+		out.println();
 	}
 }

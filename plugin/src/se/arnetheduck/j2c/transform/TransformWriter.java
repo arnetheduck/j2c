@@ -143,20 +143,28 @@ public abstract class TransformWriter extends ASTVisitor {
 		return false;
 	}
 
-	public void print(Object... objects) {
-		TransformUtil.print(out, objects);
+	public void print(String string) {
+		out.print(string);
 	}
 
-	public void println(Object... objects) {
-		TransformUtil.println(out, objects);
+	public void println(String string) {
+		out.println(string);
 	}
 
-	public void printi(Object... objects) {
-		TransformUtil.printi(out, indent, objects);
+	public void println() {
+		out.println();
 	}
 
-	public void printlni(Object... objects) {
-		TransformUtil.printlni(out, indent, objects);
+	public void printi() {
+		TransformUtil.printi(out, indent, "");
+	}
+
+	public void printi(String string) {
+		TransformUtil.printi(out, indent, string);
+	}
+
+	public void printlni(String string) {
+		TransformUtil.printlni(out, indent, string);
 	}
 
 	@Override
@@ -324,7 +332,7 @@ public abstract class TransformWriter extends ASTVisitor {
 			IBinding b = qualifier.resolveBinding();
 			if (b instanceof ITypeBinding) {
 				hardDep((ITypeBinding) b);
-				print(CName.relative((ITypeBinding) b, type, true), "::");
+				print(CName.relative((ITypeBinding) b, type, true) + "::");
 			} else {
 				qualifier.accept(this);
 
@@ -391,7 +399,7 @@ public abstract class TransformWriter extends ASTVisitor {
 
 	private void qualify(ITypeBinding declaringClass, boolean isStatic) {
 		if (isStatic) {
-			print(CName.relative(declaringClass, type, true), "::");
+			print(CName.relative(declaringClass, type, true) + "::");
 			hardDep(declaringClass);
 		} else if (type.getSuperclass() != null
 				&& type.getSuperclass().getErasure()
@@ -404,7 +412,7 @@ public abstract class TransformWriter extends ASTVisitor {
 					.getDeclaringClass().getErasure()) {
 				hardDep(x.getDeclaringClass());
 
-				print(TransformUtil.outerThisName(x), "->");
+				print(TransformUtil.outerThisName(x) + "->");
 			}
 		}
 	}
@@ -490,7 +498,7 @@ public abstract class TransformWriter extends ASTVisitor {
 
 	@Override
 	public boolean visit(StringLiteral node) {
-		print("u", TransformUtil.stringLiteral(node.getEscapedValue()), "_j");
+		print("u" + TransformUtil.stringLiteral(node.getEscapedValue()) + "_j");
 
 		hardDep(node.getAST().resolveWellKnownType(String.class.getName()));
 
@@ -552,8 +560,8 @@ public abstract class TransformWriter extends ASTVisitor {
 	@Override
 	public boolean visit(VariableDeclarationExpression node) {
 		ITypeBinding tb = node.getType().resolveBinding();
-		print(TransformUtil.variableModifiers(type, node.getModifiers()),
-				CName.relative(tb, type, true), " ");
+		print(TransformUtil.variableModifiers(type, node.getModifiers())
+				+ CName.relative(tb, type, true) + " ");
 
 		print(" ");
 
@@ -582,13 +590,13 @@ public abstract class TransformWriter extends ASTVisitor {
 					fb = fb.createArrayType(fragment.getExtraDimensions());
 				}
 				softDep(fb);
-				print(CName.relative(fb, type, true), " ");
+				print(CName.relative(fb, type, true) + " ");
 				fragment.accept(this);
 				println(";");
 			}
 		} else {
-			printi(TransformUtil.variableModifiers(type, node.getModifiers()),
-					CName.relative(tb, type, true), " ");
+			printi(TransformUtil.variableModifiers(type, node.getModifiers())
+					+ CName.relative(tb, type, true) + " ");
 
 			visitAllCSV(node.fragments(), false);
 

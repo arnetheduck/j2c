@@ -14,6 +14,8 @@ import org.eclipse.jdt.core.dom.IVariableBinding;
 import org.eclipse.jdt.core.dom.Modifier;
 
 public class Impl {
+	private static final String i1 = TransformUtil.indent(1);
+
 	private final ITypeBinding type;
 	private final Transformer ctx;
 	private final Collection<ITypeBinding> softDeps;
@@ -21,9 +23,7 @@ public class Impl {
 
 	private final String qcname;
 
-	private static final String i1 = TransformUtil.indent(1);
-
-	private PrintWriter pw;
+	private PrintWriter out;
 	private boolean isNative;
 
 	public Impl(Transformer ctx, ITypeBinding type,
@@ -46,27 +46,27 @@ public class Impl {
 		FileOutputStream fos = TransformUtil.open(TransformUtil.implPath(root,
 				type, suffix).toFile());
 
-		pw = new PrintWriter(fos);
+		out = new PrintWriter(fos);
 
 		if (type.getJavaElement() != null) {
-			pw.println("// Generated from " + type.getJavaElement().getPath());
+			println("// Generated from " + type.getJavaElement().getPath());
 		} else {
-			pw.println("// Generated");
+			println("// Generated");
 		}
 
 		printIncludes(fmod);
 
-		pw.print(body);
-		pw.print(extras);
+		print(body);
+		print(extras);
 
-		pw.close();
-		pw = null;
+		out.close();
+		out = null;
 	}
 
 	private String getExtras(Collection<IVariableBinding> closures,
 			StringWriter clinit) {
 		StringWriter sw = new StringWriter();
-		pw = new PrintWriter(sw);
+		out = new PrintWriter(sw);
 
 		printClassLiteral();
 		printClinit(clinit);
@@ -75,14 +75,14 @@ public class Impl {
 		printDtor();
 		printGetClass();
 
-		pw.close();
-		pw = null;
+		out.close();
+		out = null;
 		return sw.toString();
 	}
 
 	private void printIncludes(boolean fmod) {
-		pw.println(TransformUtil.include(type));
-		pw.println();
+		println(TransformUtil.include(type));
+		println();
 
 		boolean hasInc = false;
 		boolean hasArray = false;
@@ -104,17 +104,17 @@ public class Impl {
 				hasArray = true;
 			}
 
-			pw.println(TransformUtil.include(dep));
+			println(TransformUtil.include(dep));
 			hasInc = true;
 		}
 
 		if (fmod) {
-			pw.println("#include <cmath>");
+			println("#include <cmath>");
 			hasInc = true;
 		}
 
 		if (hasInc) {
-			pw.println();
+			println();
 		}
 	}
 
@@ -123,25 +123,25 @@ public class Impl {
 			return;
 		}
 
-		pw.println("void " + qcname + "::" + CName.STATIC_INIT + "()");
-		pw.println("{");
+		println("void " + qcname + "::" + CName.STATIC_INIT + "()");
+		println("{");
 
 		if (type.getSuperclass() != null) {
-			pw.println(i1 + "super::" + CName.STATIC_INIT + "();");
+			println(i1 + "super::" + CName.STATIC_INIT + "();");
 		}
 
 		if (clinit != null) {
-			pw.println("struct clinit_ {");
-			pw.println(i1 + "clinit_() {");
-			pw.print(clinit.toString());
-			pw.println(i1 + "}");
-			pw.println("};");
-			pw.println();
-			pw.println("static clinit_ clinit_instance;");
+			println("struct clinit_ {");
+			println(i1 + "clinit_() {");
+			print(clinit.toString());
+			println(i1 + "}");
+			println("};");
+			println();
+			println("static clinit_ clinit_instance;");
 		}
 
-		pw.println("}");
-		pw.println();
+		println("}");
+		println();
 	}
 
 	private void printClassLiteral() {
@@ -149,20 +149,20 @@ public class Impl {
 			return;
 		}
 
-		pw.println("extern ::java::lang::Class *class_(const char16_t *c, int n);");
-		pw.println();
+		println("extern ::java::lang::Class *class_(const char16_t *c, int n);");
+		println();
 		if (type.isArray() && type.getComponentType().isPrimitive()) {
-			pw.println("template<>");
+			println("template<>");
 		}
-		pw.println("::java::lang::Class *" + qcname + "::class_()");
-		pw.println("{");
-		pw.println("    static ::java::lang::Class *c = ::class_(u\""
+		println("::java::lang::Class *" + qcname + "::class_()");
+		println("{");
+		println("    static ::java::lang::Class *c = ::class_(u\""
 				+ type.getQualifiedName() + "\", "
 				+ type.getQualifiedName().length() + ");");
-		pw.println("    return c;");
+		println("    return c;");
 
-		pw.println("}");
-		pw.println();
+		println("}");
+		println();
 	}
 
 	private void printGetClass() {
@@ -171,25 +171,25 @@ public class Impl {
 		}
 
 		if (type.isArray() && type.getComponentType().isPrimitive()) {
-			pw.println("template<>");
+			println("template<>");
 		}
 
-		pw.println("::java::lang::Class *" + qcname + "::" + CName.GET_CLASS
+		println("::java::lang::Class *" + qcname + "::" + CName.GET_CLASS
 				+ "()");
-		pw.println("{");
-		pw.println(i1 + "return class_();");
-		pw.println("}");
-		pw.println();
+		println("{");
+		println(i1 + "return class_();");
+		println("}");
+		println();
 	}
 
 	private void printDtor() {
 		if (isNative || !TransformUtil.same(type, Object.class)) {
 			return;
 		}
-		pw.println("::java::lang::Object::~Object()");
-		pw.println("{");
-		pw.println("}");
-		pw.println();
+		println("::java::lang::Object::~Object()");
+		println("{");
+		println("}");
+		println();
 	}
 
 	private void printSuperCalls() {
@@ -216,30 +216,30 @@ public class Impl {
 
 	private void printSuperCall(IMethodBinding decl, IMethodBinding impl) {
 		IMethodBinding md = decl.getMethodDeclaration();
-		TransformUtil.printSignature(pw, type, md, impl.getReturnType(),
+		TransformUtil.printSignature(out, type, md, impl.getReturnType(),
 				softDeps, true);
-		pw.println();
-		pw.println("{");
+		println();
+		println("{");
 
 		boolean erased = TransformUtil.returnErased(impl);
 
 		if (TransformUtil.isVoid(impl.getReturnType())) {
-			pw.format(i1 + "%s::%s(", CName.of(impl.getDeclaringClass()),
+			out.format(i1 + "%s::%s(", CName.of(impl.getDeclaringClass()),
 					CName.of(impl));
 		} else {
-			pw.print(i1 + "return ");
+			print(i1 + "return ");
 			if (erased) {
 				dynamicCast(impl.getMethodDeclaration().getReturnType()
 						.getErasure(), impl.getReturnType());
 			}
 
-			pw.format("%s::%s(", CName.of(impl.getDeclaringClass()),
+			out.format("%s::%s(", CName.of(impl.getDeclaringClass()),
 					CName.of(impl));
 		}
 
 		String sep = "";
 		for (int i = 0; i < impl.getParameterTypes().length; ++i) {
-			pw.print(sep);
+			print(sep);
 			sep = ", ";
 
 			boolean cast = !md.getParameterTypes()[i].getErasure()
@@ -249,25 +249,25 @@ public class Impl {
 				dynamicCast(md.getParameterTypes()[i],
 						impl.getParameterTypes()[i]);
 			}
-			pw.print(TransformUtil.paramName(md, i));
+			print(TransformUtil.paramName(md, i));
 			if (cast) {
-				pw.print(")");
+				print(")");
 			}
 		}
 
 		if (erased) {
-			pw.print(")");
+			print(")");
 		}
 
-		pw.println(");");
-		pw.println("}");
-		pw.println();
+		println(");");
+		println("}");
+		println();
 	}
 
 	private void dynamicCast(ITypeBinding source, ITypeBinding target) {
 		hardDep(source);
 		hardDep(target);
-		pw.print("dynamic_cast< " + CName.relative(target, type, true) + "* >(");
+		print("dynamic_cast< " + CName.relative(target, type, true) + "* >(");
 	}
 
 	private void hardDep(ITypeBinding dep) {
@@ -275,4 +275,15 @@ public class Impl {
 		ctx.hardDep(dep);
 	}
 
+	public void print(String string) {
+		out.print(string);
+	}
+
+	public void println(String string) {
+		out.println(string);
+	}
+
+	public void println() {
+		out.println();
+	}
 }

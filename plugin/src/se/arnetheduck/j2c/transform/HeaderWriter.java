@@ -165,7 +165,7 @@ public class HeaderWriter extends TransformWriter {
 	@Override
 	public boolean visit(EnumConstantDeclaration node) {
 		access = Header.printAccess(out, node.getModifiers(), access);
-		printi("static ", CName.of(type), " *");
+		printi("static " + CName.of(type) + " *");
 
 		node.getName().accept(this);
 		println(";");
@@ -192,7 +192,7 @@ public class HeaderWriter extends TransformWriter {
 				printi(TransformUtil.fieldModifiers(type, node.getModifiers(),
 						true, TransformUtil.constantValue(f) != null));
 
-				print(CName.relative(vb.getType(), type, true), " ");
+				print(CName.relative(vb.getType(), type, true) + " ");
 
 				f.accept(this);
 
@@ -204,7 +204,7 @@ public class HeaderWriter extends TransformWriter {
 			printi(TransformUtil.fieldModifiers(type, node.getModifiers(),
 					true, hasInitilializer(fragments)));
 
-			print(CName.relative(tb, type, true), " ");
+			print(CName.relative(tb, type, true) + " ");
 
 			visitAllCSV(fragments, false);
 
@@ -279,7 +279,7 @@ public class HeaderWriter extends TransformWriter {
 		if (node.isConstructor()) {
 			access = Header.printProtected(out, access);
 
-			printi("void ", CName.CTOR);
+			printi("void " + CName.CTOR);
 		} else {
 			access = Header.printAccess(out, mb, access);
 
@@ -288,7 +288,7 @@ public class HeaderWriter extends TransformWriter {
 
 			ITypeBinding rt = TransformUtil.returnType(node);
 			softDep(rt);
-			print(CName.relative(rt, type, true), " ", TransformUtil.ref(rt));
+			print(CName.relative(rt, type, true) + " " + TransformUtil.ref(rt));
 
 			node.getName().accept(this);
 
@@ -366,7 +366,7 @@ public class HeaderWriter extends TransformWriter {
 			print(CName.relative(tb, type, true));
 		}
 
-		print(" ", TransformUtil.ref(tb));
+		print(" " + TransformUtil.ref(tb));
 
 		node.getName().accept(this);
 
@@ -389,7 +389,7 @@ public class HeaderWriter extends TransformWriter {
 		node.getName().accept(this);
 		Object v = TransformUtil.constantValue(node);
 		if (v != null) {
-			print(" = ", v);
+			print(" = " + v);
 		} else {
 			if (node.getInitializer() != null) {
 				if (!Modifier.isStatic(node.resolveBinding().getModifiers())) {

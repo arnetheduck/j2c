@@ -150,7 +150,7 @@ public final class TransformUtil {
 		return checkConstant(expr.resolveConstantExpressionValue());
 	}
 
-	public static Object constantValue(IVariableBinding vb) {
+	public static String constantValue(IVariableBinding vb) {
 		if (!vb.getType().isPrimitive()) {
 			return null;
 		}
@@ -175,10 +175,12 @@ public final class TransformUtil {
 				&& !vb.isEnumConstant();
 	}
 
-	public static Object checkConstant(Object cv) {
+	public static String checkConstant(Object cv) {
 		if (cv instanceof Byte) {
 			return "int8_t(" + cv + ")";
-		} else if (cv instanceof Character) {
+		}
+
+		if (cv instanceof Character) {
 			char ch = (char) cv;
 
 			if (ch == '\'') {
@@ -204,7 +206,9 @@ public final class TransformUtil {
 			}
 
 			return "u'" + ch + "'";
-		} else if (cv instanceof Integer) {
+		}
+
+		if (cv instanceof Integer) {
 			if ((int) cv == Integer.MIN_VALUE) {
 				// In C++, the part after '-' is parsed first which overflows
 				// so we do a trick
@@ -212,7 +216,9 @@ public final class TransformUtil {
 			}
 
 			return "int32_t(" + cv + ")";
-		} else if (cv instanceof Long) {
+		}
+
+		if (cv instanceof Long) {
 			if ((long) cv == Long.MIN_VALUE) {
 				// In C++, the part before '-' is parsed first which overflows
 				// so we do a trick
@@ -220,7 +226,9 @@ public final class TransformUtil {
 			}
 
 			return "int64_t(" + cv + "ll)";
-		} else if (cv instanceof Float) {
+		}
+
+		if (cv instanceof Float) {
 			float f = (Float) cv;
 			if (Float.isNaN(f)) {
 				return "std::numeric_limits<float>::quiet_NaN()";
@@ -231,7 +239,9 @@ public final class TransformUtil {
 			}
 
 			return cv + "f";
-		} else if (cv instanceof Double) {
+		}
+
+		if (cv instanceof Double) {
 			double f = (Double) cv;
 			if (Double.isNaN(f)) {
 				return "std::numeric_limits<double>::quiet_NaN()";
@@ -241,12 +251,14 @@ public final class TransformUtil {
 				return "(-std::numeric_limits<double>::infinity())";
 			}
 
-			return cv;
-		} else if (cv instanceof Short) {
+			return "" + cv;
+		}
+
+		if (cv instanceof Short) {
 			return "int16_t(" + cv + ")";
 		}
 
-		return cv;
+		return cv == null ? null : cv.toString();
 	}
 
 	/**
@@ -518,24 +530,13 @@ public final class TransformUtil {
 		return "";
 	}
 
-	public static void print(PrintWriter out, Object... objects) {
-		for (Object o : objects) {
-			out.print(o);
-		}
-	}
-
-	public static void println(PrintWriter out, Object... objects) {
-		print(out, objects);
-		out.println();
-	}
-
-	public static void printi(PrintWriter out, int indent, Object... objects) {
+	public static void printi(PrintWriter out, int indent, String string) {
 		out.print(indent(indent));
-		print(out, objects);
+		out.print(string);
 	}
 
-	public static void printlni(PrintWriter out, int indent, Object... objects) {
-		printi(out, indent, objects);
+	public static void printlni(PrintWriter out, int indent, String string) {
+		printi(out, indent, string);
 		out.println();
 	}
 
