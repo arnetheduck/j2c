@@ -1682,13 +1682,16 @@ public class ImplWriter extends TransformWriter {
 			println("{");
 			indent++;
 			Statement first = null;
-			if (!node.getBody().statements().isEmpty()) {
-				first = (Statement) node.getBody().statements().get(0);
+			List<Statement> statements = node.getBody().statements();
+			if (!statements.isEmpty()) {
+				first = statements.get(0);
 			}
 
 			if (!(first instanceof ConstructorInvocation)) {
 				if (!(first instanceof SuperConstructorInvocation)) {
 					printlni("super::" + CName.CTOR + "();");
+				} else {
+					first.accept(this);
 				}
 
 				if (init != null) {
@@ -1696,7 +1699,8 @@ public class ImplWriter extends TransformWriter {
 				}
 			}
 
-			visitAll(node.getBody().statements());
+			visitAll(first instanceof SuperConstructorInvocation ? statements
+					.subList(1, statements.size()) : statements);
 			indent--;
 			print("}");
 		} else {
