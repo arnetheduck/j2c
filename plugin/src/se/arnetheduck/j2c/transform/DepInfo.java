@@ -13,6 +13,8 @@ public class DepInfo {
 	private final Set<ITypeBinding> softDeps = new TreeSet<ITypeBinding>(
 			new BindingComparator());
 
+	private boolean javaCast;
+
 	public DepInfo(Transformer ctx) {
 		this.ctx = ctx;
 	}
@@ -38,5 +40,14 @@ public class DepInfo {
 
 	public Set<ITypeBinding> getSoftDeps() {
 		return softDeps;
+	}
+
+	public boolean needsJavaCast() {
+		return javaCast;
+	}
+
+	public void setJavaCast() {
+		javaCast = true;
+		hard(ctx.resolve(ClassCastException.class));
 	}
 }

@@ -54,6 +54,8 @@ public class Impl {
 
 		printIncludes(fmod);
 
+		printJavaCast();
+
 		print(body);
 		print(extras);
 
@@ -227,7 +229,7 @@ public class Impl {
 		} else {
 			print(i1 + "return ");
 			if (erased) {
-				dynamicCast(impl.getMethodDeclaration().getReturnType()
+				javaCast(impl.getMethodDeclaration().getReturnType()
 						.getErasure(), impl.getReturnType());
 			}
 
@@ -244,8 +246,7 @@ public class Impl {
 					.isAssignmentCompatible(
 							impl.getParameterTypes()[i].getErasure());
 			if (cast) {
-				dynamicCast(md.getParameterTypes()[i],
-						impl.getParameterTypes()[i]);
+				javaCast(md.getParameterTypes()[i], impl.getParameterTypes()[i]);
 			}
 			print(TransformUtil.paramName(md, i));
 			if (cast) {
@@ -262,10 +263,26 @@ public class Impl {
 		println();
 	}
 
-	private void dynamicCast(ITypeBinding source, ITypeBinding target) {
+	private void printJavaCast() {
+		if (!deps.needsJavaCast()) {
+			return;
+		}
+
+		println("template<typename T, typename U>");
+		println("static T java_cast(U* u)");
+		println("{");
+		println(i1 + "auto t = dynamic_cast<T>(u);");
+		println(i1 + "if(!t) throw new ::java::lang::ClassCastException();");
+		println(i1 + "return t;");
+		println("}");
+		println();
+	}
+
+	private void javaCast(ITypeBinding source, ITypeBinding target) {
 		hardDep(source);
 		hardDep(target);
-		print("dynamic_cast< " + CName.relative(target, type, true) + "* >(");
+		deps.setJavaCast();
+		print("java_cast< " + CName.relative(target, type, true) + "* >(");
 	}
 
 	private void hardDep(ITypeBinding dep) {
