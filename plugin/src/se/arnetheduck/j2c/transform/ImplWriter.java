@@ -528,7 +528,8 @@ public class ImplWriter extends TransformWriter {
 							.getQualifiedName())) {
 						hardDep(tb);
 						print("(");
-						visits.add(new NodeInfo(node, ")->"
+						npc();
+						visits.add(new NodeInfo(node, "))->"
 								+ TransformUtil.reverses.get(tb
 										.getQualifiedName()) + "Value()"));
 					}
@@ -972,18 +973,15 @@ public class ImplWriter extends TransformWriter {
 
 	@Override
 	public boolean visit(CastExpression node) {
-		ITypeBinding tb = node.getType().resolveBinding();
-		hardDep(tb);
-		hardDep(node.getExpression().resolveTypeBinding());
+		ITypeBinding target = node.getType().resolveBinding();
+		ITypeBinding source = node.getExpression().resolveTypeBinding();
 
-		print(node.getType().isPrimitiveType()
-				|| node.getExpression() instanceof NullLiteral ? "static_cast< "
-				: "dynamic_cast< ");
-
-		print(CName.relative(tb, type, true)
-				+ TransformUtil.ref(node.getType()));
-
-		print(" >(");
+		if (target.isPrimitive() || node.getExpression() instanceof NullLiteral) {
+			print("static_cast< " + CName.relative(target, type, true)
+					+ TransformUtil.ref(target) + " >(");
+		} else {
+			javaCast(source, target);
+		}
 
 		node.getExpression().accept(this);
 
@@ -1156,12 +1154,14 @@ public class ImplWriter extends TransformWriter {
 	public boolean visit(EnhancedForStatement node) {
 		ITypeBinding eb = node.getExpression().resolveTypeBinding();
 		hardDep(eb);
+		deps.setNpc();
 		if (eb.isArray()) {
 			printlni("{");
 			indent++;
 			printi("auto _a = ");
+			npc();
 			node.getExpression().accept(this);
-			println(";");
+			println(");");
 			printlni("for(int _i = 0; _i < _a->length_; ++_i) {");
 			indent++;
 			printi();
@@ -1175,8 +1175,9 @@ public class ImplWriter extends TransformWriter {
 			printlni("}");
 		} else {
 			printi("for (auto _i = ");
+			npc();
 			node.getExpression().accept(this);
-			println("->iterator(); _i->hasNext(); ) {");
+			println(")->iterator(); _i->hasNext(); ) {");
 			indent++;
 			printi();
 			node.getParameter().accept(this);
@@ -1187,8 +1188,9 @@ public class ImplWriter extends TransformWriter {
 				ITypeBinding tbb = node.getAST().resolveWellKnownType(
 						TransformUtil.primitives.get(tb.getName()));
 				hardDep(tbb);
+				npc();
 				javaCast(ctx.resolve(Object.class), tbb);
-				println("_i->next())->" + tb.getName() + "Value();");
+				println("_i->next()))->" + tb.getName() + "Value();");
 			} else {
 				javaCast(ctx.resolve(Object.class), tb);
 				println("_i->next());");
@@ -1263,9 +1265,10 @@ public class ImplWriter extends TransformWriter {
 			javaCast(tbe, tb);
 		}
 
+		npc();
 		node.getExpression().accept(this);
 		hardDep(node.getExpression().resolveTypeBinding());
-		print("->");
+		print(")->");
 		node.getName().accept(this);
 		if (cast) {
 			print(")");
@@ -1750,30 +1753,34 @@ public class ImplWriter extends TransformWriter {
 			ITypeBinding etb = expr.resolveTypeBinding().getErasure();
 			boolean castExpr = !etb.isSubTypeCompatible(b.getDeclaringClass()
 					.getErasure());
+			boolean isType = expr instanceof Name
+					&& ((Name) expr).resolveBinding() instanceof ITypeBinding;
 
 			if (castExpr) {
 				javaCast(etb, b.getDeclaringClass());
 			}
 
+			if (!isType) {
+				npc();
+			}
+
 			expr.accept(this);
+
+			if (!isType) {
+				print(")");
+			}
 
 			if (castExpr) {
 				print(")");
 			}
 
-			if (expr instanceof Name) {
-				IBinding eb = ((Name) expr).resolveBinding();
-				if (eb instanceof ITypeBinding) {
-					print("::");
-				} else {
-					print("->");
-				}
+			if (isType) {
+				print("::");
 			} else {
-				// Assume the expression returned an instance
 				print("->");
 			}
 
-			hardDep(expr.resolveTypeBinding());
+			hardDep(etb);
 		}
 
 		print(TransformUtil.typeArguments(node.typeArguments()));
@@ -1875,7 +1882,8 @@ public class ImplWriter extends TransformWriter {
 		hardDep(source);
 		hardDep(target);
 		deps.setJavaCast();
-		print("java_cast< " + CName.relative(target, type, true) + "* >(");
+		print(CName.JAVA_CAST + "< " + CName.relative(target, type, true)
+				+ "* >(");
 	}
 
 	private void cast(Expression argument, ITypeBinding pb, boolean hasOverloads) {

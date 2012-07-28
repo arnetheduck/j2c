@@ -1,7 +1,6 @@
 package se.arnetheduck.j2c.transform;
 
 import java.io.PrintWriter;
-import java.util.Collection;
 import java.util.Iterator;
 import java.util.List;
 
@@ -84,8 +83,10 @@ public abstract class TransformWriter extends ASTVisitor {
 		deps.hard(dep);
 	}
 
-	protected void hardDep(Type type, Collection<ITypeBinding> deps) {
-		hardDep(type.resolveBinding());
+	/** Begin a null pointer check call (needs to be closed) */
+	protected void npc() {
+		deps.setNpc();
+		print(CName.NPC + "(");
 	}
 
 	protected void visitAll(List<? extends ASTNode> nodes) {
@@ -325,13 +326,17 @@ public abstract class TransformWriter extends ASTVisitor {
 				hardDep((ITypeBinding) b);
 				print(CName.relative((ITypeBinding) b, type, true) + "::");
 			} else {
+				if (b instanceof IVariableBinding) {
+					hardDep(((IVariableBinding) b).getType());
+					npc();
+				}
+
 				qualifier.accept(this);
 
 				if (b instanceof IPackageBinding) {
 					print("::");
 				} else if (b instanceof IVariableBinding) {
-					hardDep(((IVariableBinding) b).getType());
-					print("->");
+					print(")->");
 				} else {
 					throw new Error("Unknown binding " + b.getClass());
 				}
@@ -511,8 +516,8 @@ public abstract class TransformWriter extends ASTVisitor {
 			previousRequiresWhiteSpace = true;
 		}
 		boolean previousRequiresNewLine = false;
-		for (Iterator it = node.fragments().iterator(); it.hasNext();) {
-			ASTNode e = (ASTNode) it.next();
+		for (Iterator<ASTNode> it = node.fragments().iterator(); it.hasNext();) {
+			ASTNode e = it.next();
 			// assume text elements include necessary leading and trailing
 			// whitespace
 			// but Name, MemberRef, MethodRef, and nested TagElement do not
@@ -589,7 +594,7 @@ public abstract class TransformWriter extends ASTVisitor {
 			printi(TransformUtil.variableModifiers(type, node.getModifiers())
 					+ CName.relative(tb, type, true) + " ");
 
-			visitAllCSV(node.fragments(), false);
+			visitAllCSV(fragments, false);
 
 			println(";");
 		}

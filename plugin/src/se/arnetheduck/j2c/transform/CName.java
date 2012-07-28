@@ -41,10 +41,20 @@ public class CName {
 	 */
 	public static final String DEFAULT_INIT_TAG = "default_init_tag";
 
+	/**
+	 * Cast function that throws an appropriate exception if a cast fails
+	 */
+	public static final String JAVA_CAST = "java_cast";
+
+	/**
+	 * Null pointer check function - throws NPE if the passed pointer is null
+	 */
+	public static final String NPC = "npc";
+
 	/** C++ keywords + special method names - java keywords */
-	static Collection<String> keywords = Arrays.asList("alignas", "alignof",
-			"and", "and_eq", "asm", "auto", "bitand", "bitor", "bool",
-			"char16_t", "char32_t", "compl", "const", "constexpre",
+	public static Collection<String> keywords = Arrays.asList("alignas",
+			"alignof", "and", "and_eq", "asm", "auto", "bitand", "bitor",
+			"bool", "char16_t", "char32_t", "compl", "const", "constexpre",
 			"const_cast", "decltype", "delete", "dynamic_cast", "explicit",
 			"export", "extern", "friend", "goto", "inline", "mutable",
 			"namespace", "noexcept", "not", "not_eq", "nullptr", "operator",
@@ -52,8 +62,8 @@ public class CName {
 			"static_assert", "static_cast", "struct", "template",
 			"thread_local", "typedef", "typeid", "typename", "union",
 			"unsigned", "using", "wchar_t", "xor", "xor_eq", CTOR,
-			INSTANCE_INIT, STATIC_INIT, GET_CLASS, "int8_t", "int16_t",
-			"int32_t", "int64_t", "char16_t");
+			INSTANCE_INIT, STATIC_INIT, GET_CLASS, DEFAULT_INIT_TAG, JAVA_CAST,
+			"int8_t", "int16_t", "int32_t", "int64_t", "char16_t");
 
 	public static String qualified(ITypeBinding tb, boolean global) {
 		IPackageBinding pkg = TransformUtil.elementPackage(tb);

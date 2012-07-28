@@ -14,6 +14,9 @@ import org.eclipse.jdt.core.dom.IVariableBinding;
 import org.eclipse.jdt.core.dom.Modifier;
 
 public class Impl {
+	private static final String JAVA_CAST_HPP = "/se/arnetheduck/j2c/resources/java_cast.hpp";
+	private static final String NPC_HPP = "/se/arnetheduck/j2c/resources/npc.hpp";
+
 	private static final String i1 = TransformUtil.indent(1);
 
 	private final ITypeBinding type;
@@ -55,6 +58,7 @@ public class Impl {
 		printIncludes(fmod);
 
 		printJavaCast();
+		printNpc();
 
 		print(body);
 		print(extras);
@@ -268,22 +272,23 @@ public class Impl {
 			return;
 		}
 
-		println("template<typename T, typename U>");
-		println("static T java_cast(U* u)");
-		println("{");
-		println(i1 + "if(!u) return static_cast<T>(nullptr);");
-		println(i1 + "auto t = dynamic_cast<T>(u);");
-		println(i1 + "if(!t) throw new ::java::lang::ClassCastException();");
-		println(i1 + "return t;");
-		println("}");
-		println();
+		print(TransformUtil.readResource(JAVA_CAST_HPP));
+	}
+
+	private void printNpc() {
+		if (!deps.needsNpc()) {
+			return;
+		}
+
+		print(TransformUtil.readResource(NPC_HPP));
 	}
 
 	private void javaCast(ITypeBinding source, ITypeBinding target) {
 		hardDep(source);
 		hardDep(target);
 		deps.setJavaCast();
-		print("java_cast< " + CName.relative(target, type, true) + "* >(");
+		print(CName.JAVA_CAST + "< " + CName.relative(target, type, true)
+				+ "* >(");
 	}
 
 	private void hardDep(ITypeBinding dep) {

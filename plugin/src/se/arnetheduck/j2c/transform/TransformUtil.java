@@ -863,6 +863,14 @@ public final class TransformUtil {
 		}
 	}
 
+	public static String readResource(String resource) {
+		try (InputStream is = TransformUtil.class.getResourceAsStream(resource)) {
+			return TransformUtil.read(is);
+		} catch (Exception e) {
+			throw new RuntimeException(e);
+		}
+	}
+
 	public static String read(InputStream resource) {
 		return new Scanner(resource).useDelimiter("\\A").next();
 	}

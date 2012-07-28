@@ -13,8 +13,8 @@ import org.eclipse.jdt.core.dom.ITypeBinding;
 import org.eclipse.jdt.core.dom.IVariableBinding;
 
 public class ArrayWriter {
-	private static final String ARRAY_H = "/se/arnetheduck/j2c/resources/Array.hpp";
-	private static final String OBJECT_ARRAY_H = "/se/arnetheduck/j2c/resources/ObjectArray.hpp";
+	private static final String ARRAY_HPP = "/se/arnetheduck/j2c/resources/Array.hpp";
+	private static final String OBJECT_ARRAY_HPP = "/se/arnetheduck/j2c/resources/ObjectArray.hpp";
 	private static final String SUB_ARRAY_HPP_TMPL = "/se/arnetheduck/j2c/resources/SubArray.hpp.tmpl";
 
 	private final IPath root;
@@ -65,14 +65,14 @@ public class ArrayWriter {
 		ITypeBinding ct = type.getComponentType();
 		if (ct.isPrimitive()) {
 			try (InputStream is = ArrayWriter.class
-					.getResourceAsStream(ARRAY_H)) {
+					.getResourceAsStream(ARRAY_HPP)) {
 				TransformUtil.writeResource(is, target);
 			}
 
 			return;
 		} else if (ct.getQualifiedName().equals(Object.class.getName())) {
 			try (InputStream is = ArrayWriter.class
-					.getResourceAsStream(OBJECT_ARRAY_H)) {
+					.getResourceAsStream(OBJECT_ARRAY_HPP)) {
 				TransformUtil.writeResource(is, target);
 			}
 

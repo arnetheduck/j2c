@@ -14,6 +14,7 @@ public class DepInfo {
 			new BindingComparator());
 
 	private boolean javaCast;
+	private boolean npc;
 
 	public DepInfo(Transformer ctx) {
 		this.ctx = ctx;
@@ -49,5 +50,14 @@ public class DepInfo {
 	public void setJavaCast() {
 		javaCast = true;
 		hard(ctx.resolve(ClassCastException.class));
+	}
+
+	public boolean needsNpc() {
+		return npc;
+	}
+
+	public void setNpc() {
+		npc = true;
+		hard(ctx.resolve(NullPointerException.class));
 	}
 }
