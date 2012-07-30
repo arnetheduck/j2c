@@ -394,16 +394,19 @@ public final class TransformUtil {
 
 		dep = dep.getErasure();
 
+		boolean found = false;
 		// This ensures that the new dep is always added last (useful when
 		// ordering bases)
 		for (ITypeBinding d : deps) {
 			if (d.isEqualTo(dep)) {
 				deps.remove(d);
+				found = true;
 				break;
 			}
 		}
 
-		return deps.add(dep);
+		deps.add(dep);
+		return found;
 	}
 
 	public static String ref(ITypeBinding tb) {

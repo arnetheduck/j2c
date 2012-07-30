@@ -45,6 +45,9 @@ public class Transformer {
 
 	private final IPath root;
 
+	private final Stats direct = new Stats();
+	private final Stats deps = new Stats();
+
 	public final static class ICUComparator implements
 			Comparator<ICompilationUnit> {
 		@Override
@@ -113,6 +116,13 @@ public class Transformer {
 		mw.write(name, sel, ext);
 
 		monitor.done();
+
+		System.out.println("Selected stats:");
+		System.out.println(direct);
+
+		System.out.println("Dependency stats:");
+		System.out.println(deps);
+
 		System.out.println("Done.");
 	}
 
@@ -237,7 +247,7 @@ public class Transformer {
 
 	private void writeHeader(ICompilationUnit unit, ITypeBinding tb)
 			throws Exception {
-		done.add(tb.getBinaryName());
+		addDone(tb, sel == cur);
 		TypeBindingHeaderWriter hw = new TypeBindingHeaderWriter(getRoot(unit),
 				this, tb);
 		hw.write();
@@ -278,7 +288,18 @@ public class Transformer {
 		}
 
 		for (ITypeBinding tb : ui.types) {
-			done.add(tb.getBinaryName());
+			addDone(tb, cur == sel);
+		}
+	}
+
+	private void addDone(ITypeBinding tb, boolean isSel) {
+		tb = tb.getErasure();
+		if (done.add(tb.getBinaryName())) {
+			if (isSel) {
+				direct.add(tb);
+			} else {
+				deps.add(tb);
+			}
 		}
 	}
 
@@ -288,19 +309,16 @@ public class Transformer {
 		while (!hardDeps.isEmpty()) {
 			final List<ITypeBinding> bindings = new ArrayList<ITypeBinding>();
 
-			cur = ext;
-
 			for (ITypeBinding tb : hardDeps) {
-				if (done.contains(tb.getBinaryName())) {
+				if (done.contains(tb.getErasure().getBinaryName())) {
 					continue;
 				}
-
-				done.add(tb.getBinaryName());
 
 				if (tb.isPrimitive() || tb.isNullType()) {
 					continue;
 				}
 
+				boolean isSel = false;
 				try {
 					if (tb.isArray()) {
 						arrays.add(tb);
@@ -313,15 +331,20 @@ public class Transformer {
 							bindings.add(tb);
 						} else {
 							todo.add(type.getCompilationUnit());
+							isSel = selection.contains(type
+									.getCompilationUnit());
 						}
 					}
 				} catch (Exception e) {
 					e.printStackTrace();
 				}
+
+				addDone(tb, isSel);
 			}
 
 			hardDeps.clear();
 
+			cur = ext;
 			for (ITypeBinding tb : bindings) {
 				try {
 					writeHeader(null, tb);
@@ -359,8 +382,10 @@ public class Transformer {
 	public void softDep(ITypeBinding dep) {
 		if (dep != null && !dep.isNullType()) {
 			dep = dep.getErasure();
-			ForwardWriter.Info info = new ForwardWriter.Info(dep);
-			forwards.put(dep.getBinaryName(), info);
+			if (!forwards.containsKey(dep.getBinaryName())) {
+				ForwardWriter.Info info = new ForwardWriter.Info(dep);
+				forwards.put(dep.getBinaryName(), info);
+			}
 		}
 	}
 
