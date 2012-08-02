@@ -134,14 +134,19 @@ public class Impl {
 			println(i1 + "super::" + CName.STATIC_INIT + "();");
 		}
 
+		println(i1 + "static bool in_cl_init = false;");
+
 		if (clinit != null) {
 			println("struct clinit_ {");
 			println(i1 + "clinit_() {");
+			println(i1 + i1 + "in_cl_init = true;");
 			print(clinit.toString());
 			println(i1 + "}");
 			println("};");
 			println();
-			println("static clinit_ clinit_instance;");
+			println(i1 + "if(!in_cl_init) {");
+			println(i1 + i1 + "static clinit_ clinit_instance;");
+			println(i1 + "}");
 		}
 
 		println("}");
