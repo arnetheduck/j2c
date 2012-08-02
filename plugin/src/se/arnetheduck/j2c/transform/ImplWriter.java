@@ -310,23 +310,7 @@ public class ImplWriter extends TransformWriter {
 			println(") " + TransformUtil.throwsDecl(md.thrownExceptions()));
 
 			indent++;
-			printi(": " + name + "(");
-			sep = "";
-			if (TransformUtil.hasOuterThis(type)) {
-				print(TransformUtil.outerThisName(type));
-				sep = ", ";
-			}
-
-			if (closures != null) {
-				for (IVariableBinding closure : closures) {
-					print(sep + CName.of(closure));
-					sep = ", ";
-				}
-			}
-
-			println(sep + "*static_cast< ::" + CName.DEFAULT_INIT_TAG
-					+ "* >(0))");
-
+			printDefaultInitCall();
 			indent--;
 
 			println("{");
@@ -346,6 +330,25 @@ public class ImplWriter extends TransformWriter {
 		if (!hasEmpty) {
 			printEmptyCtor();
 		}
+	}
+
+	private void printDefaultInitCall() {
+		String sep;
+		printi(": " + name + "(");
+		sep = "";
+		if (TransformUtil.hasOuterThis(type)) {
+			print(TransformUtil.outerThisName(type));
+			sep = ", ";
+		}
+
+		if (closures != null) {
+			for (IVariableBinding closure : closures) {
+				print(sep + CName.of(closure));
+				sep = ", ";
+			}
+		}
+
+		println(sep + "*static_cast< ::" + CName.DEFAULT_INIT_TAG + "* >(0))");
 	}
 
 	private void printAnonCtors() {
@@ -425,12 +428,29 @@ public class ImplWriter extends TransformWriter {
 			return;
 		}
 
+		print(qcname + "::" + name + "(");
+		TransformUtil.printNestedParams(out, type, closures);
+		println(")");
+		indent++;
+		printDefaultInitCall();
+		indent--;
+		println("{");
+		indent++;
+		printlni(CName.CTOR + "();");
+		indent--;
+		println("}");
+		println();
+
 		println("void " + qcname + "::" + CName.CTOR + "()");
 		println("{");
-		println(i1 + "super::" + CName.CTOR + "();");
+		if (type.getSuperclass() != null) {
+			println(i1 + "super::" + CName.CTOR + "();");
+		}
+
 		if (init != null) {
 			printlni(i1 + CName.INSTANCE_INIT + "();");
 		}
+
 		println("}");
 		println();
 	}
@@ -1692,7 +1712,9 @@ public class ImplWriter extends TransformWriter {
 
 			if (!(first instanceof ConstructorInvocation)) {
 				if (!(first instanceof SuperConstructorInvocation)) {
-					printlni("super::" + CName.CTOR + "();");
+					if (type.getSuperclass() != null) {
+						printlni("super::" + CName.CTOR + "();");
+					}
 				} else {
 					first.accept(this);
 				}

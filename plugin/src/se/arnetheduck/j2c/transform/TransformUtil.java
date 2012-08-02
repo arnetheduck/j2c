@@ -406,7 +406,7 @@ public final class TransformUtil {
 		}
 
 		deps.add(dep);
-		return found;
+		return !found;
 	}
 
 	public static String ref(ITypeBinding tb) {

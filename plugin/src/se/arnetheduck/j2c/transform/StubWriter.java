@@ -182,7 +182,10 @@ public class StubWriter {
 
 		println("void " + qcname + "::" + CName.CTOR + "()");
 		println("{");
-		println(i1 + "super::" + CName.CTOR + "();");
+		if (type.getSuperclass() != null) {
+			println(i1 + "super::" + CName.CTOR + "();");
+		}
+
 		println("}");
 		println();
 	}
