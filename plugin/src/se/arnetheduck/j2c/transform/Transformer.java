@@ -377,6 +377,8 @@ public class Transformer {
 		if (dep != null && !done.contains(dep.getErasure().getBinaryName())) {
 			TransformUtil.addDep(dep, hardDeps);
 		}
+
+		softDep(dep);
 	}
 
 	public void softDep(ITypeBinding dep) {

@@ -63,7 +63,7 @@ public final class TransformUtil {
 
 	public static String packageHeader(String packageName) {
 		return packageName == null || packageName.length() == 0 ? "fwd.hpp"
-				: toFileName(packageName) + ".fwd.hpp";
+				: toFileName(packageName) + "/fwd.hpp";
 	}
 
 	public static String qualifiedName(ITypeBinding tb) {
