@@ -83,7 +83,7 @@ public final class TransformUtil {
 	}
 
 	public static String include(String s) {
-		return "#include \"" + s + "\"";
+		return "#include <" + s + ">";
 	}
 
 	public static IPath headerPath(IPath root, ITypeBinding tb) {
@@ -904,56 +904,5 @@ public final class TransformUtil {
 	public static boolean returnErased(IMethodBinding b) {
 		return !b.getReturnType().isEqualTo(
 				b.getMethodDeclaration().getReturnType().getErasure());
-	}
-
-	public static String literal(String s) {
-		StringBuilder sb = new StringBuilder();
-		sb.ensureCapacity((int) (s.length() * 1.1 + 6));
-		sb.append("u\"");
-		for (int i = 0; i < s.length(); ++i) {
-			char c = s.charAt(i);
-			switch (c) {
-			case 0x07:
-				sb.append("\\a");
-				break;
-			case '\b':
-				sb.append("\\b");
-				break;
-			case '\f':
-				sb.append("\\f");
-				break;
-			case '\n':
-				sb.append("\\n");
-				break;
-			case '\r':
-				sb.append("\\r");
-				break;
-			case '\t':
-				sb.append("\\t");
-				break;
-			case 0x0b:
-				sb.append("\\v");
-				break;
-			case '\\':
-				sb.append("\\\\");
-				break;
-			case '"':
-				sb.append("\\\"");
-				break;
-			case '\'':
-				sb.append("\\'");
-				break;
-			default:
-				if (c < ' ') {
-					sb.append(String.format("\\u%04x", c));
-				} else {
-					sb.append(c);
-				}
-			}
-		}
-
-		sb.append("\"_j");
-
-		return sb.toString();
 	}
 }

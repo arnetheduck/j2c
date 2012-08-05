@@ -3,9 +3,9 @@
 #include <algorithm>
 #include <initializer_list>
 
-#include "java/lang/Object.hpp"
-#include "java/lang/Cloneable.hpp"
-#include "java/io/Serializable.hpp"
+#include <java/lang/Object.hpp>
+#include <java/lang/Cloneable.hpp>
+#include <java/io/Serializable.hpp>
 
 namespace java
 {
