@@ -99,9 +99,9 @@ public class TypeBindingHeaderWriter {
 				asMethod ? Modifier.PRIVATE : vb.getModifiers(), access);
 		pw.print(TransformUtil.indent(1));
 
-		String cv = TransformUtil.constantValue(vb);
+		Object cv = TransformUtil.constantValue(vb);
 		pw.print(TransformUtil.fieldModifiers(type, vb.getModifiers(), true,
-				cv != null));
+				cv != null && !(cv instanceof String)));
 
 		pw.print(CName.relative(vb.getType(), vb.getDeclaringClass(), true));
 		pw.print(" ");
@@ -109,9 +109,9 @@ public class TypeBindingHeaderWriter {
 		pw.print(TransformUtil.refName(vb));
 		pw.print(asMethod ? "_" : "");
 
-		if (cv != null) {
+		if (cv != null && !(cv instanceof String)) {
 			pw.print(" = ");
-			pw.print(cv);
+			pw.print(TransformUtil.checkConstant(cv));
 		}
 
 		pw.println(";");

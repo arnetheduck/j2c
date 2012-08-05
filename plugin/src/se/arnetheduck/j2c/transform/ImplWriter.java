@@ -95,6 +95,9 @@ public class ImplWriter extends TransformWriter {
 	private final IPath root;
 	private final Set<IVariableBinding> closures;
 
+	/** Constant expression fields that cannot be represented as such in C++ */
+	private ArrayList<VariableDeclarationFragment> consts = new ArrayList<VariableDeclarationFragment>();
+
 	/** Static initializers */
 	private StringWriter clinit;
 
@@ -180,8 +183,10 @@ public class ImplWriter extends TransformWriter {
 
 	private void writeType(String body) throws Exception {
 		String extras = getExtras();
+		String cinit = getCinit();
 
-		impl.write(root, extras + body, "", closures, clinit, fmod, false);
+		impl.write(root, extras + body, "", closures, cinit, clinit, fmod,
+				false);
 
 		ctx.addImpl(type);
 
@@ -208,6 +213,33 @@ public class ImplWriter extends TransformWriter {
 
 		out.close();
 		out = null;
+
+		return sw.toString();
+	}
+
+	private String getCinit() {
+		if (consts.isEmpty()) {
+			return null;
+		}
+
+		int oi = indent;
+		indent = 1;
+
+		PrintWriter old = out;
+		StringWriter sw = new StringWriter();
+		out = new PrintWriter(sw);
+		for (VariableDeclarationFragment vdf : consts) {
+			printi();
+			vdf.getName().accept(this);
+			print(" = ");
+			vdf.getInitializer().accept(this);
+			println(";");
+		}
+
+		indent = oi;
+
+		out.close();
+		out = old;
 
 		return sw.toString();
 	}
@@ -493,7 +525,16 @@ public class ImplWriter extends TransformWriter {
 		for (VariableDeclarationFragment vd : fields) {
 			print(i1 + sep);
 			vd.getName().accept(this);
-			println("()");
+
+			print("(");
+
+			if (vd.getInitializer() != null
+					&& TransformUtil.constantValue(vd) instanceof String) {
+				vd.getInitializer().accept(this);
+			}
+
+			println(")");
+
 			sep = ", ";
 		}
 
@@ -1304,13 +1345,22 @@ public class ImplWriter extends TransformWriter {
 		boolean isStatic = Modifier.isStatic(node.getModifiers());
 		for (VariableDeclarationFragment f : fragments) {
 			Object cv = TransformUtil.constantValue(f);
-			if (f.getInitializer() != null && cv == null) {
-				addInit(isStatic, null, f);
-			}
 
-			if (cv == null && !isStatic) {
-				fields.add(f);
-				continue;
+			if (isStatic) {
+				if (cv instanceof String) {
+					consts.add(f);
+				} else if (cv == null && f.getInitializer() != null) {
+					addInit(isStatic, null, f);
+				}
+			} else {
+				if (f.getInitializer() != null && cv == null) {
+					addInit(isStatic, null, f);
+				}
+
+				if (cv instanceof String || cv == null) {
+					fields.add(f);
+					continue;
+				}
 			}
 
 			IVariableBinding vb = f.resolveBinding();
@@ -1330,7 +1380,7 @@ public class ImplWriter extends TransformWriter {
 			}
 
 			printi(TransformUtil.fieldModifiers(type, node.getModifiers(),
-					false, cv != null));
+					false, cv != null && !(cv instanceof String)));
 
 			ITypeBinding tb = node.getType().resolveBinding();
 			tb = f.getExtraDimensions() > 0 ? tb.createArrayType(f
@@ -1970,7 +2020,11 @@ public class ImplWriter extends TransformWriter {
 
 		if (b instanceof IVariableBinding
 				&& TransformUtil.asMethod((IVariableBinding) b)) {
-			print("()");
+			if (((IVariableBinding) b).getDeclaringClass().isEqualTo(type)) {
+				print("_");
+			} else {
+				print("()");
+			}
 		}
 
 		return ret;

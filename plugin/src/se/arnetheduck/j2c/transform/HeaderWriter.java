@@ -185,8 +185,9 @@ public class HeaderWriter extends TransformWriter {
 				access = Header.printAccess(out, asMethod ? Modifier.PRIVATE
 						: vb.getModifiers(), access);
 
+				Object cv = TransformUtil.constantValue(f);
 				printi(TransformUtil.fieldModifiers(type, node.getModifiers(),
-						true, TransformUtil.constantValue(f) != null));
+						true, cv != null && !(cv instanceof String)));
 
 				print(CName.relative(vb.getType(), type, true) + " ");
 
@@ -385,7 +386,9 @@ public class HeaderWriter extends TransformWriter {
 		node.getName().accept(this);
 		Object v = TransformUtil.constantValue(node);
 		if (v != null) {
-			print(" = " + v);
+			if (!(v instanceof String)) {
+				print(" = " + TransformUtil.checkConstant(v));
+			}
 		} else {
 			if (node.getInitializer() != null) {
 				if (!Modifier.isStatic(node.resolveBinding().getModifiers())) {

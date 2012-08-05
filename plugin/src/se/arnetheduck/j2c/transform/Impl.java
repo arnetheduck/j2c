@@ -38,11 +38,12 @@ public class Impl {
 	}
 
 	public void write(IPath root, String body, String suffix,
-			Collection<IVariableBinding> closures, StringWriter clinit,
-			boolean fmod, boolean isNative) throws IOException {
+			Collection<IVariableBinding> closures, String cinit,
+			StringWriter clinit, boolean fmod, boolean isNative)
+			throws IOException {
 
 		this.isNative = isNative;
-		String extras = getExtras(closures, clinit);
+		String extras = getExtras(closures, cinit, clinit);
 
 		FileOutputStream fos = TransformUtil.open(TransformUtil.implPath(root,
 				type, suffix).toFile());
@@ -68,12 +69,12 @@ public class Impl {
 	}
 
 	private String getExtras(Collection<IVariableBinding> closures,
-			StringWriter clinit) {
+			String cinit, StringWriter clinit) {
 		StringWriter sw = new StringWriter();
 		out = new PrintWriter(sw);
 
 		printClassLiteral();
-		printClinit(clinit);
+		printClinit(cinit, clinit);
 		printSuperCalls();
 
 		printDtor();
@@ -122,7 +123,7 @@ public class Impl {
 		}
 	}
 
-	private void printClinit(StringWriter clinit) {
+	private void printClinit(String cinit, StringWriter clinit) {
 		if (isNative || !TypeUtil.isClassLike(type)) {
 			return;
 		}
@@ -130,13 +131,23 @@ public class Impl {
 		println("void " + qcname + "::" + CName.STATIC_INIT + "()");
 		println("{");
 
+		if (cinit != null) {
+			println("struct string_init_ {");
+			println(i1 + "string_init_() {");
+			print(cinit);
+			println(i1 + "}");
+			println("};");
+			println();
+			println(i1 + "static string_init_ string_init_instance;");
+			println();
+		}
+
 		if (type.getSuperclass() != null) {
 			println(i1 + "super::" + CName.STATIC_INIT + "();");
 		}
 
-		println(i1 + "static bool in_cl_init = false;");
-
 		if (clinit != null) {
+			println(i1 + "static bool in_cl_init = false;");
 			println("struct clinit_ {");
 			println(i1 + "clinit_() {");
 			println(i1 + i1 + "in_cl_init = true;");

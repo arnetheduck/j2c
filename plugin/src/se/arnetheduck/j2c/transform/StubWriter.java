@@ -51,11 +51,13 @@ public class StubWriter {
 		if (natives) {
 			ctx.addNative(type);
 			impl.write(root, extras + body, TransformUtil.NATIVE,
-					new ArrayList<IVariableBinding>(), null, false, natives);
+					new ArrayList<IVariableBinding>(), null, null, false,
+					natives);
 		} else {
 			ctx.addStub(type);
 			impl.write(root, extras + body, TransformUtil.STUB,
-					new ArrayList<IVariableBinding>(), null, false, natives);
+					new ArrayList<IVariableBinding>(), null, null, false,
+					natives);
 		}
 	}
 
@@ -262,7 +264,7 @@ public class StubWriter {
 		}
 
 		print(TransformUtil.fieldModifiers(type, vb.getModifiers(), false,
-				cv != null));
+				cv != null && !(cv instanceof String)));
 
 		print(qvtname + " " + TransformUtil.ref(vt) + qcname + "::" + vname);
 		println(asMethod ? "_;" : ";");

@@ -116,7 +116,7 @@ public class ArrayWriter {
 		ctx.addImpl(type);
 		Impl impl = new Impl(ctx, type, new DepInfo(ctx));
 
-		impl.write(root, "", "", new ArrayList<IVariableBinding>(), null,
+		impl.write(root, "", "", new ArrayList<IVariableBinding>(), null, null,
 				false, false);
 	}
 }

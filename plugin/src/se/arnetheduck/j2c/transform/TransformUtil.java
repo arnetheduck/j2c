@@ -130,16 +130,13 @@ public final class TransformUtil {
 			return null;
 		}
 
-		if (!expr.resolveTypeBinding().isPrimitive()) {
-			return null;
-		}
-
-		if (expr.resolveConstantExpressionValue() == null) {
+		Object v = expr.resolveConstantExpressionValue();
+		if (v == null) {
 			return null;
 		}
 
 		IVariableBinding vb = node.resolveBinding();
-		if (!vb.getType().isPrimitive()) {
+		if (!vb.getType().isPrimitive() && !(v instanceof String)) {
 			return null;
 		}
 
@@ -147,15 +144,16 @@ public final class TransformUtil {
 			return null;
 		}
 
-		return checkConstant(expr.resolveConstantExpressionValue());
+		return v;
 	}
 
-	public static String constantValue(IVariableBinding vb) {
-		if (!vb.getType().isPrimitive()) {
+	public static Object constantValue(IVariableBinding vb) {
+		Object v = vb.getConstantValue();
+		if (v == null) {
 			return null;
 		}
 
-		if (vb.getConstantValue() == null) {
+		if (!vb.getType().isPrimitive() && !(v instanceof String)) {
 			return null;
 		}
 
@@ -163,7 +161,7 @@ public final class TransformUtil {
 			return null;
 		}
 
-		return checkConstant(vb.getConstantValue());
+		return v;
 	}
 
 	/**
@@ -171,7 +169,9 @@ public final class TransformUtil {
 	 * chance to initialize the class before variable access
 	 */
 	public static boolean asMethod(IVariableBinding vb) {
-		return vb.isField() && isStatic(vb) && constantValue(vb) == null
+		return vb.isField()
+				&& isStatic(vb)
+				&& (constantValue(vb) == null || constantValue(vb) instanceof String)
 				&& !vb.isEnumConstant();
 	}
 
@@ -904,5 +904,56 @@ public final class TransformUtil {
 	public static boolean returnErased(IMethodBinding b) {
 		return !b.getReturnType().isEqualTo(
 				b.getMethodDeclaration().getReturnType().getErasure());
+	}
+
+	public static String literal(String s) {
+		StringBuilder sb = new StringBuilder();
+		sb.ensureCapacity((int) (s.length() * 1.1 + 6));
+		sb.append("u\"");
+		for (int i = 0; i < s.length(); ++i) {
+			char c = s.charAt(i);
+			switch (c) {
+			case 0x07:
+				sb.append("\\a");
+				break;
+			case '\b':
+				sb.append("\\b");
+				break;
+			case '\f':
+				sb.append("\\f");
+				break;
+			case '\n':
+				sb.append("\\n");
+				break;
+			case '\r':
+				sb.append("\\r");
+				break;
+			case '\t':
+				sb.append("\\t");
+				break;
+			case 0x0b:
+				sb.append("\\v");
+				break;
+			case '\\':
+				sb.append("\\\\");
+				break;
+			case '"':
+				sb.append("\\\"");
+				break;
+			case '\'':
+				sb.append("\\'");
+				break;
+			default:
+				if (c < ' ') {
+					sb.append(String.format("\\u%04x", c));
+				} else {
+					sb.append(c);
+				}
+			}
+		}
+
+		sb.append("\"_j");
+
+		return sb.toString();
 	}
 }
