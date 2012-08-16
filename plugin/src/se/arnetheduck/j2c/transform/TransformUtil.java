@@ -721,6 +721,13 @@ public final class TransformUtil {
 				&& !returnCovariant(mb, mb2.getMethodDeclaration());
 	}
 
+	// There's a problem with IMethodBinding.isSubsignature, so we do it by hand
+	// https://bugs.eclipse.org/bugs/show_bug.cgi?id=382907
+	public static boolean isSubsignature(IMethodBinding a, IMethodBinding b) {
+		return !a.isConstructor() && a.getName().equals(b.getName())
+				&& sameParameters(a, b, false);
+	}
+
 	private static boolean sameSignature(IMethodBinding mb, IMethodBinding mb2) {
 		if (!mb.getName().equals(mb2.getName())) {
 			return false;

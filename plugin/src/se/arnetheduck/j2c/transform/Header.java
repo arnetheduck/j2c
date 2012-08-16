@@ -263,7 +263,7 @@ public class Header {
 
 		for (IMethodBinding imb : im) {
 			for (IMethodBinding mb : tb.getDeclaredMethods()) {
-				if (mb.isSubsignature(imb)) {
+				if (TransformUtil.isSubsignature(mb, imb)) {
 					missing.remove(imb);
 					break;
 				}
@@ -271,7 +271,7 @@ public class Header {
 
 			// Same method in two interfaces
 			for (IMethodBinding mb : missing) {
-				if (!mb.isEqualTo(imb) && mb.isSubsignature(imb)) {
+				if (!mb.isEqualTo(imb) && TransformUtil.isSubsignature(mb, imb)) {
 					missing.remove(imb);
 					break;
 				}
@@ -520,7 +520,15 @@ public class Header {
 					print("return ");
 				}
 
-				print("super::" + CName.of(mb) + "(");
+				if (type.isInterface()) {
+					// This happens for the methods of Object for example
+					print(CName.relative(mb.getDeclaringClass(), type, true)
+							+ "::");
+				} else {
+					print("super::");
+				}
+
+				print(CName.of(mb) + "(");
 
 				String sep = "";
 				for (int i = 0; i < mb.getParameterTypes().length; ++i) {
@@ -572,7 +580,7 @@ public class Header {
 					continue;
 				}
 
-				if (a.isSubsignature(b)) {
+				if (TransformUtil.isSubsignature(a, b)) {
 					if (dupe) {
 						i.remove();
 					} else {
@@ -673,7 +681,7 @@ public class Header {
 							boolean found = false;
 							for (int i = 0; i < ret.size(); ++i) {
 								IMethodBinding m2 = ret.get(i);
-								if (m2.isSubsignature(m0)) {
+								if (TransformUtil.isSubsignature(m2, m0)) {
 									found = true;
 
 									// If two methods have different return
@@ -702,7 +710,7 @@ public class Header {
 
 		for (IMethodBinding mb : type.getDeclaredMethods()) {
 			for (Iterator<IMethodBinding> i = ret.iterator(); i.hasNext();) {
-				if (mb.isSubsignature(i.next())) {
+				if (TransformUtil.isSubsignature(mb, i.next())) {
 					i.remove();
 				}
 			}
@@ -716,25 +724,9 @@ public class Header {
 				.superClasses(type));
 
 		for (IMethodBinding sm : superMethods) {
-			// isSubsignature doesn't seem to work with generics(!)
-			// if (sm.isSubsignature(mb)) {
-			// return sm;
-			// }
-
-			if (sm.isConstructor()) {
-				continue;
+			if (TransformUtil.isSubsignature(sm, mb)) {
+				return sm;
 			}
-
-			if (!sm.getName().equals(mb.getName())) {
-				continue;
-			}
-
-			if (!TransformUtil.sameParameters(sm, mb, false)) {
-				continue;
-			}
-
-			return sm;
-
 		}
 
 		return null;
