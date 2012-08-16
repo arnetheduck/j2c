@@ -4,8 +4,8 @@ import org.eclipse.jdt.core.dom.IMethodBinding;
 import org.eclipse.jdt.core.dom.ITypeBinding;
 import org.eclipse.jdt.core.dom.IVariableBinding;
 
-import se.arnetheduck.j2c.transform.EmptySnippet;
 import se.arnetheduck.j2c.transform.CName;
+import se.arnetheduck.j2c.transform.EmptySnippet;
 import se.arnetheduck.j2c.transform.StubWriter;
 import se.arnetheduck.j2c.transform.TransformUtil;
 import se.arnetheduck.j2c.transform.Transformer;
@@ -38,7 +38,7 @@ public class GetSetSnippet extends EmptySnippet {
 				if (getter
 						&& mb.getReturnType().isAssignmentCompatible(
 								vb.getType())) {
-					w.println("return " + v + (asMethod ? "_()" : "_")
+					w.println("return " + CName.of(vb) + (asMethod ? "()" : "")
 							+ " ; /* getter */");
 				} else if (setter
 						&& mb.getReturnType().getName().equals("void")
@@ -52,7 +52,7 @@ public class GetSetSnippet extends EmptySnippet {
 						w.print("this->");
 					}
 
-					w.println(v + (asMethod ? "_()" : "_") + " = "
+					w.println(CName.of(vb) + (asMethod ? "()" : "") + " = "
 							+ TransformUtil.paramName(mb, 0) + "; /* setter */");
 				}
 

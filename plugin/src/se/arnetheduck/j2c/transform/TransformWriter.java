@@ -402,13 +402,25 @@ public abstract class TransformWriter extends ASTVisitor {
 						.isEqualTo(declaringClass.getErasure())) {
 			print("super::");
 		} else {
-			// We will be this-qualifying for each type along the nesting chain
-			for (ITypeBinding x = type; x.getDeclaringClass() != null
-					&& !x.isSubTypeCompatible(declaringClass); x = x
-					.getDeclaringClass().getErasure()) {
-				hardDep(x.getDeclaringClass());
+			boolean found = false;
+			for (ITypeBinding x = type.getSuperclass(); x != null; x = x
+					.getSuperclass()) {
+				if (x.isEqualTo(declaringClass)) {
+					print(CName.of(x) + "::");
+					found = true;
+				}
+			}
 
-				print(TransformUtil.outerThisName(x) + "->");
+			if (!found) {
+				// We will be this-qualifying for each type along the nesting
+				// chain
+				for (ITypeBinding x = type; x.getDeclaringClass() != null
+						&& !x.isSubTypeCompatible(declaringClass); x = x
+						.getDeclaringClass().getErasure()) {
+					hardDep(x.getDeclaringClass());
+
+					print(TransformUtil.outerThisName(x) + "->");
+				}
 			}
 		}
 	}

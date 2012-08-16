@@ -119,6 +119,8 @@ public class ImplWriter extends TransformWriter {
 	private final String qcname;
 	private final String name;
 
+	private final List<List<String>> locals = new ArrayList<List<String>>();
+
 	public ImplWriter(IPath root, Transformer ctx, ITypeBinding type,
 			UnitInfo unitInfo) {
 		super(ctx, type, unitInfo);
@@ -327,6 +329,7 @@ public class ImplWriter extends TransformWriter {
 
 		boolean hasEmpty = false;
 		for (MethodDeclaration md : constructors) {
+			locals.add(new ArrayList<String>());
 			printi(qcname + "::" + name + "(");
 
 			String sep = TransformUtil.printNestedParams(out, type, closures);
@@ -357,6 +360,7 @@ public class ImplWriter extends TransformWriter {
 			indent--;
 			println("}");
 			println();
+			locals.remove(locals.size() - 1);
 		}
 
 		if (!hasEmpty) {
@@ -393,6 +397,8 @@ public class ImplWriter extends TransformWriter {
 		List<IMethodBinding> anonCtors = new ArrayList<IMethodBinding>();
 		Header.getAnonCtors(type, anonCtors);
 		for (IMethodBinding mb : anonCtors) {
+			locals.add(new ArrayList<String>());
+
 			printi(qcname + "::" + name + "(");
 
 			String sep = TransformUtil.printNestedParams(out, type, closures);
@@ -404,15 +410,21 @@ public class ImplWriter extends TransformWriter {
 
 			println(")");
 			printAnonCtorBody();
+
+			locals.remove(locals.size() - 1);
 		}
 
 		if (anonCtors.isEmpty()) {
+			locals.add(new ArrayList<String>());
+
 			printi(qcname + "::" + name + "(");
 
 			TransformUtil.printNestedParams(out, type, closures);
 
 			println(")");
 			printAnonCtorBody();
+
+			locals.remove(locals.size() - 1);
 		}
 	}
 
@@ -981,6 +993,7 @@ public class ImplWriter extends TransformWriter {
 			return false;
 		}
 
+		locals.add(new ArrayList<String>());
 		println("{");
 
 		indent++;
@@ -996,6 +1009,7 @@ public class ImplWriter extends TransformWriter {
 		indent--;
 		printi("}");
 
+		locals.remove(locals.size() - 1);
 		return false;
 	}
 
@@ -1223,7 +1237,7 @@ public class ImplWriter extends TransformWriter {
 			npc();
 			node.getExpression().accept(this);
 			println(");");
-			printlni("for(int _i = 0; _i < _a->length_; ++_i) {");
+			printlni("for(int _i = 0; _i < _a->length; ++_i) {");
 			indent++;
 			printi();
 			node.getParameter().accept(this);
@@ -1726,6 +1740,8 @@ public class ImplWriter extends TransformWriter {
 			return false;
 		}
 
+		locals.add(new ArrayList<String>());
+
 		IMethodBinding mb = node.resolveBinding();
 		if (TransformUtil.isMain(mb)) {
 			ctx.main(type);
@@ -1781,6 +1797,8 @@ public class ImplWriter extends TransformWriter {
 		} else {
 			node.getBody().accept(this);
 		}
+
+		locals.remove(locals.size() - 1);
 
 		println();
 		println();
@@ -1853,6 +1871,36 @@ public class ImplWriter extends TransformWriter {
 			}
 
 			hardDep(etb);
+		} else {
+			String bname = CName.of(b);
+			boolean found = false;
+			for (List<String> l : locals) {
+				if (l.contains(bname)) {
+					found = true;
+					break;
+				}
+			}
+
+			if (!b.getDeclaringClass().isEqualTo(type)) {
+				for (IVariableBinding vb : type.getDeclaredFields()) {
+					if (bname.equals(CName.of(vb))) {
+						found = true;
+					}
+				}
+			}
+
+			if (found) {
+				print("this->");
+				if (!b.getDeclaringClass().isEqualTo(type)) {
+					print(CName.of(b.getDeclaringClass()));
+					print("::");
+				}
+			} else {
+				if (found) {
+					assert (!b.getDeclaringClass().isEqualTo(type));
+					print("this->");
+				}
+			}
 		}
 
 		print(TransformUtil.typeArguments(node.typeArguments()));
@@ -2090,6 +2138,11 @@ public class ImplWriter extends TransformWriter {
 
 	@Override
 	public boolean visit(SingleVariableDeclaration node) {
+		IVariableBinding vb = node.resolveBinding();
+		if (!vb.isField()) {
+			locals.get(locals.size() - 1).add(CName.of(vb));
+		}
+
 		ITypeBinding tb = node.getType().resolveBinding();
 		if (node.getExtraDimensions() > 0) {
 			tb = tb.createArrayType(node.getExtraDimensions());
@@ -2106,7 +2159,7 @@ public class ImplWriter extends TransformWriter {
 		print(" " + TransformUtil.ref(tb));
 
 		if (node.getInitializer() != null) {
-			print(TransformUtil.constVar(node.resolveBinding()));
+			print(TransformUtil.constVar(vb));
 			node.getName().accept(this);
 			hardDep(node.getInitializer().resolveTypeBinding());
 			print(" = ");
@@ -2535,32 +2588,32 @@ public class ImplWriter extends TransformWriter {
 			Code code = ((PrimitiveType) node.getType()).getPrimitiveTypeCode();
 			if (code.equals(PrimitiveType.BOOLEAN)) {
 				hardDep(node.getAST().resolveWellKnownType("java.lang.Boolean"));
-				print("::java::lang::Boolean::TYPE_()");
+				print("::java::lang::Boolean::TYPE()");
 			} else if (code.equals(PrimitiveType.BYTE)) {
 				hardDep(node.getAST().resolveWellKnownType("java.lang.Byte"));
-				print("::java::lang::Byte::TYPE_()");
+				print("::java::lang::Byte::TYPE()");
 			} else if (code.equals(PrimitiveType.CHAR)) {
 				hardDep(node.getAST().resolveWellKnownType(
 						"java.lang.Character"));
-				print("::java::lang::Character::TYPE_()");
+				print("::java::lang::Character::TYPE()");
 			} else if (code.equals(PrimitiveType.DOUBLE)) {
 				hardDep(node.getAST().resolveWellKnownType("java.lang.Double"));
-				print("::java::lang::Double::TYPE_()");
+				print("::java::lang::Double::TYPE()");
 			} else if (code.equals(PrimitiveType.FLOAT)) {
 				hardDep(node.getAST().resolveWellKnownType("java.lang.Float"));
-				print("::java::lang::Float::TYPE_()");
+				print("::java::lang::Float::TYPE()");
 			} else if (code.equals(PrimitiveType.INT)) {
 				hardDep(node.getAST().resolveWellKnownType("java.lang.Integer"));
-				print("::java::lang::Integer::TYPE_()");
+				print("::java::lang::Integer::TYPE()");
 			} else if (code.equals(PrimitiveType.LONG)) {
 				hardDep(node.getAST().resolveWellKnownType("java.lang.Long"));
-				print("::java::lang::Long::TYPE_()");
+				print("::java::lang::Long::TYPE()");
 			} else if (code.equals(PrimitiveType.SHORT)) {
 				hardDep(node.getAST().resolveWellKnownType("java.lang.Short"));
-				print("::java::lang::Short::TYPE_()");
+				print("::java::lang::Short::TYPE()");
 			} else if (code.equals(PrimitiveType.VOID)) {
 				hardDep(node.getAST().resolveWellKnownType("java.lang.Void"));
-				print("::java::lang::Void::TYPE_()");
+				print("::java::lang::Void::TYPE()");
 			}
 		} else {
 			hardDep(node.getType().resolveBinding());
@@ -2600,10 +2653,15 @@ public class ImplWriter extends TransformWriter {
 
 	@Override
 	public boolean visit(VariableDeclarationFragment node) {
-		print(TransformUtil.ref(node.resolveBinding().getType()));
+		IVariableBinding vb = node.resolveBinding();
+		if (!vb.isField()) {
+			locals.get(locals.size() - 1).add(CName.of(vb));
+		}
+
+		print(TransformUtil.ref(vb.getType()));
 
 		if (node.getInitializer() != null) {
-			print(TransformUtil.constVar(node.resolveBinding()));
+			print(TransformUtil.constVar(vb));
 			node.getName().accept(this);
 			hardDep(node.getInitializer().resolveTypeBinding());
 			print(" = ");

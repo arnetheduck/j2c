@@ -67,7 +67,7 @@ public final class TransformUtil {
 	}
 
 	public static String qualifiedName(ITypeBinding tb) {
-		IPackageBinding pkg = TransformUtil.elementPackage(tb);
+		IPackageBinding pkg = elementPackage(tb);
 		return pkg == null ? CName.of(tb)
 				: (CName.of(pkg) + "." + CName.of(tb));
 	}
@@ -571,7 +571,8 @@ public final class TransformUtil {
 	public static String paramName(IMethodBinding mb, int i) {
 		try {
 			IMethod md = (IMethod) mb.getJavaElement();
-			return md == null ? "a" + i : md.getParameterNames()[i] + "_";
+			return md == null ? "a" + i : CName
+					.keywords(md.getParameterNames()[i]);
 		} catch (JavaModelException e) {
 			return "a" + i;
 		}
@@ -651,7 +652,7 @@ public final class TransformUtil {
 				mb2 = mb2.getMethodDeclaration();
 
 				access = Header.printAccess(pw, mb2, access);
-				pw.print(TransformUtil.indent(1));
+				pw.print(indent(1));
 
 				printSignature(pw, tb, mb2, deps, false);
 
@@ -699,10 +700,10 @@ public final class TransformUtil {
 						pw.print(CName.relative(pb, tb, false));
 						pw.print(ref(pb));
 						pw.print(" >(");
-						pw.print(TransformUtil.paramName(mb2, i));
+						pw.print(paramName(mb2, i));
 						pw.print(")");
 					} else {
-						pw.print(TransformUtil.paramName(mb2, i));
+						pw.print(paramName(mb2, i));
 					}
 				}
 
@@ -809,15 +810,15 @@ public final class TransformUtil {
 	public static String printNestedParams(PrintWriter pw, ITypeBinding type,
 			Collection<IVariableBinding> closures) {
 		String sep = "";
-		if (TransformUtil.hasOuterThis(type)) {
-			pw.print(TransformUtil.outerThis(type));
+		if (hasOuterThis(type)) {
+			pw.print(outerThis(type));
 			sep = ", ";
 		}
 
 		if (closures != null) {
 			for (IVariableBinding closure : closures) {
 				pw.print(sep + CName.relative(closure.getType(), type, true)
-						+ " " + TransformUtil.refName(closure));
+						+ " " + refName(closure));
 				sep = ", ";
 			}
 		}
@@ -868,7 +869,7 @@ public final class TransformUtil {
 
 	public static String readResource(String resource) {
 		try (InputStream is = TransformUtil.class.getResourceAsStream(resource)) {
-			return TransformUtil.read(is);
+			return read(is);
 		} catch (Exception e) {
 			throw new RuntimeException(e);
 		}

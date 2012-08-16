@@ -1,12 +1,15 @@
 package se.arnetheduck.j2c.transform;
 
-import java.lang.reflect.Modifier;
 import java.util.Arrays;
 import java.util.Collection;
+import java.util.Collections;
 import java.util.List;
+import java.util.Map;
+import java.util.WeakHashMap;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
+import org.eclipse.jdt.core.dom.IBinding;
 import org.eclipse.jdt.core.dom.IMethodBinding;
 import org.eclipse.jdt.core.dom.IPackageBinding;
 import org.eclipse.jdt.core.dom.ITypeBinding;
@@ -63,7 +66,7 @@ public class CName {
 			"thread_local", "typedef", "typeid", "typename", "union",
 			"unsigned", "using", "wchar_t", "xor", "xor_eq", CTOR,
 			INSTANCE_INIT, STATIC_INIT, GET_CLASS, DEFAULT_INIT_TAG, JAVA_CAST,
-			"int8_t", "int16_t", "int32_t", "int64_t", "char16_t");
+			"int8_t", "int16_t", "int32_t", "int64_t", "char16_t", "NULL");
 
 	public static String qualified(ITypeBinding tb, boolean global) {
 		IPackageBinding pkg = TransformUtil.elementPackage(tb);
@@ -113,19 +116,21 @@ public class CName {
 	}
 
 	private static Pattern bin = Pattern.compile("\\$\\d+");
+	private static Map<IBinding, String> cache = Collections
+			.synchronizedMap(new WeakHashMap<IBinding, String>());
 
 	public static String of(ITypeBinding tb) {
-		if (tb.isArray()) {
-			return of(tb.getComponentType()) + "Array";
-		}
-
-		if (tb.isPrimitive()) {
-			return TransformUtil.primitive(tb.getName());
+		String name = cache.get(tb);
+		if (name != null) {
+			return name;
 		}
 
 		ITypeBinding tbe = tb.getErasure();
-
-		if (tbe.isLocal()) {
+		if (tb.isArray()) {
+			name = of(tb.getComponentType()) + "Array";
+		} else if (tb.isPrimitive()) {
+			name = TransformUtil.primitive(tb.getName());
+		} else if (tbe.isLocal()) {
 			StringBuilder ret = new StringBuilder();
 
 			Matcher match = bin.matcher(tbe.getBinaryName());
@@ -151,34 +156,44 @@ public class CName {
 				ret.append(match.group(0).replaceAll("\\$", "_"));
 			}
 
-			return ret.toString();
+			name = ret.toString();
+		} else if (tbe.isNested()) {
+			name = of(tbe.getDeclaringClass()) + "_" + tbe.getName();
+		} else {
+			name = keywords(tbe.getName());
 		}
 
-		if (tbe.isNested()) {
-			return of(tbe.getDeclaringClass()) + "_" + tbe.getName();
-		}
+		cache.put(tb, name);
+		cache.put(tbe, name);
 
-		return CName.keywords(tbe.getName());
+		return name;
 	}
 
 	public static String of(IMethodBinding mb) {
+		String name = cache.get(mb);
+		if (name != null) {
+			return name;
+		}
+
 		// private methods mess up using statements that import methods
 		// from base classes
-		String ret = CName.keywords(mb.getName());
-		ret = Modifier.isPrivate(mb.getModifiers()) ? "_" + ret : ret;
+		name = CName.keywords(mb.getName());
 
-		IMethodBinding lastOverride = couldOverrideDefault(mb, ret);
+		IMethodBinding lastOverride = couldOverrideDefault(mb, name);
 		if (lastOverride != null) {
-			ret = of(lastOverride.getDeclaringClass()) + "_" + ret;
+			name = of(lastOverride.getDeclaringClass()) + "_" + name;
 		}
 
 		// Methods can have the same name as the constructor without being a
 		// constructor!
-		if (!mb.isConstructor() && hasName(mb.getDeclaringClass(), ret)) {
-			ret = "_" + ret;
+		while (!mb.isConstructor() && hasName(mb.getDeclaringClass(), name)) {
+			name = name + "_";
 		}
 
-		return ret;
+		cache.put(mb, name);
+		cache.put(mb.getMethodDeclaration(), name);
+
+		return name;
 	}
 
 	private static boolean hasName(ITypeBinding tb, String ret) {
@@ -233,9 +248,33 @@ public class CName {
 	}
 
 	public static String of(IVariableBinding vb) {
-		// Methods and variables can have the same name so we postfix all
-		// variables
-		return vb.getName() + "_";
+		String name = cache.get(vb);
+		if (name != null) {
+			return name;
+		}
+
+		name = keywords(vb.getName());
+
+		if (vb.getDeclaringClass() != null) {
+			outer: for (;;) {
+				for (IMethodBinding mb : vb.getDeclaringClass()
+						.getDeclaredMethods()) {
+					if (of(mb).equals(name)) {
+						// Methods and variables can have the same name so we
+						// postfix the variable
+						name = name + "_";
+						continue outer;
+					}
+				}
+
+				break;
+			}
+		}
+
+		cache.put(vb, name);
+		cache.put(vb.getVariableDeclaration(), name);
+
+		return name;
 	}
 
 	public static String of(IPackageBinding pb) {
@@ -258,19 +297,23 @@ public class CName {
 
 	/** Filter out C++ keywords and other reserved names */
 	public static String keywords(String name) {
+		if (name.startsWith("__")) {
+			name = "j" + name;
+		}
+
 		if (name.endsWith("Array")) {
 			String n = name;
-			String prefix = "";
+			String suffix = "";
 			while (n.endsWith("Array")) {
-				prefix += "_";
+				suffix += "_";
 				n = n.substring(0, n.length() - "Array".length());
 			}
 
-			return prefix + name;
+			return name + suffix;
 		}
 
 		if (keywords.contains(name)) {
-			return "_" + name;
+			return name + "_";
 		}
 
 		return name;

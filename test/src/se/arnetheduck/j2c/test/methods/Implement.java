@@ -16,5 +16,8 @@ public class Implement {
 		public Object m2() {
 			return null;
 		}
+
+		private void m() { // Private unhiding check (Hiding.java)
+		}
 	}
 }

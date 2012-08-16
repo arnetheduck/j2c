@@ -7,7 +7,6 @@ import java.io.StringWriter;
 import java.lang.reflect.Modifier;
 import java.util.ArrayList;
 import java.util.Collection;
-import java.util.HashSet;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
@@ -491,7 +490,7 @@ public class Header {
 		}
 
 		access = printAccess(out, Modifier.PRIVATE, access);
-		println("void " + CName.INSTANCE_INIT + "();");
+		println(i1 + "void " + CName.INSTANCE_INIT + "();");
 	}
 
 	private void printMethods() {
@@ -504,6 +503,36 @@ public class Header {
 			}
 		}
 
+		List<IMethodBinding> superMethods = hiddenMethods();
+
+		// The remaining methods need unhiding - we don't use "using" as it
+		// breaks if there's a private method with the same name in the base
+		// class
+		for (IMethodBinding mb : superMethods) {
+			access = printAccess(out, mb.getModifiers(), access);
+			print(i1);
+			TransformUtil.printSignature(out, type, mb, deps, false);
+			if (Modifier.isAbstract(mb.getModifiers())) {
+				println(" = 0;");
+			} else {
+				print(" { ");
+				if (!TransformUtil.isVoid(mb.getReturnType())) {
+					print("return ");
+				}
+
+				print("super::" + CName.of(mb) + "(");
+
+				String sep = "";
+				for (int i = 0; i < mb.getParameterTypes().length; ++i) {
+					print(sep + TransformUtil.paramName(mb, i));
+					sep = ", ";
+				}
+				println("); }");
+			}
+		}
+	}
+
+	private List<IMethodBinding> hiddenMethods() {
 		List<IMethodBinding> superMethods = TypeUtil.methods(TypeUtil.allBases(
 				type, ctx.resolve(Object.class)));
 		outer: for (Iterator<IMethodBinding> i = superMethods.iterator(); i
@@ -525,24 +554,35 @@ public class Header {
 			}
 
 			for (IMethodBinding d : declared) {
-				if (TransformUtil.sameParameters(supermethod, d, true)) {
+				if (TransformUtil.sameParameters(supermethod, d, false)) {
 					i.remove();
 					continue outer;
 				}
 			}
 		}
 
-		// The remaining method need unhiding
-		access = printAccess(out, Modifier.PUBLIC, access);
-		Set<String> usings = new HashSet<String>();
-		for (IMethodBinding mb : superMethods) {
-			String using = methodUsing(mb);
-			if (using != null && !usings.contains(using)) {
-				access = printAccess(out, mb.getModifiers(), access);
-				println(i1 + using);
-				usings.add(using);
+		List<IMethodBinding> copy = new ArrayList<IMethodBinding>(superMethods);
+		for (IMethodBinding a : copy) {
+			boolean dupe = false;
+			for (Iterator<IMethodBinding> i = superMethods.iterator(); i
+					.hasNext();) {
+				IMethodBinding b = i.next();
+				if (a.overrides(b)) {
+					i.remove();
+					continue;
+				}
+
+				if (a.isSubsignature(b)) {
+					if (dupe) {
+						i.remove();
+					} else {
+						dupe = true;
+					}
+				}
 			}
 		}
+
+		return superMethods;
 	}
 
 	private void printSuperCalls() {
@@ -750,11 +790,6 @@ public class Header {
 				println(i1 + "friend class " + CName.of(nb) + ";");
 			}
 		}
-	}
-
-	private String methodUsing(IMethodBinding mb) {
-		return "using " + CName.relative(mb.getDeclaringClass(), type, true)
-				+ "::" + CName.of(mb) + ";";
 	}
 
 	public void hardDep(ITypeBinding dep) {
