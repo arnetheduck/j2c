@@ -35,8 +35,8 @@ This is the first time I write an Eclipse plugin, so be nice.
 
 Running
 --
-J2C comes in the form of an Eclipse plugin. If you used the zip, create 
-a directory in $ECLIPSE_HOME/dropins and expand the zip there.
+J2C comes in the form of an Eclipse plugin. If you downloaded the jar, copy
+it to $ECLIPSE_HOME/dropins.
 
 If you downloaded the source code you'll have run the plugin by opening the 
 project in Eclipse and starting a new Eclipse test instance by using the run
@@ -46,9 +46,10 @@ Once you have the plugin running, set up your Java code as a Java
 Project. Eclipse must be able to compile your code for J2C do to its work!
 
 Once the Java Project is set up (with all dependencies etc), you can run J2C by
-right-clicking the project (or a class/package) and choosing the Translate to 
-C++ option. You will need to create a folder for the conversion output - the
-plugin will tell you where.
+right-clicking the project (or a class/package) in the 'Project Explorer' or
+'Package Explorer' view and choosing the 'Translate to C++' option. You will 
+need to create a folder for the conversion output - the plugin will tell you 
+where.
 
 Testing
 --
