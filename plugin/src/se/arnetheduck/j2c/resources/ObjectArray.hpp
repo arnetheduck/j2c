@@ -1,7 +1,7 @@
 #pragma once
 
-#include <algorithm>
 #include <initializer_list>
+#include <utility>
 
 #include <java/lang/Object.hpp>
 #include <java/lang/Cloneable.hpp>
@@ -29,22 +29,26 @@ public:
     typedef int size_type;
 
     ObjectArray() : length(0), p(nullptr) { }
-    ObjectArray(int n) : length(n), p(new value_type[n]) { std::fill(p, p+length, nullptr); }
-
-    ObjectArray(const value_type *p, int n) : length(n), p(new value_type[n])
+    ObjectArray(int n) : length(n), p(n == 0 ? nullptr : new value_type[n])
     {
-    	std::copy(p, p+n, this->p);
+    	for(auto x = p; x != p + length; ++x) *x = value_type();
+    }
+
+    ObjectArray(const value_type *values, int n) : length(n), p(new value_type[n])
+    {
+    	auto x = p;
+    	for(auto v = values; v != values + n; ++v) *x++ = *v;
     }
 
     template<typename T>
     ObjectArray(std::initializer_list<T> l) : length(l.size()), p(new value_type[l.size()])
     {
-    	std::copy(l.begin(), l.end(), p);
+    	auto x = p;
+    	for(auto v : l) *x++ = v;
     }
 
-    ObjectArray(const ObjectArray &rhs) : length(rhs.length), p(new value_type[rhs.length])
+    ObjectArray(const ObjectArray &rhs) : ObjectArray(rhs.p, rhs.length)
     {
-    	std::copy(rhs.p, rhs.p + rhs.length, p);
     }
 
     ObjectArray(ObjectArray &&rhs) : length(rhs.length), p(rhs.p)
@@ -55,11 +59,15 @@ public:
     ObjectArray &operator=(const ObjectArray &rhs)
     {
     	if(&rhs != this) {
-			delete p;
-			const_cast<pointer_type&>(p) = 0;
-			const_cast<size_type&>(length) = rhs.length;
-			const_cast<pointer_type&>(p) = new value_type[length];
-			std::copy(rhs.p, rhs.p + length, p);
+    		if(length != rhs.length) {
+				delete p;
+				const_cast<pointer_type&>(p) = 0;
+				const_cast<size_type&>(length) = rhs.length;
+				const_cast<pointer_type&>(p) = new value_type[length];
+    		}
+
+        	auto x = p;
+        	for(auto v = rhs.p; v != rhs.p + rhs.length; ++v) *x++ = *v;
     	}
 
     	return *this;

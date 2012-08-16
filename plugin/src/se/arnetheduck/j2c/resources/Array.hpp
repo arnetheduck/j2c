@@ -1,7 +1,7 @@
 #pragma once
 
-#include <algorithm>
 #include <initializer_list>
+#include <utility>
 
 #include <fwd.hpp>
 
@@ -23,22 +23,26 @@ public:
     typedef int size_type;
 
     Array() : length(0), p(nullptr) { }
-    Array(int n) : length(n), p(new value_type[n]) { }
-
-    Array(const value_type *p, int n) : length(n), p(new value_type[n])
+    Array(int n) : length(n), p(n == 0 ? nullptr : new value_type[n])
     {
-    	std::copy(p, p+n, this->p);
+    	for(auto x = p; x != p + length; ++x) *x = value_type();
+    }
+
+    Array(const value_type *values, int n) : length(n), p(new value_type[n])
+    {
+    	auto x = p;
+    	for(auto v = values; v != values + n; ++v) *x++ = *v;
     }
 
     template<typename S>
     Array(std::initializer_list<S> l) : length(l.size()), p(new value_type[l.size()])
     {
-    	std::copy(l.begin(), l.end(), p);
+    	auto x = p;
+    	for(auto v : l) *x++ = v;
     }
 
-    Array(const Array &rhs) : length(rhs.length), p(new value_type[rhs.length])
+    Array(const Array &rhs) : Array(rhs.p, rhs.length)
     {
-    	std::copy(rhs.p, rhs.p + rhs.length, p);
     }
 
     Array(Array &&rhs) : length(rhs.length), p(rhs.p)
@@ -49,11 +53,15 @@ public:
     Array &operator=(const Array &rhs)
     {
     	if(&rhs != this) {
-			delete p;
-			const_cast<pointer_type&>(p) = 0;
-			const_cast<size_type&>(length) = rhs.length;
-			const_cast<pointer_type&>(p) = new value_type[length];
-			std::copy(rhs.p, rhs.p + length, p);
+    		if(length != rhs.length) {
+				delete p;
+				const_cast<pointer_type&>(p) = 0;
+				const_cast<size_type&>(length) = rhs.length;
+				const_cast<pointer_type&>(p) = new value_type[length];
+    		}
+
+	    	auto x = p;
+	    	for(auto v = rhs.p; v != rhs.p + rhs.length; ++v) *x++ = *v;
     	}
 
     	return *this;

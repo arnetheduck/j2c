@@ -12,31 +12,33 @@ public:
     typedef %5$s *value_type;
 
     %2$sArray() { }
-    %2$sArray(int n) : %4$sArray(n) { }
+    %2$sArray(int n) : ::java::lang::ObjectArray(n) { }
 
-    %2$sArray(const value_type *p, int n) : %4$sArray(n)
+    %2$sArray(const value_type *values, int n) : ::java::lang::ObjectArray(n)
     {
-    	std::copy(p, p+n, this->p);
+    	auto x = p;
+    	for(auto v = values; v != values + n; ++v) *x++ = *v;
     }
 
     template<typename T>
-    %2$sArray(std::initializer_list<T> l) : %4$sArray(l.size())
+    %2$sArray(std::initializer_list<T> l) : ::java::lang::ObjectArray(l.size())
     {
-    	std::copy(l.begin(), l.end(), p);
+    	auto x = p;
+    	for(auto v : l) *x++ = v;
     }
 
-    %2$sArray(const %2$sArray &rhs) : %4$sArray(rhs) { }
-    %2$sArray(%2$sArray &&rhs) : %4$sArray(std::move(rhs)) { }
+    %2$sArray(const %2$sArray &rhs) : ::java::lang::ObjectArray(rhs) { }
+    %2$sArray(%2$sArray &&rhs) : ::java::lang::ObjectArray(std::move(rhs)) { }
 
     %2$sArray &operator=(const %2$sArray &rhs)
     {
-    	%4$sArray::operator=(rhs);
+    	::java::lang::ObjectArray::operator=(rhs);
     	return *this;
     }
 
     %2$sArray &operator=(%2$sArray &&rhs)
     {
-    	%4$sArray::operator=(std::move(rhs));
+    	::java::lang::ObjectArray::operator=(std::move(rhs));
     	return *this;
     }
 
