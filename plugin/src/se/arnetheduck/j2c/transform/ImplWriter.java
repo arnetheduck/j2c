@@ -1890,15 +1890,13 @@ public class ImplWriter extends TransformWriter {
 			}
 
 			if (found) {
-				print("this->");
-				if (!b.getDeclaringClass().isEqualTo(type)) {
-					print(CName.of(b.getDeclaringClass()));
-					print("::");
-				}
-			} else {
-				if (found) {
-					assert (!b.getDeclaringClass().isEqualTo(type));
+				if (TransformUtil.isStatic(b)) {
+					print(CName.of(b.getDeclaringClass()) + "::");
+				} else {
 					print("this->");
+					if (!b.getDeclaringClass().isEqualTo(type)) {
+						print(CName.of(b.getDeclaringClass()) + "::");
+					}
 				}
 			}
 		}

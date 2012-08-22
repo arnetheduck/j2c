@@ -57,7 +57,7 @@ public class CName {
 	/** C++ keywords + special method names - java keywords */
 	public static Collection<String> keywords = Arrays.asList("alignas",
 			"alignof", "and", "and_eq", "asm", "auto", "bitand", "bitor",
-			"bool", "char16_t", "char32_t", "compl", "const", "constexpre",
+			"bool", "char16_t", "char32_t", "compl", "const", "constexpr",
 			"const_cast", "decltype", "delete", "dynamic_cast", "explicit",
 			"export", "extern", "friend", "goto", "inline", "mutable",
 			"namespace", "noexcept", "not", "not_eq", "nullptr", "operator",
@@ -66,7 +66,8 @@ public class CName {
 			"thread_local", "typedef", "typeid", "typename", "union",
 			"unsigned", "using", "wchar_t", "xor", "xor_eq", CTOR,
 			INSTANCE_INIT, STATIC_INIT, GET_CLASS, DEFAULT_INIT_TAG, JAVA_CAST,
-			"int8_t", "int16_t", "int32_t", "int64_t", "char16_t", "NULL");
+			"int8_t", "int16_t", "int32_t", "int64_t", "char16_t", "NULL",
+			"npc");
 
 	public static String qualified(ITypeBinding tb, boolean global) {
 		IPackageBinding pkg = TransformUtil.elementPackage(tb);
