@@ -27,6 +27,10 @@ public class StringTest {
 		return join() + "Test3" + "Test4";
 	}
 
+	public String builder() {
+		return "" + new StringBuilder("yy");
+	}
+
 	public String assign() {
 		String str1 = "Test";
 		str1 += "Test2";

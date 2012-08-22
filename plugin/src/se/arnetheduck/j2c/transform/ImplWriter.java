@@ -909,9 +909,9 @@ public class ImplWriter extends TransformWriter {
 				print(" = ");
 			}
 
-			print("(new ::java::lang::StringBuilder(");
+			print("::java::lang::StringBuilder(");
 			lhs.accept(this);
-			print("))->append(");
+			print(").append(");
 			castNull(rhs);
 			print(")->toString()");
 
@@ -1515,7 +1515,7 @@ public class ImplWriter extends TransformWriter {
 		ITypeBinding rt = right.resolveTypeBinding();
 
 		if (TransformUtil.same(tb, String.class)) {
-			print("(new ::java::lang::StringBuilder())->append(");
+			print("::java::lang::StringBuilder().append(");
 
 			castNull(left);
 
@@ -1621,7 +1621,10 @@ public class ImplWriter extends TransformWriter {
 	}
 
 	private void castNull(Expression left) {
-		if (left.resolveTypeBinding().isNullType()) {
+		ITypeBinding tb = left.resolveTypeBinding();
+		if (tb.isNullType()
+				|| !(tb.isPrimitive() || TransformUtil.same(tb, String.class))) {
+			hardDep(tb);
 			print("static_cast< ::java::lang::Object* >(");
 			left.accept(this);
 			print(")");
