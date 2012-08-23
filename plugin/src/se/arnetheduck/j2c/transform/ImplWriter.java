@@ -1738,6 +1738,8 @@ public class ImplWriter extends TransformWriter {
 
 	@Override
 	public boolean visit(MethodDeclaration node) {
+		IMethodBinding mb = node.resolveBinding();
+		impl.method(mb);
 		if (node.getBody() == null) {
 			hasNatives |= Modifier.isNative(node.getModifiers());
 			return false;
@@ -1745,7 +1747,6 @@ public class ImplWriter extends TransformWriter {
 
 		locals.add(new ArrayList<String>());
 
-		IMethodBinding mb = node.resolveBinding();
 		if (TransformUtil.isMain(mb)) {
 			ctx.main(type);
 		}

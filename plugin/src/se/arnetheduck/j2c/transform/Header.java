@@ -503,7 +503,7 @@ public class Header {
 			}
 		}
 
-		List<IMethodBinding> superMethods = hiddenMethods();
+		List<IMethodBinding> superMethods = hiddenMethods(type, ctx, methods);
 
 		// The remaining methods need unhiding - we don't use "using" as it
 		// breaks if there's a private method with the same name in the base
@@ -513,34 +513,15 @@ public class Header {
 			print(i1);
 			TransformUtil.printSignature(out, type, mb, deps, false);
 			if (Modifier.isAbstract(mb.getModifiers())) {
-				println(" = 0;");
-			} else {
-				print(" { ");
-				if (!TransformUtil.isVoid(mb.getReturnType())) {
-					print("return ");
-				}
-
-				if (type.isInterface()) {
-					// This happens for the methods of Object for example
-					print(CName.relative(mb.getDeclaringClass(), type, true)
-							+ "::");
-				} else {
-					print("super::");
-				}
-
-				print(CName.of(mb) + "(");
-
-				String sep = "";
-				for (int i = 0; i < mb.getParameterTypes().length; ++i) {
-					print(sep + TransformUtil.paramName(mb, i));
-					sep = ", ";
-				}
-				println("); }");
+				println(" = 0");
 			}
+
+			print(";");
 		}
 	}
 
-	private List<IMethodBinding> hiddenMethods() {
+	public static List<IMethodBinding> hiddenMethods(ITypeBinding type,
+			Transformer ctx, Map<String, List<IMethodBinding>> methods) {
 		List<IMethodBinding> superMethods = TypeUtil.methods(TypeUtil.allBases(
 				type, ctx.resolve(Object.class)));
 		outer: for (Iterator<IMethodBinding> i = superMethods.iterator(); i

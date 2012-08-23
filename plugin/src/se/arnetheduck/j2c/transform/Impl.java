@@ -4,8 +4,11 @@ import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.PrintWriter;
 import java.io.StringWriter;
+import java.util.ArrayList;
 import java.util.Collection;
 import java.util.List;
+import java.util.Map;
+import java.util.TreeMap;
 
 import org.eclipse.core.runtime.IPath;
 import org.eclipse.jdt.core.dom.IMethodBinding;
@@ -28,6 +31,8 @@ public class Impl {
 
 	private PrintWriter out;
 	private boolean isNative;
+
+	private final Map<String, List<IMethodBinding>> methods = new TreeMap<String, List<IMethodBinding>>();
 
 	public Impl(Transformer ctx, ITypeBinding type, DepInfo deps) {
 		this.ctx = ctx;
@@ -76,6 +81,7 @@ public class Impl {
 		printClassLiteral();
 		printClinit(cinit, clinit);
 		printSuperCalls();
+		printUnhide();
 
 		printDtor();
 		printGetClass();
@@ -242,6 +248,7 @@ public class Impl {
 		println("{");
 
 		boolean erased = TransformUtil.returnErased(impl);
+		method(decl);
 
 		if (TransformUtil.isVoid(impl.getReturnType())) {
 			out.format(i1 + "%s::%s(", CName.of(impl.getDeclaringClass()),
@@ -283,6 +290,61 @@ public class Impl {
 		println();
 	}
 
+	private void printUnhide() {
+		List<IMethodBinding> superMethods = Header.hiddenMethods(type, ctx,
+				methods);
+
+		// The remaining methods need unhiding - we don't use "using" as it
+		// breaks if there's a private method with the same name in the base
+		// class
+		for (IMethodBinding mb : superMethods) {
+			if (Modifier.isAbstract(mb.getModifiers())) {
+				continue;
+			}
+
+			ITypeBinding rt = mb.getReturnType();
+			hardDep(rt);
+
+			print(CName.qualified(rt, true));
+
+			print(" ");
+			print(TransformUtil.ref(rt));
+
+			print(CName.qualified(type, true));
+			print("::");
+
+			print(CName.of(mb));
+
+			TransformUtil.printParams(out, type, mb, true, deps);
+
+			println();
+			println("{");
+			print(i1);
+			if (!TransformUtil.isVoid(mb.getReturnType())) {
+				hardDep(mb.getReturnType());
+				print("return ");
+			}
+
+			if (type.isInterface()) {
+				// This happens for the methods of Object for example
+				print(CName.relative(mb.getDeclaringClass(), type, true) + "::");
+			} else {
+				print("super::");
+			}
+
+			print(CName.of(mb) + "(");
+
+			String sep = "";
+			for (int i = 0; i < mb.getParameterTypes().length; ++i) {
+				print(sep + TransformUtil.paramName(mb, i));
+				sep = ", ";
+			}
+			println(");");
+			println("}");
+			println();
+		}
+	}
+
 	private void printJavaCast() {
 		if (!deps.needsJavaCast()) {
 			return;
@@ -305,6 +367,19 @@ public class Impl {
 		deps.setJavaCast();
 		print(CName.JAVA_CAST + "< " + CName.relative(target, type, true)
 				+ "* >(");
+	}
+
+	public void method(IMethodBinding mb) {
+		if (mb.isConstructor()) {
+			return;
+		}
+
+		List<IMethodBinding> m = methods.get(mb.getName());
+		if (m == null) {
+			methods.put(mb.getName(), m = new ArrayList<IMethodBinding>());
+		}
+
+		m.add(mb);
 	}
 
 	private void hardDep(ITypeBinding dep) {
