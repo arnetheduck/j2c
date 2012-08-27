@@ -18,7 +18,9 @@ public class SuperBridgeCall {
 	public class U extends T implements I<Empty> {
 	}
 
-	T m() {
+	T m(I<Empty> i) {
+		i.m(null);
+
 		return new T();
 	}
 }

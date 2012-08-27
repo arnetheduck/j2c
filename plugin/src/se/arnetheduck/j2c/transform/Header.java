@@ -511,12 +511,13 @@ public class Header {
 		for (IMethodBinding mb : superMethods) {
 			access = printAccess(out, mb.getModifiers(), access);
 			print(i1);
-			TransformUtil.printSignature(out, type, mb, deps, false);
+			TransformUtil.printSignature(out, type, mb.getMethodDeclaration(),
+					deps, false);
 			if (Modifier.isAbstract(mb.getModifiers())) {
-				println(" = 0");
+				print(" = 0");
 			}
 
-			print(";");
+			println(";");
 		}
 	}
 
@@ -552,7 +553,6 @@ public class Header {
 
 		List<IMethodBinding> copy = new ArrayList<IMethodBinding>(superMethods);
 		for (IMethodBinding a : copy) {
-			boolean dupe = false;
 			for (Iterator<IMethodBinding> i = superMethods.iterator(); i
 					.hasNext();) {
 				IMethodBinding b = i.next();
@@ -560,7 +560,15 @@ public class Header {
 					i.remove();
 					continue;
 				}
+			}
+		}
 
+		copy = new ArrayList<IMethodBinding>(superMethods);
+		for (IMethodBinding a : copy) {
+			boolean dupe = false;
+			for (Iterator<IMethodBinding> i = superMethods.iterator(); i
+					.hasNext();) {
+				IMethodBinding b = i.next();
 				if (TransformUtil.isSubsignature(a, b)) {
 					if (dupe) {
 						i.remove();

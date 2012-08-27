@@ -302,6 +302,8 @@ public class Impl {
 				continue;
 			}
 
+			mb = mb.getMethodDeclaration();
+
 			ITypeBinding rt = mb.getReturnType();
 			hardDep(rt);
 

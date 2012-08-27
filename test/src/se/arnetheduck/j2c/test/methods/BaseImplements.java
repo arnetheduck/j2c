@@ -19,11 +19,16 @@ public class BaseImplements {
 
 	public static abstract class B extends A implements I {
 		// No need to implement I.m() here
-		void m(int x) { // ...but this could shadow m() in C++
+		void m(int x) { // ...but this could hide m() in C++
 		}
 
 		@Override
 		public abstract void n();
+
+		public void n(int c) {
+			n();
+			n(5);
+		}
 	}
 
 	public static class C implements I {
