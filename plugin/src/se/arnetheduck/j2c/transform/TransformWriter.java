@@ -458,6 +458,11 @@ public abstract class TransformWriter extends ASTVisitor {
 		}
 	}
 
+	protected boolean needsQualification(Name node, ITypeBinding declaringClass) {
+		return node instanceof SimpleName
+				&& needsQualification((SimpleName) node, declaringClass);
+	}
+
 	protected boolean needsQualification(SimpleName node,
 			ITypeBinding declaringClass) {
 		if (declaringClass == null) {

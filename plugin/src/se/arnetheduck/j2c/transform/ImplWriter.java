@@ -1900,7 +1900,10 @@ public class ImplWriter extends TransformWriter {
 				}
 			}
 
-			if (found) {
+			// If the name is already qualified, there won't be a clash
+			if (found
+					&& !needsQualification(node.getName(),
+							b.getDeclaringClass())) {
 				if (TransformUtil.isStatic(b)) {
 					print(CName.of(b.getDeclaringClass()) + "::");
 				} else {
