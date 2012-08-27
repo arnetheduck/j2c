@@ -1882,13 +1882,7 @@ public class ImplWriter extends TransformWriter {
 			hardDep(etb);
 		} else {
 			String bname = CName.of(b);
-			boolean found = false;
-			for (List<String> l : locals) {
-				if (l.contains(bname)) {
-					found = true;
-					break;
-				}
-			}
+			boolean found = localInScope(bname);
 
 			if (!b.getDeclaringClass().isEqualTo(type)) {
 				for (IVariableBinding vb : type.getDeclaredFields()) {
@@ -1921,6 +1915,17 @@ public class ImplWriter extends TransformWriter {
 		}
 
 		return false;
+	}
+
+	private boolean localInScope(String bname) {
+		boolean found = false;
+		for (List<String> l : locals) {
+			if (l.contains(bname)) {
+				found = true;
+				break;
+			}
+		}
+		return found;
 	}
 
 	private void callArgs(IMethodBinding b, List<Expression> arguments,
@@ -2289,7 +2294,15 @@ public class ImplWriter extends TransformWriter {
 		// have to rewrite the switch to if:s
 		printlni("{");
 		indent++;
-		printi("auto v = ");
+
+		String name = "v";
+		while (localInScope(name)) {
+			name = name + "_";
+		}
+
+		locals.add(new ArrayList<String>());
+		locals.get(locals.size() - 1).add(name);
+		printi("auto " + name + " = ");
 		node.getExpression().accept(this);
 		println(";");
 
@@ -2327,7 +2340,7 @@ public class ImplWriter extends TransformWriter {
 					for (SwitchCase x : cases) {
 						print(sep);
 						sep = " || ";
-						print("(v == ");
+						print("(" + name + " == ");
 						x.getExpression().accept(this);
 						print(")");
 					}
@@ -2340,7 +2353,7 @@ public class ImplWriter extends TransformWriter {
 							if (!x.isDefault()) {
 								print(sep);
 								sep = " && ";
-								print("(v != ");
+								print("(" + name + " != ");
 								x.getExpression().accept(this);
 								print(")");
 							}
@@ -2372,6 +2385,7 @@ public class ImplWriter extends TransformWriter {
 		enumSwitches.remove(enumSwitches.size() - 1);
 		enumSwitchCount++;
 		indent--;
+		locals.remove(locals.size() - 1);
 		printlni("}");
 	}
 

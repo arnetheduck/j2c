@@ -4,9 +4,11 @@ import se.arnetheduck.j2c.test.enums.SimpleEnum;
 
 public class SwitchEnum {
 	public int m(SimpleEnum et) {
+		int v = 0; // Same name as fake switch var
 		switch (et) {
 		case RED:
 		case GREEN:
+			v = 1;
 			return 0;
 		case BLUE:
 			break;
@@ -15,7 +17,7 @@ public class SwitchEnum {
 
 		}
 
-		return 1;
+		return v;
 	}
 
 	public int x(SimpleEnum et) {
