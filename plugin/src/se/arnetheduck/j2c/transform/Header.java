@@ -593,6 +593,7 @@ public class Header {
 						dupe.getMethodDeclaration(), dupe.getReturnType(),
 						deps, false);
 				println(" = 0;");
+				method(dupe);
 			}
 		}
 

@@ -5,6 +5,16 @@ public class BridgeTest {
 		void t(T x);
 	}
 
+	public interface J extends I<Empty> {
+		@Override
+		void t(Empty x);
+	}
+
+	public interface K extends I<Empty>, J {
+		// Both unhiding and dupe base method (see dupeNames)
+		void t(Object o);
+	}
+
 	public static class A extends Empty {
 
 	}

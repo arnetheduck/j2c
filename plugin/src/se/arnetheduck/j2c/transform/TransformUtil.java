@@ -725,7 +725,7 @@ public final class TransformUtil {
 	// https://bugs.eclipse.org/bugs/show_bug.cgi?id=382907
 	public static boolean isSubsignature(IMethodBinding a, IMethodBinding b) {
 		return !a.isConstructor() && a.getName().equals(b.getName())
-				&& sameParameters(a, b, false);
+				&& (sameParameters(a, b, false) || sameParameters(a, b, true));
 	}
 
 	private static boolean sameSignature(IMethodBinding mb, IMethodBinding mb2) {
