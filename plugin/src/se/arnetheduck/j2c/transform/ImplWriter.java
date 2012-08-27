@@ -1227,16 +1227,18 @@ public class ImplWriter extends TransformWriter {
 
 	@Override
 	public boolean visit(EnhancedForStatement node) {
-		ITypeBinding eb = node.getExpression().resolveTypeBinding();
+		Expression expr = node.getExpression();
+		ITypeBinding eb = expr.resolveTypeBinding();
 		hardDep(eb);
 		deps.setNpc();
 		if (eb.isArray()) {
 			printlni("{");
 			indent++;
+
 			printi("auto _a = ");
-			npc();
-			node.getExpression().accept(this);
-			println(");");
+			npcAccept(expr);
+			println(";");
+
 			printlni("for(int _i = 0; _i < _a->length; ++_i) {");
 			indent++;
 			printi();
@@ -1250,9 +1252,10 @@ public class ImplWriter extends TransformWriter {
 			printlni("}");
 		} else {
 			printi("for (auto _i = ");
-			npc();
-			node.getExpression().accept(this);
-			println(")->iterator(); _i->hasNext(); ) {");
+
+			npcAccept(expr);
+			println("->iterator(); _i->hasNext(); ) {");
+
 			indent++;
 			printi();
 			node.getParameter().accept(this);
@@ -1340,11 +1343,14 @@ public class ImplWriter extends TransformWriter {
 			javaCast(tbe, tb);
 		}
 
-		npc();
-		node.getExpression().accept(this);
-		hardDep(node.getExpression().resolveTypeBinding());
-		print(")->");
+		Expression expr = node.getExpression();
+		npcAccept(expr);
+		hardDep(expr.resolveTypeBinding());
+
+		print("->");
+
 		node.getName().accept(this);
+
 		if (cast) {
 			print(")");
 		}
@@ -1859,13 +1865,15 @@ public class ImplWriter extends TransformWriter {
 				javaCast(etb, b.getDeclaringClass());
 			}
 
-			if (!isType) {
+			boolean needsNpc = !isType && needsNpc(expr);
+
+			if (needsNpc) {
 				npc();
 			}
 
 			expr.accept(this);
 
-			if (!isType) {
+			if (needsNpc) {
 				print(")");
 			}
 

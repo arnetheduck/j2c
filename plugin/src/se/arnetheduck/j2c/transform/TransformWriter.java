@@ -13,9 +13,11 @@ import org.eclipse.jdt.core.dom.BlockComment;
 import org.eclipse.jdt.core.dom.BooleanLiteral;
 import org.eclipse.jdt.core.dom.CatchClause;
 import org.eclipse.jdt.core.dom.CharacterLiteral;
+import org.eclipse.jdt.core.dom.ClassInstanceCreation;
 import org.eclipse.jdt.core.dom.CompilationUnit;
 import org.eclipse.jdt.core.dom.EmptyStatement;
 import org.eclipse.jdt.core.dom.EnumConstantDeclaration;
+import org.eclipse.jdt.core.dom.Expression;
 import org.eclipse.jdt.core.dom.ExpressionStatement;
 import org.eclipse.jdt.core.dom.FieldAccess;
 import org.eclipse.jdt.core.dom.IBinding;
@@ -47,6 +49,7 @@ import org.eclipse.jdt.core.dom.SuperFieldAccess;
 import org.eclipse.jdt.core.dom.SuperMethodInvocation;
 import org.eclipse.jdt.core.dom.TagElement;
 import org.eclipse.jdt.core.dom.TextElement;
+import org.eclipse.jdt.core.dom.ThisExpression;
 import org.eclipse.jdt.core.dom.Type;
 import org.eclipse.jdt.core.dom.TypeDeclarationStatement;
 import org.eclipse.jdt.core.dom.VariableDeclarationExpression;
@@ -83,10 +86,40 @@ public abstract class TransformWriter extends ASTVisitor {
 		deps.hard(dep);
 	}
 
+	/** Some expressions are never null */
+	protected boolean needsNpc(ASTNode expr) {
+		if (expr instanceof ThisExpression) {
+			return false;
+		}
+
+		if (expr instanceof ClassInstanceCreation) {
+			return false;
+		}
+
+		if (expr instanceof ParenthesizedExpression) {
+			return needsNpc(((ParenthesizedExpression) expr).getExpression());
+		}
+
+		return true;
+	}
+
 	/** Begin a null pointer check call (needs to be closed) */
 	protected void npc() {
 		deps.setNpc();
 		print(CName.NPC + "(");
+	}
+
+	protected void npcAccept(Expression expr) {
+		boolean needsNpc = needsNpc(expr);
+		if (needsNpc) {
+			npc();
+		}
+
+		expr.accept(this);
+
+		if (needsNpc) {
+			print(")");
+		}
 	}
 
 	protected void visitAll(List<? extends ASTNode> nodes) {
