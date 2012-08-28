@@ -2299,6 +2299,7 @@ public class ImplWriter extends TransformWriter {
 
 	private final List<SwitchStatement> enumSwitches = new ArrayList<SwitchStatement>();
 	private int enumSwitchCount = 0;
+	private final List<String> enumSwitchLabels = new ArrayList<String>();
 
 	private void enumSwitch(SwitchStatement node, List<Statement> statements) {
 		// Enum constants as we translate them are not C++ constexpr:s so we
@@ -2320,6 +2321,8 @@ public class ImplWriter extends TransformWriter {
 		List<SwitchCase> cases = new ArrayList<SwitchCase>();
 		List<SwitchCase> allCases = new ArrayList<SwitchCase>();
 		enumSwitches.add(node);
+		enumSwitchLabels.add("end_switch" + enumSwitchCount);
+		enumSwitchCount++;
 
 		boolean wasCase = false;
 		boolean indented = false;
@@ -2394,14 +2397,15 @@ public class ImplWriter extends TransformWriter {
 		String label = enumSwitchLabel();
 		println(label + ":;");
 		enumSwitches.remove(enumSwitches.size() - 1);
-		enumSwitchCount++;
+		enumSwitchLabels.remove(enumSwitchLabels.size() - 1);
+
 		indent--;
 		locals.remove(locals.size() - 1);
 		printlni("}");
 	}
 
 	private String enumSwitchLabel() {
-		return "end_switch" + enumSwitchCount;
+		return enumSwitchLabels.get(enumSwitchLabels.size() - 1);
 	}
 
 	private void nativeSwitch(SwitchStatement node, List<Statement> statements) {
