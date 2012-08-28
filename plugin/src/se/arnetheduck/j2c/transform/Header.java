@@ -404,14 +404,16 @@ public class Header {
 	}
 
 	private boolean isValueOf(IMethodBinding mb) {
-		return type.isEqualTo(mb.getReturnType())
+		return type.getErasure().isEqualTo(mb.getReturnType().getErasure())
 				&& mb.getName().equals("valueOf")
 				&& mb.getParameterTypes().length == 1
 				&& TransformUtil.same(mb.getParameterTypes()[0], String.class);
 	}
 
 	private boolean isValues(IMethodBinding mb) {
-		return type.createArrayType(1).isEqualTo(mb.getReturnType())
+		return mb.getReturnType().isArray()
+				&& type.getErasure().isEqualTo(
+						mb.getReturnType().getComponentType().getErasure())
 				&& mb.getName().equals("values")
 				&& mb.getParameterTypes().length == 0;
 	}
