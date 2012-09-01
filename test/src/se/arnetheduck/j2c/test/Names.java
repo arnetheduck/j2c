@@ -35,7 +35,32 @@ public class Names {
 	public class Test {
 		Object o;
 	}
+
+	public static class FieldNamedLikeClass {
+		public static void m(Empty e) {
+			// Field below might redefine meaning of name "Empty" if the class
+			// reference remains unqualified here
+			e = new Empty();
+		}
+
+		// static final field with same name as class
+		public static final Empty Empty = new Empty();
+	}
+
+	public static class MethodNamedLikeClass {
+		public static void m(Empty e) {
+			// Field below might redefine meaning of name "Empty" if the class
+			// reference remains unqualified here
+			e = new Empty();
+		}
+
+		// static final field with same name as class
+		public static void Empty() {
+			Empty e = new Empty();
+		}
+	}
 }
 
+// Valid in Java but messes up filenames in Makefile
 class Funny$Name {
 }

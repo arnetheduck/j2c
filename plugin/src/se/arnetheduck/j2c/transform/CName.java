@@ -90,6 +90,20 @@ public class CName {
 			return qualified(tb, global);
 		}
 
+		// Clash between method and type name
+		for (IMethodBinding mb : root.getDeclaredMethods()) {
+			if (!mb.isConstructor() && of(mb).equals(tbn)) {
+				return qualified(tb, global);
+			}
+		}
+
+		// Clash between field and type name
+		for (IVariableBinding vb : root.getDeclaredFields()) {
+			if (of(vb).equals(tbn)) {
+				return qualified(tb, global);
+			}
+		}
+
 		// In C++, unqualified names in a class are looked up in base
 		// classes before the own namespace
 		List<ITypeBinding> bases = TypeUtil.allBases(root, null);
