@@ -631,7 +631,7 @@ public class ImplWriter extends TransformWriter {
 			return;
 		}
 
-		if (!TransformUtil.variableErased(vb)) {
+		if (!TransformUtil.variableErased(vb.getVariableDeclaration())) {
 			return;
 		}
 
