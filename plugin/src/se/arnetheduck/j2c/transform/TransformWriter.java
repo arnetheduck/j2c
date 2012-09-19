@@ -109,6 +109,11 @@ public abstract class TransformWriter extends ASTVisitor {
 		print(CName.NPC + "(");
 	}
 
+	protected void staticCast(ITypeBinding tb) {
+		print("static_cast< " + CName.relative(tb, type, true)
+				+ TransformUtil.ref(tb) + " >(");
+	}
+
 	protected void npcAccept(Expression expr) {
 		boolean needsNpc = needsNpc(expr);
 		if (needsNpc) {
@@ -358,22 +363,35 @@ public abstract class TransformWriter extends ASTVisitor {
 			if (b instanceof ITypeBinding) {
 				hardDep((ITypeBinding) b);
 				print(CName.relative((ITypeBinding) b, type, true) + "::");
-			} else {
-				if (b instanceof IVariableBinding) {
-					hardDep(((IVariableBinding) b).getType());
-					npc();
+			} else if (b instanceof IVariableBinding) {
+				IVariableBinding vb = (IVariableBinding) b;
+				hardDep(vb.getType());
+
+				boolean hidden = false;
+				if (x instanceof IVariableBinding) {
+					hidden = hidden(vb.getType(), (IVariableBinding) x);
 				}
 
+				if (hidden) {
+					staticCast(((IVariableBinding) x).getDeclaringClass());
+				}
+
+				npc();
 				qualifier.accept(this);
 
-				if (b instanceof IPackageBinding) {
-					print("::");
-				} else if (b instanceof IVariableBinding) {
-					print(")->");
-				} else {
-					throw new Error("Unknown binding " + b.getClass());
+				if (hidden) {
+					print(")");
 				}
+
+				print(")->");
+
+			} else if (b instanceof IPackageBinding) {
+				qualifier.accept(this);
+				print("::");
+			} else {
+				throw new Error("Unknown binding " + b.getClass());
 			}
+
 			node.getName().accept(this);
 		}
 
@@ -402,8 +420,12 @@ public abstract class TransformWriter extends ASTVisitor {
 						TransformUtil.isStatic(vb));
 			}
 
+			boolean hidden = unqualified(node) && hidden(scope(node), vb);
+
 			if (node.getParent() instanceof SuperFieldAccess) {
 				print("super::");
+			} else if (hidden) {
+				print(CName.relative(vb.getDeclaringClass(), type, true) + "::");
 			}
 
 			print(CName.of(vb));
@@ -546,6 +568,99 @@ public abstract class TransformWriter extends ASTVisitor {
 		}
 
 		return type;
+	}
+
+	protected boolean unqualified(SimpleName node) {
+		ASTNode parent = node.getParent();
+		if (parent instanceof QualifiedName) {
+			QualifiedName qn = (QualifiedName) parent;
+			return qn.getQualifier() == node;
+		}
+
+		if (parent instanceof FieldAccess) {
+			FieldAccess fa = (FieldAccess) parent;
+			return fa.getExpression() == node;
+		}
+
+		if (parent instanceof MethodInvocation) {
+			MethodInvocation mi = (MethodInvocation) parent;
+			return mi.getName() == node && mi.getExpression() == null
+					|| mi.getExpression() == node;
+		}
+
+		return true;
+	}
+
+	protected boolean hidden(ITypeBinding scope, IVariableBinding vb) {
+		ITypeBinding dc = vb.getDeclaringClass();
+		if (dc == null) {
+			return false;
+		}
+
+		dc = dc.getErasure();
+		scope = scope.getErasure();
+
+		if (scope.isEqualTo(dc)) {
+			return false;
+		}
+
+		String name = CName.of(vb);
+		return hasName(scope, dc, name);
+	}
+
+	protected boolean hidden(ITypeBinding scope, IMethodBinding mb) {
+		ITypeBinding dc = mb.getDeclaringClass();
+		if (dc == null) {
+			return false;
+		}
+
+		dc = dc.getErasure();
+		scope = scope.getErasure();
+
+		if (scope.isEqualTo(dc)) {
+			return false;
+		}
+
+		String name = CName.of(mb);
+		return hasName(scope, dc, name);
+	}
+
+	private boolean hasName(ITypeBinding scope, ITypeBinding dc, String name) {
+		for (ITypeBinding tb = scope; tb != null
+				&& !dc.isEqualTo(tb.getErasure()); tb = tb.getSuperclass()) {
+
+			for (IMethodBinding mb : tb.getDeclaredMethods()) {
+				if (name.equals(CName.of(mb))) {
+					return true;
+				}
+			}
+
+			for (IVariableBinding f : tb.getDeclaredFields()) {
+				if (name.equals(CName.of(f))) {
+					return true;
+				}
+			}
+		}
+
+		for (ITypeBinding tb : TypeUtil.interfaces(scope)) {
+			if (tb.getErasure().isEqualTo(dc)) {
+				continue;
+			}
+
+			for (IMethodBinding mb : tb.getDeclaredMethods()) {
+				if (name.equals(CName.of(mb))) {
+					return true;
+				}
+			}
+
+			for (IVariableBinding f : tb.getDeclaredFields()) {
+				if (name.equals(CName.of(f))) {
+					return true;
+				}
+			}
+		}
+
+		return false;
 	}
 
 	@Override

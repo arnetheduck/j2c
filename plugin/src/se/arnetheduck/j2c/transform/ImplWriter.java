@@ -876,8 +876,7 @@ public class ImplWriter extends TransformWriter {
 				|| !ct.isEqualTo(e.resolveTypeBinding());
 		if (cast) {
 			hardDep(e.resolveTypeBinding());
-			print("static_cast< " + CName.relative(ct, type, true)
-					+ TransformUtil.ref(ct) + " >(");
+			staticCast(ct);
 		}
 		e.accept(this);
 		if (cast) {
@@ -1052,8 +1051,7 @@ public class ImplWriter extends TransformWriter {
 		ITypeBinding source = node.getExpression().resolveTypeBinding();
 
 		if (target.isPrimitive() || node.getExpression() instanceof NullLiteral) {
-			print("static_cast< " + CName.relative(target, type, true)
-					+ TransformUtil.ref(target) + " >(");
+			staticCast(target);
 		} else {
 			javaCast(source, target);
 		}
@@ -1329,27 +1327,39 @@ public class ImplWriter extends TransformWriter {
 	@Override
 	public boolean visit(FieldAccess node) {
 		ITypeBinding tb = node.resolveTypeBinding();
-		ITypeBinding tbe = node.resolveFieldBinding().getVariableDeclaration()
-				.getType().getErasure();
+		IVariableBinding vb = node.resolveFieldBinding();
+		ITypeBinding tbe = vb.getVariableDeclaration().getType().getErasure();
 		ASTNode parent = node.getParent();
-		boolean cast = TransformUtil.variableErased(node.resolveFieldBinding());
+		boolean cast = TransformUtil.variableErased(vb);
 		if (cast && parent instanceof Assignment) {
 			if (((Assignment) parent).getLeftHandSide() == node) {
 				cast = false;
 			}
 		}
 
+		Expression expr = node.getExpression();
+
+		boolean hidden = false;
 		if (cast) {
 			javaCast(tbe, tb);
+		} else {
+			hidden = hidden(expr.resolveTypeBinding(), vb);
 		}
 
-		Expression expr = node.getExpression();
+		if (hidden) {
+			staticCast(vb.getDeclaringClass());
+		}
+
 		npcAccept(expr);
 		hardDep(expr.resolveTypeBinding());
 
 		print("->");
 
 		node.getName().accept(this);
+
+		if (hidden) {
+			print(")");
+		}
 
 		if (cast) {
 			print(")");
@@ -1617,8 +1627,7 @@ public class ImplWriter extends TransformWriter {
 	private void staticCast(Expression left, ITypeBinding lt,
 			ITypeBinding common) {
 		if (common != null && !lt.isEqualTo(common) && !lt.isNullType()) {
-			print("static_cast< " + CName.relative(common, type, true)
-					+ TransformUtil.ref(common) + " >(");
+			staticCast(common);
 			left.accept(this);
 			print(")");
 		} else {
@@ -1631,7 +1640,8 @@ public class ImplWriter extends TransformWriter {
 		if (tb.isNullType()
 				|| !(tb.isPrimitive() || TransformUtil.same(tb, String.class))) {
 			hardDep(tb);
-			print("static_cast< ::java::lang::Object* >(");
+
+			staticCast(ctx.resolve(Object.class));
 			left.accept(this);
 			print(")");
 		} else {
@@ -2037,8 +2047,7 @@ public class ImplWriter extends TransformWriter {
 			// i e int -> double promotion, int vs pointer
 			hardDep(tb);
 			if (hasOverloads) {
-				print("static_cast< " + CName.relative(pb, type, true)
-						+ TransformUtil.ref(pb) + " >(");
+				staticCast(pb);
 				argument.accept(this);
 				print(")");
 			} else {
