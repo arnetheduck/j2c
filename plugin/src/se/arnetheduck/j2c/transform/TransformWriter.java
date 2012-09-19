@@ -513,7 +513,35 @@ public abstract class TransformWriter extends ASTVisitor {
 			}
 		}
 
+		if (scope(node).isSubTypeCompatible(declaringClass)) {
+			return false;
+		}
+
 		return true;
+	}
+
+	protected ITypeBinding scope(SimpleName node) {
+		ASTNode parent = node.getParent();
+
+		if (parent instanceof QualifiedName) {
+			QualifiedName qn = (QualifiedName) parent;
+
+			if (node == qn.getName()) {
+				return qn.getQualifier().resolveTypeBinding();
+			}
+		} else if (parent instanceof FieldAccess) {
+			FieldAccess fa = (FieldAccess) parent;
+			if (node == fa.getName()) {
+				return fa.getExpression().resolveTypeBinding();
+			}
+		} else if (parent instanceof MethodInvocation) {
+			MethodInvocation mi = (MethodInvocation) parent;
+			if (node == mi.getName() && mi.getExpression() != null) {
+				return mi.getExpression().resolveTypeBinding();
+			}
+		}
+
+		return type;
 	}
 
 	@Override
