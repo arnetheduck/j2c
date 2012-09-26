@@ -5,11 +5,13 @@ public class Names {
 		private int init;
 
 		private void init() {
+			this.init = 6;
 		}
 	}
 
 	public class Public {
 		public int init;
+		protected int m;
 
 		public void init(int init) {
 			this.init = init;
@@ -25,6 +27,8 @@ public class Names {
 		public int x;
 
 		public void m() {
+			this.init = 5;
+			this.m = 6;
 			int init = 5;
 			init(init);
 			int x = init;

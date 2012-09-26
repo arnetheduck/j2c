@@ -1353,13 +1353,13 @@ public class ImplWriter extends TransformWriter {
 		npcAccept(expr);
 		hardDep(expr.resolveTypeBinding());
 
-		print("->");
-
-		node.getName().accept(this);
-
 		if (hidden) {
 			print(")");
 		}
+
+		print("->");
+
+		node.getName().accept(this);
 
 		if (cast) {
 			print(")");
