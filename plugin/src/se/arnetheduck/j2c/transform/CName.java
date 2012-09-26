@@ -72,8 +72,8 @@ public class CName {
 	public static String qualified(ITypeBinding tb, boolean global) {
 		IPackageBinding pkg = TransformUtil.elementPackage(tb);
 		return (global && !tb.isPrimitive() ? "::" : "")
-				+ (pkg == null ? of(tb) : (of(pkg) + "." + of(tb))).replace(
-						".", "::");
+				+ (pkg == null || pkg.getName().isEmpty() ? of(tb) : (of(pkg)
+						+ "." + of(tb))).replace(".", "::");
 	}
 
 	public static String relative(ITypeBinding tb, ITypeBinding root,

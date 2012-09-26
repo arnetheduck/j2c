@@ -97,6 +97,8 @@ public class Transformer {
 		monitor.subTask("Moving old files");
 		renameOld();
 
+		long start = System.currentTimeMillis();
+
 		hardDep(resolve(ClassLoader.class));
 		selection.addAll(Arrays.asList(units));
 		todo.addAll(selection);
@@ -123,7 +125,8 @@ public class Transformer {
 		System.out.println("Dependency stats:");
 		System.out.println(deps);
 
-		System.out.println("Done.");
+		System.out.println("Done (" + (System.currentTimeMillis() - start)
+				+ " ms).");
 	}
 
 	private void renameOld() throws IOException {

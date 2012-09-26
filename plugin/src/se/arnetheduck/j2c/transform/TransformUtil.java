@@ -62,14 +62,14 @@ public final class TransformUtil {
 	};
 
 	public static String packageHeader(String packageName) {
-		return packageName == null || packageName.length() == 0 ? "fwd.hpp"
+		return packageName == null || packageName.isEmpty() ? "fwd.hpp"
 				: toFileName(packageName) + "/fwd.hpp";
 	}
 
 	public static String qualifiedName(ITypeBinding tb) {
 		IPackageBinding pkg = elementPackage(tb);
-		return pkg == null ? CName.of(tb)
-				: (CName.of(pkg) + "." + CName.of(tb));
+		return pkg == null || pkg.getName().isEmpty() ? CName.of(tb) : (CName
+				.of(pkg) + "." + CName.of(tb));
 	}
 
 	public static IPackageBinding elementPackage(ITypeBinding tb) {
