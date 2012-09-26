@@ -113,7 +113,7 @@ public class Header {
 		}
 
 		for (ITypeBinding dep : deps.getHardDeps()) {
-			if (dep.isNullType() || dep.isPrimitive()) {
+			if (dep.isNullType() || dep.isPrimitive() || dep.isEqualTo(type)) {
 				continue;
 			}
 
