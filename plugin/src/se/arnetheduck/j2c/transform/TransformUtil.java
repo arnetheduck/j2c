@@ -637,7 +637,7 @@ public final class TransformUtil {
 		for (IMethodBinding mb2 : methods) {
 			if (!mb2.isConstructor() && returnCovariant(mb, mb2)
 					&& !returnType(mb).isEqualTo(returnType(mb2))) {
-				addDep(mb.getReturnType(), ret);
+				addDep(returnType(mb), ret);
 			}
 		}
 
