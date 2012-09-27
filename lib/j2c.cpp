@@ -16,8 +16,8 @@ String *java::lang::operator "" _j(const char16_t * p, size_t n)
 {
     char16_tArray *x = new char16_tArray(p, n);
 	String *s = new String();
-	s->value_ = x;
-	s->count_ = n;
+	s->value = x;
+	s->count = n;
     return s->intern(); 
 }
 
