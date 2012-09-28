@@ -1917,10 +1917,18 @@ public class ImplWriter extends TransformWriter {
 				if (TransformUtil.isStatic(b)) {
 					print(CName.of(b.getDeclaringClass()) + "::");
 				} else {
-					print("this->");
-					if (!b.getDeclaringClass().isEqualTo(type)) {
-						print(CName.of(b.getDeclaringClass()) + "::");
+					boolean cast = !b.getDeclaringClass().isEqualTo(type);
+					if (cast) {
+						staticCast(b.getDeclaringClass());
 					}
+
+					print("this");
+
+					if (cast) {
+						print(")");
+					}
+
+					print("->");
 				}
 			}
 		}
