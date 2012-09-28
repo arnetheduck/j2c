@@ -415,12 +415,15 @@ public abstract class TransformWriter extends ASTVisitor {
 			IVariableBinding vb = (IVariableBinding) b;
 			softDep(vb.getType());
 
+			boolean qualified = false;
 			if (needsQualification(node, vb.getDeclaringClass())) {
 				qualify(vb.getDeclaringClass().getErasure(),
 						TransformUtil.isStatic(vb));
+				qualified = true;
 			}
 
-			boolean hidden = unqualified(node) && hidden(scope(node), vb);
+			boolean hidden = !qualified && unqualified(node)
+					&& hidden(scope(node), vb);
 
 			if (node.getParent() instanceof SuperFieldAccess) {
 				print("super::");
