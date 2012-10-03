@@ -1871,6 +1871,12 @@ public class ImplWriter extends TransformWriter {
 			boolean isType = expr instanceof Name
 					&& ((Name) expr).resolveBinding() instanceof ITypeBinding;
 
+			boolean hidden = hidden(etb, b);
+
+			if (hidden) {
+				staticCast(b.getDeclaringClass());
+			}
+
 			if (castExpr) {
 				javaCast(etb, b.getDeclaringClass());
 			}
@@ -1888,6 +1894,10 @@ public class ImplWriter extends TransformWriter {
 			}
 
 			if (castExpr) {
+				print(")");
+			}
+
+			if (hidden) {
 				print(")");
 			}
 

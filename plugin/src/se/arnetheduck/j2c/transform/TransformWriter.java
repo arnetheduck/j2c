@@ -587,8 +587,7 @@ public abstract class TransformWriter extends ASTVisitor {
 
 		if (parent instanceof MethodInvocation) {
 			MethodInvocation mi = (MethodInvocation) parent;
-			return mi.getName() == node && mi.getExpression() == null
-					|| mi.getExpression() == node;
+			return mi.getExpression() == null || mi.getExpression() == node;
 		}
 
 		return true;
