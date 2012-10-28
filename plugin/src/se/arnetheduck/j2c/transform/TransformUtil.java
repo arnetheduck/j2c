@@ -11,9 +11,11 @@ import java.text.Annotation;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Scanner;
+import java.util.Set;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
@@ -636,8 +638,8 @@ public final class TransformUtil {
 
 		for (IMethodBinding mb2 : methods) {
 			if (!mb2.isConstructor() && returnCovariant(mb, mb2)
-					&& !returnType(mb).isEqualTo(returnType(mb2))) {
-				addDep(returnType(mb), ret);
+					&& !returnType(type, mb).isEqualTo(returnType(type, mb2))) {
+				addDep(returnType(type, mb), ret);
 			}
 		}
 
@@ -768,8 +770,9 @@ public final class TransformUtil {
 		return true;
 	}
 
-	public static ITypeBinding returnType(MethodDeclaration md) {
-		return returnType(md.resolveBinding());
+	public static ITypeBinding returnType(ITypeBinding type,
+			MethodDeclaration md) {
+		return returnType(type, md.resolveBinding());
 	}
 
 	public static boolean returnCovariant(IMethodBinding mb, IMethodBinding mb2) {
@@ -919,17 +922,22 @@ public final class TransformUtil {
 	// is a subclass of the declaring class, we get a circular
 	// include dependency in C++ - resolve by making the return
 	// type not covariant
-	public static ITypeBinding returnType(IMethodBinding b) {
+	public static ITypeBinding returnType(ITypeBinding type, IMethodBinding b) {
 		b = b.getMethodDeclaration();
-		ITypeBinding tb = b.getReturnType();
-		if (tb == null || tb.isPrimitive()) {
-			return tb;
+		ITypeBinding rtb = b.getReturnType();
+		if (rtb == null || rtb.isPrimitive()) {
+			return rtb;
 		}
 
-		tb = tb.getErasure();
+		rtb = rtb.getErasure();
+		type = type.getErasure();
+		if (type.isSubTypeCompatible(rtb) || rtb.isEqualTo(type)) {
+			return rtb; // Always safe
+		}
+
 		ITypeBinding dc = b.getDeclaringClass().getErasure();
-		if (!tb.isSubTypeCompatible(dc) || tb.isEqualTo(dc)) {
-			return tb;
+		if (!isDep(type, rtb, new HashSet<ITypeBinding>())) {
+			return rtb;
 		}
 
 		List<IMethodBinding> methods = TypeUtil.methods(
@@ -937,10 +945,62 @@ public final class TransformUtil {
 
 		for (IMethodBinding mb2 : methods) {
 			if (returnCovariant(b, mb2)) {
-				return dc; // We can be a little covariant at least
+				if (rtb.isSubTypeCompatible(type)) {
+					return type;
+				}
+
+				return returnType(type, mb2); // We can be a little covariant at
+												// least
 			}
 		}
 
-		return tb;
+		return rtb;
+	}
+
+	/**
+	 * Check if a is in the dependencies of type
+	 */
+	public static boolean isDep(ITypeBinding a, ITypeBinding type,
+			Set<ITypeBinding> checked) {
+		type = type.getErasure();
+		if (!checked.add(type)) {
+			return false; // Already seen this type
+		}
+
+		a = a.getErasure();
+
+		List<ITypeBinding> bases = TypeUtil.allBases(type, null);
+		// type depends on all its bases
+		for (ITypeBinding tb : bases) {
+			if (tb.getErasure().isEqualTo(a)) {
+				return true;
+			}
+
+			if (isDep(a, tb, checked)) {
+				return true;
+			}
+		}
+
+		// type depends on its return type dependencies
+		for (IMethodBinding mb : type.getDeclaredMethods()) {
+			List<IMethodBinding> methods = TypeUtil.methods(bases,
+					TypeUtil.overrides(mb));
+
+			for (IMethodBinding mb2 : methods) {
+				if (!mb2.isConstructor() && returnCovariant(mb, mb2)) {
+					if (a.isSubTypeCompatible(mb.getMethodDeclaration()
+							.getReturnType().getErasure())) {
+						return true;
+					}
+
+					if (isDep(a, mb.getMethodDeclaration().getReturnType(),
+							checked)) {
+						return true;
+					}
+				}
+			}
+		}
+
+		return false;
 	}
 }

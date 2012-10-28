@@ -1,4 +1,4 @@
-package se.arnetheduck.j2c.test;
+package se.arnetheduck.j2c.test.hiding;
 
 public class HiddenMethod {
 	public class A {

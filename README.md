@@ -73,9 +73,6 @@ What's missing (that I can think of right now)
 --
  * Reflection 
  * Anything involving byte code (class loading, dynamic code generation, etc)
- * Circular dependencies - there are a few situations that lead to circular
-   header dependencies in the generated code (return type covariance and 
-   inheritance is involved).
 
 Helping out
 --

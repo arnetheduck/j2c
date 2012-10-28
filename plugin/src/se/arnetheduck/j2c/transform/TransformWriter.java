@@ -631,6 +631,10 @@ public abstract class TransformWriter extends ASTVisitor {
 		for (ITypeBinding tb = scope; tb != null
 				&& !dc.isEqualTo(tb.getErasure()); tb = tb.getSuperclass()) {
 
+			if (name.equals(CName.of(tb))) {
+				return true;
+			}
+
 			for (IMethodBinding mb : tb.getDeclaredMethods()) {
 				if (name.equals(CName.of(mb))) {
 					return true;
@@ -647,6 +651,10 @@ public abstract class TransformWriter extends ASTVisitor {
 		for (ITypeBinding tb : TypeUtil.interfaces(scope)) {
 			if (tb.getErasure().isEqualTo(dc)) {
 				continue;
+			}
+
+			if (name.equals(CName.of(tb))) {
+				return true;
 			}
 
 			for (IMethodBinding mb : tb.getDeclaredMethods()) {

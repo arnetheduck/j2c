@@ -1779,7 +1779,7 @@ public class ImplWriter extends TransformWriter {
 
 			printi("void " + qcname + "::" + CName.CTOR);
 		} else {
-			ITypeBinding rt = TransformUtil.returnType(node);
+			ITypeBinding rt = TransformUtil.returnType(type, node);
 			softDep(rt);
 			print(CName.qualified(rt, true) + " " + TransformUtil.ref(rt));
 
