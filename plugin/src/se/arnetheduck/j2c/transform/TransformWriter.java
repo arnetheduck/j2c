@@ -109,9 +109,11 @@ public abstract class TransformWriter extends ASTVisitor {
 		print(CName.NPC + "(");
 	}
 
-	protected void staticCast(ITypeBinding tb) {
-		print("static_cast< " + CName.relative(tb, type, true)
-				+ TransformUtil.ref(tb) + " >(");
+	protected void staticCast(ITypeBinding from, ITypeBinding to) {
+		hardDep(from);
+		hardDep(to);
+		print("static_cast< " + CName.relative(to, type, true)
+				+ TransformUtil.ref(to) + " >(");
 	}
 
 	protected void npcAccept(Expression expr) {
@@ -373,7 +375,8 @@ public abstract class TransformWriter extends ASTVisitor {
 				}
 
 				if (hidden) {
-					staticCast(((IVariableBinding) x).getDeclaringClass());
+					staticCast(qualifier.resolveTypeBinding(),
+							((IVariableBinding) x).getDeclaringClass());
 				}
 
 				npc();

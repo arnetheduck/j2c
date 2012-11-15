@@ -875,8 +875,7 @@ public class ImplWriter extends TransformWriter {
 		boolean cast = e instanceof NullLiteral
 				|| !ct.isEqualTo(e.resolveTypeBinding());
 		if (cast) {
-			hardDep(e.resolveTypeBinding());
-			staticCast(ct);
+			staticCast(e.resolveTypeBinding(), ct);
 		}
 		e.accept(this);
 		if (cast) {
@@ -1051,7 +1050,7 @@ public class ImplWriter extends TransformWriter {
 		ITypeBinding source = node.getExpression().resolveTypeBinding();
 
 		if (target.isPrimitive() || node.getExpression() instanceof NullLiteral) {
-			staticCast(target);
+			staticCast(source, target);
 		} else {
 			javaCast(source, target);
 		}
@@ -1347,7 +1346,7 @@ public class ImplWriter extends TransformWriter {
 		}
 
 		if (hidden) {
-			staticCast(vb.getDeclaringClass());
+			staticCast(tbe, vb.getDeclaringClass());
 		}
 
 		npcAccept(expr);
@@ -1627,7 +1626,7 @@ public class ImplWriter extends TransformWriter {
 	private void staticCast(Expression left, ITypeBinding lt,
 			ITypeBinding common) {
 		if (common != null && !lt.isEqualTo(common) && !lt.isNullType()) {
-			staticCast(common);
+			staticCast(left.resolveTypeBinding(), common);
 			left.accept(this);
 			print(")");
 		} else {
@@ -1641,7 +1640,7 @@ public class ImplWriter extends TransformWriter {
 				|| !(tb.isPrimitive() || TransformUtil.same(tb, String.class))) {
 			hardDep(tb);
 
-			staticCast(ctx.resolve(Object.class));
+			staticCast(tb, ctx.resolve(Object.class));
 			left.accept(this);
 			print(")");
 		} else {
@@ -1849,16 +1848,21 @@ public class ImplWriter extends TransformWriter {
 	@Override
 	public boolean visit(MethodInvocation node) {
 		IMethodBinding b = node.resolveMethodBinding();
-		boolean erased = (b.getMethodDeclaration().getReturnType()
-				.isTypeVariable() || b.getMethodDeclaration().getReturnType()
-				.isArray()
-				&& b.getMethodDeclaration().getReturnType().getElementType()
-						.isTypeVariable())
+		ITypeBinding rtb = b.getMethodDeclaration().getReturnType();
+		boolean erased = (rtb.isTypeVariable() || rtb.isArray()
+				&& rtb.getElementType().isTypeVariable())
 				&& !(node.getParent() instanceof ExpressionStatement);
 
 		if (erased) {
-			javaCast(b.getMethodDeclaration().getReturnType().getErasure(),
-					b.getReturnType());
+			javaCast(rtb.getErasure(), b.getReturnType());
+		} else {
+			ITypeBinding actualRt = TransformUtil.returnType(b
+					.getMethodDeclaration().getDeclaringClass(), b
+					.getMethodDeclaration());
+			if (!actualRt.isEqualTo(rtb.getErasure())) {
+				javaCast(actualRt, rtb);
+				erased = true;
+			}
 		}
 
 		Expression expr = node.getExpression();
@@ -1874,7 +1878,7 @@ public class ImplWriter extends TransformWriter {
 			boolean hidden = hidden(etb, b);
 
 			if (hidden) {
-				staticCast(b.getDeclaringClass());
+				staticCast(etb, b.getDeclaringClass());
 			}
 
 			if (castExpr) {
@@ -1929,7 +1933,7 @@ public class ImplWriter extends TransformWriter {
 				} else {
 					boolean cast = !b.getDeclaringClass().isEqualTo(type);
 					if (cast) {
-						staticCast(b.getDeclaringClass());
+						staticCast(type, b.getDeclaringClass());
 					}
 
 					print("this");
@@ -2065,7 +2069,7 @@ public class ImplWriter extends TransformWriter {
 			// i e int -> double promotion, int vs pointer
 			hardDep(tb);
 			if (hasOverloads) {
-				staticCast(pb);
+				staticCast(tb, pb);
 				argument.accept(this);
 				print(")");
 			} else {
