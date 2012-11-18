@@ -1875,33 +1875,28 @@ public class ImplWriter extends TransformWriter {
 			boolean isType = expr instanceof Name
 					&& ((Name) expr).resolveBinding() instanceof ITypeBinding;
 
-			boolean hidden = hidden(etb, b);
+			int parens = 0;
 
-			if (hidden) {
+			if (!isType && hidden(etb, b)) {
+				// Method hidden by method in subclass
+				assert (!TransformUtil.isStatic(b));
 				staticCast(etb, b.getDeclaringClass());
+				parens++;
 			}
 
 			if (castExpr) {
 				javaCast(etb, b.getDeclaringClass());
+				parens++;
 			}
 
-			boolean needsNpc = !isType && needsNpc(expr);
-
-			if (needsNpc) {
+			if (!isType && needsNpc(expr)) {
 				npc();
+				parens++;
 			}
 
 			expr.accept(this);
 
-			if (needsNpc) {
-				print(")");
-			}
-
-			if (castExpr) {
-				print(")");
-			}
-
-			if (hidden) {
+			for (int i = 0; i < parens; ++i) {
 				print(")");
 			}
 

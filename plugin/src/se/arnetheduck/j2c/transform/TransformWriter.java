@@ -610,7 +610,7 @@ public abstract class TransformWriter extends ASTVisitor {
 		}
 
 		String name = CName.of(vb);
-		return hasName(scope, dc, name);
+		return hasName(scope, dc, name, false);
 	}
 
 	protected boolean hidden(ITypeBinding scope, IMethodBinding mb) {
@@ -627,10 +627,11 @@ public abstract class TransformWriter extends ASTVisitor {
 		}
 
 		String name = CName.of(mb);
-		return hasName(scope, dc, name);
+		return hasName(scope, dc, name, true);
 	}
 
-	private boolean hasName(ITypeBinding scope, ITypeBinding dc, String name) {
+	private boolean hasName(ITypeBinding scope, ITypeBinding dc, String name,
+			boolean onlyFields) {
 		for (ITypeBinding tb = scope; tb != null
 				&& !dc.isEqualTo(tb.getErasure()); tb = tb.getSuperclass()) {
 
@@ -638,9 +639,11 @@ public abstract class TransformWriter extends ASTVisitor {
 				return true;
 			}
 
-			for (IMethodBinding mb : tb.getDeclaredMethods()) {
-				if (name.equals(CName.of(mb))) {
-					return true;
+			if (!onlyFields) {
+				for (IMethodBinding mb : tb.getDeclaredMethods()) {
+					if (name.equals(CName.of(mb))) {
+						return true;
+					}
 				}
 			}
 
@@ -660,9 +663,11 @@ public abstract class TransformWriter extends ASTVisitor {
 				return true;
 			}
 
-			for (IMethodBinding mb : tb.getDeclaredMethods()) {
-				if (name.equals(CName.of(mb))) {
-					return true;
+			if (!onlyFields) {
+				for (IMethodBinding mb : tb.getDeclaredMethods()) {
+					if (name.equals(CName.of(mb))) {
+						return true;
+					}
 				}
 			}
 
