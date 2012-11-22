@@ -38,6 +38,9 @@ Running
 J2C comes in the form of an Eclipse plugin. If you downloaded the jar, copy
 it to $ECLIPSE_HOME/dropins.
 
+
+You need at least Eclipse 3.7.2 and Java 1.6 to run this plugin!
+
 If you downloaded the source code you'll have run the plugin by opening the 
 project in Eclipse and starting a new Eclipse test instance by using the run
 button in the plugin.xml overview.
