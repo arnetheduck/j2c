@@ -2,7 +2,6 @@ package se.arnetheduck.j2c.transform;
 
 import java.io.File;
 import java.io.IOException;
-import java.nio.file.Files;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Comparator;
@@ -174,7 +173,7 @@ public class Transformer {
 					File tf = new File(to, f.getName());
 
 					if (!f.renameTo(tf)) {
-						Files.copy(f.toPath(), tf.toPath());
+						FileUtil.copy(f, tf);
 						f.delete();
 					}
 				}

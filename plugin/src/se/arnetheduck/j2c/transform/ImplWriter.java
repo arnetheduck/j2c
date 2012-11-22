@@ -1,7 +1,6 @@
 package se.arnetheduck.j2c.transform;
 
 import java.io.IOException;
-import java.io.InputStream;
 import java.io.PrintWriter;
 import java.io.StringWriter;
 import java.util.ArrayList;
@@ -251,10 +250,7 @@ public class ImplWriter extends TransformWriter {
 			return;
 		}
 
-		try (InputStream is = ArrayWriter.class
-				.getResourceAsStream(FINALLY_HPP)) {
-			print(TransformUtil.read(is));
-		}
+		print(FileUtil.readResource(FINALLY_HPP));
 	}
 
 	private void printSynchronized() throws IOException {
@@ -262,10 +258,7 @@ public class ImplWriter extends TransformWriter {
 			return;
 		}
 
-		try (InputStream is = ArrayWriter.class
-				.getResourceAsStream(SYNCHRONIZED_HPP)) {
-			print(TransformUtil.read(is));
-		}
+		print(FileUtil.readResource(SYNCHRONIZED_HPP));
 	}
 
 	private void printInit() {

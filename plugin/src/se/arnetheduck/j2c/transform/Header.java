@@ -1,6 +1,5 @@
 package se.arnetheduck.j2c.transform;
 
-import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.PrintWriter;
 import java.io.StringWriter;
@@ -71,95 +70,97 @@ public class Header {
 		this.access = access;
 		String extras = getExtras(closures, hasInit, nested);
 
-		FileOutputStream fos = TransformUtil.open(TransformUtil.headerPath(
-				root, type).toFile());
+		try {
+			out = FileUtil.open(TransformUtil.headerPath(root, type).toFile());
 
-		out = new PrintWriter(fos);
+			println("// Generated from " + type.getJavaElement().getPath());
+			println();
 
-		println("// Generated from " + type.getJavaElement().getPath());
-		println();
+			println("#pragma once");
+			println();
 
-		println("#pragma once");
-		println();
-
-		if (type.getQualifiedName().equals(String.class.getName())) {
-			println("#include <stddef.h>");
-		}
-
-		List<ITypeBinding> bases = TypeUtil.bases(type,
-				ctx.resolve(Object.class));
-
-		Set<String> packages = new TreeSet<String>();
-		packages.add(CName.packageOf(type));
-		for (ITypeBinding tb : deps.getSoftDeps()) {
-			packages.add(CName.packageOf(tb));
-		}
-
-		for (ITypeBinding tb : bases) {
-			packages.remove(CName.packageOf(tb));
-		}
-
-		boolean hasIncludes = false;
-
-		for (String p : packages) {
-			println(TransformUtil.include(TransformUtil.packageHeader(p)));
-			hasIncludes = true;
-		}
-
-		for (ITypeBinding dep : bases) {
-			ctx.hardDep(dep);
-			println(TransformUtil.include(dep));
-			hasIncludes = true;
-		}
-
-		for (ITypeBinding dep : deps.getHardDeps()) {
-			if (dep.isNullType() || dep.isPrimitive() || dep.isEqualTo(type)) {
-				continue;
+			if (type.getQualifiedName().equals(String.class.getName())) {
+				println("#include <stddef.h>");
 			}
 
-			if (!bases.contains(dep)) {
+			List<ITypeBinding> bases = TypeUtil.bases(type,
+					ctx.resolve(Object.class));
+
+			Set<String> packages = new TreeSet<String>();
+			packages.add(CName.packageOf(type));
+			for (ITypeBinding tb : deps.getSoftDeps()) {
+				packages.add(CName.packageOf(tb));
+			}
+
+			for (ITypeBinding tb : bases) {
+				packages.remove(CName.packageOf(tb));
+			}
+
+			boolean hasIncludes = false;
+
+			for (String p : packages) {
+				println(TransformUtil.include(TransformUtil.packageHeader(p)));
+				hasIncludes = true;
+			}
+
+			for (ITypeBinding dep : bases) {
+				ctx.hardDep(dep);
 				println(TransformUtil.include(dep));
 				hasIncludes = true;
 			}
+
+			for (ITypeBinding dep : deps.getHardDeps()) {
+				if (dep.isNullType() || dep.isPrimitive()
+						|| dep.isEqualTo(type)) {
+					continue;
+				}
+
+				if (!bases.contains(dep)) {
+					println(TransformUtil.include(dep));
+					hasIncludes = true;
+				}
+			}
+
+			if (hasIncludes) {
+				println();
+			}
+
+			printDefaultInitTag();
+
+			print(type.isInterface() ? "struct " : "class ");
+
+			println(CName.qualified(type, false));
+
+			String sep = i1 + ": public ";
+
+			for (ITypeBinding base : bases) {
+				println(sep + TransformUtil.virtual(base)
+						+ CName.relative(base, type, true));
+				sep = i1 + ", public ";
+			}
+
+			println("{");
+
+			printSuper(type);
+
+			print(body);
+
+			if (!extras.isEmpty()) {
+				println();
+				println(i1 + "// Generated");
+			}
+
+			print(extras);
+
+			println("};");
+
+			TransformUtil.printStringSupport(type, out);
+		} finally {
+			if (out != null) {
+				out.close();
+				out = null;
+			}
 		}
-
-		if (hasIncludes) {
-			println();
-		}
-
-		printDefaultInitTag();
-
-		print(type.isInterface() ? "struct " : "class ");
-
-		println(CName.qualified(type, false));
-
-		String sep = i1 + ": public ";
-
-		for (ITypeBinding base : bases) {
-			println(sep + TransformUtil.virtual(base)
-					+ CName.relative(base, type, true));
-			sep = i1 + ", public ";
-		}
-
-		println("{");
-
-		printSuper(type);
-
-		print(body);
-
-		if (!extras.isEmpty()) {
-			println();
-			println(i1 + "// Generated");
-		}
-
-		print(extras);
-
-		println("};");
-
-		TransformUtil.printStringSupport(type, out);
-
-		out.close();
-		out = null;
 	}
 
 	public static String initialAccess(ITypeBinding type) {

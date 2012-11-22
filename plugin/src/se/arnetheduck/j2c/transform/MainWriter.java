@@ -2,7 +2,6 @@ package se.arnetheduck.j2c.transform;
 
 import java.io.File;
 import java.io.IOException;
-import java.io.InputStream;
 
 import org.eclipse.core.runtime.IPath;
 import org.eclipse.jdt.core.dom.ITypeBinding;
@@ -25,10 +24,7 @@ public class MainWriter {
 	}
 
 	public static void write(IPath root, Info info) throws IOException {
-		try (InputStream is = MainWriter.class
-				.getResourceAsStream(MAIN_CPP_TMPL)) {
-			File target = root.append("src").append(info.filename).toFile();
-			TransformUtil.writeTemplate(is, target, info.include, info.qcname);
-		}
+		File target = root.append("src").append(info.filename).toFile();
+		FileUtil.writeTemplate(MAIN_CPP_TMPL, target, info.include, info.qcname);
 	}
 }

@@ -1,7 +1,6 @@
 package se.arnetheduck.j2c.transform;
 
 import java.io.IOException;
-import java.io.InputStream;
 import java.util.Collection;
 import java.util.Set;
 import java.util.TreeSet;
@@ -25,14 +24,11 @@ public class MakefileWriter {
 	}
 
 	public void write(String name, Info sel, Info ext) throws IOException {
-		try (InputStream is = MakefileWriter.class
-				.getResourceAsStream(MAKEFILE_TMPL)) {
-			TransformUtil.writeTemplate(is, root.append("Makefile").toFile(),
-					name, list(sel.impls, ""), list(sel.stubs, ""),
-					list(sel.natives, ""), list(ext.impls, "ext/"),
-					list(ext.stubs, "ext/"), list(ext.natives, "ext/"),
-					list(sel.mains, ""));
-		}
+		FileUtil.writeTemplate(MAKEFILE_TMPL, root.append("Makefile").toFile(),
+				name, list(sel.impls, ""), list(sel.stubs, ""),
+				list(sel.natives, ""), list(ext.impls, "ext/"),
+				list(ext.stubs, "ext/"), list(ext.natives, "ext/"),
+				list(sel.mains, ""));
 	}
 
 	private static String list(Collection<String> items, String prefix) {

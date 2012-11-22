@@ -1,6 +1,5 @@
 package se.arnetheduck.j2c.transform;
 
-import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.PrintWriter;
 import java.io.StringWriter;
@@ -50,27 +49,29 @@ public class Impl {
 		this.isNative = isNative;
 		String extras = getExtras(closures, cinit, clinit);
 
-		FileOutputStream fos = TransformUtil.open(TransformUtil.implPath(root,
-				type, suffix).toFile());
+		try {
+			out = FileUtil.open(TransformUtil.implPath(root, type, suffix)
+					.toFile());
 
-		out = new PrintWriter(fos);
+			if (type.getJavaElement() != null) {
+				println("// Generated from " + type.getJavaElement().getPath());
+			} else {
+				println("// Generated");
+			}
 
-		if (type.getJavaElement() != null) {
-			println("// Generated from " + type.getJavaElement().getPath());
-		} else {
-			println("// Generated");
+			printIncludes(fmod);
+
+			printJavaCast();
+			printNpc();
+
+			print(body);
+			print(extras);
+		} finally {
+			if (out != null) {
+				out.close();
+				out = null;
+			}
 		}
-
-		printIncludes(fmod);
-
-		printJavaCast();
-		printNpc();
-
-		print(body);
-		print(extras);
-
-		out.close();
-		out = null;
 	}
 
 	private String getExtras(Collection<IVariableBinding> closures,
@@ -352,7 +353,7 @@ public class Impl {
 			return;
 		}
 
-		print(TransformUtil.readResource(JAVA_CAST_HPP));
+		print(FileUtil.readResource(JAVA_CAST_HPP));
 	}
 
 	private void printNpc() {
@@ -360,7 +361,7 @@ public class Impl {
 			return;
 		}
 
-		print(TransformUtil.readResource(NPC_HPP));
+		print(FileUtil.readResource(NPC_HPP));
 	}
 
 	private void javaCast(ITypeBinding source, ITypeBinding target) {

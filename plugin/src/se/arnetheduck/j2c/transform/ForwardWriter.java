@@ -1,6 +1,5 @@
 package se.arnetheduck.j2c.transform;
 
-import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.PrintWriter;
 import java.util.ArrayList;
@@ -35,7 +34,8 @@ public class ForwardWriter {
 		@Override
 		public int compareTo(Info o) {
 			int c = packageName.compareTo(o.packageName);
-			c = c == 0 ? -Boolean.compare(isPrimitive, o.isPrimitive) : c;
+			c = c == 0 ? -Boolean.valueOf(isPrimitive).compareTo(o.isPrimitive)
+					: c;
 			return c == 0 ? className.compareTo(o.className) : c;
 		}
 	}
@@ -63,10 +63,11 @@ public class ForwardWriter {
 			boolean hasArray = false;
 			boolean hasPrimitive = false;
 
-			try (FileOutputStream fos = TransformUtil.open(root
-					.append("include")
-					.append(TransformUtil.packageHeader(e.getKey())).toFile())) {
-				PrintWriter pw = new PrintWriter(fos);
+			PrintWriter pw = null;
+			try {
+				pw = FileUtil.open(root.append("include")
+						.append(TransformUtil.packageHeader(e.getKey()))
+						.toFile());
 
 				pw.println("// Forward declarations for " + e.getKey());
 
@@ -107,7 +108,10 @@ public class ForwardWriter {
 
 				setNs(pw, new ArrayList<String>());
 
-				pw.close();
+			} finally {
+				if (pw != null) {
+					pw.close();
+				}
 			}
 		}
 	}

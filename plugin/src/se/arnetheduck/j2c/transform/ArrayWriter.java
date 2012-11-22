@@ -2,7 +2,6 @@ package se.arnetheduck.j2c.transform;
 
 import java.io.File;
 import java.io.IOException;
-import java.io.InputStream;
 import java.io.Serializable;
 import java.util.ArrayList;
 import java.util.Collections;
@@ -64,18 +63,10 @@ public class ArrayWriter {
 
 		ITypeBinding ct = type.getComponentType();
 		if (ct.isPrimitive()) {
-			try (InputStream is = ArrayWriter.class
-					.getResourceAsStream(ARRAY_HPP)) {
-				TransformUtil.writeResource(is, target);
-			}
-
+			FileUtil.writeResource(ARRAY_HPP, target);
 			return;
 		} else if (ct.getQualifiedName().equals(Object.class.getName())) {
-			try (InputStream is = ArrayWriter.class
-					.getResourceAsStream(OBJECT_ARRAY_HPP)) {
-				TransformUtil.writeResource(is, target);
-			}
-
+			FileUtil.writeResource(OBJECT_ARRAY_HPP, target);
 			return;
 		}
 
@@ -105,11 +96,8 @@ public class ArrayWriter {
 			bases.append("\n");
 		}
 
-		try (InputStream is = ArrayWriter.class
-				.getResourceAsStream(SUB_ARRAY_HPP_TMPL)) {
-			TransformUtil.writeTemplate(is, target, includes, name, bases,
-					superName, qname);
-		}
+		FileUtil.writeTemplate(SUB_ARRAY_HPP_TMPL, target, includes, name,
+				bases, superName, qname);
 	}
 
 	private void writeImpl() throws IOException {

@@ -1,10 +1,5 @@
 package se.arnetheduck.j2c.transform;
 
-import java.io.File;
-import java.io.FileNotFoundException;
-import java.io.FileOutputStream;
-import java.io.IOException;
-import java.io.InputStream;
 import java.io.PrintWriter;
 import java.lang.reflect.Modifier;
 import java.text.Annotation;
@@ -14,7 +9,6 @@ import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
-import java.util.Scanner;
 import java.util.Set;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
@@ -183,7 +177,7 @@ public final class TransformUtil {
 		}
 
 		if (cv instanceof Character) {
-			char ch = (char) cv;
+			char ch = (Character) cv;
 
 			if (ch == '\'') {
 				return "u'\\''";
@@ -211,7 +205,7 @@ public final class TransformUtil {
 		}
 
 		if (cv instanceof Integer) {
-			if ((int) cv == Integer.MIN_VALUE) {
+			if ((Integer) cv == Integer.MIN_VALUE) {
 				// In C++, the part after '-' is parsed first which overflows
 				// so we do a trick
 				return "int32_t(-0x7fffffff-1)";
@@ -221,7 +215,7 @@ public final class TransformUtil {
 		}
 
 		if (cv instanceof Long) {
-			if ((long) cv == Long.MIN_VALUE) {
+			if ((Long) cv == Long.MIN_VALUE) {
 				// In C++, the part before '-' is parsed first which overflows
 				// so we do a trick
 				return "int64_t(-0x7fffffffffffffffLL-1)";
@@ -859,44 +853,6 @@ public final class TransformUtil {
 		pw.println("namespace java { namespace lang { String *operator \"\" _j(const char16_t *p, size_t n); } }");
 		pw.println("using java::lang::operator \"\" _j;");
 		pw.println();
-	}
-
-	public static void writeTemplate(InputStream template, File target,
-			Object... params) throws IOException {
-		String format = read(template);
-
-		try (PrintWriter pw = new PrintWriter(open(target))) {
-			pw.format(format, params);
-		}
-	}
-
-	public static void writeResource(InputStream resource, File target)
-			throws IOException {
-		try (PrintWriter pw = new PrintWriter(open(target))) {
-			String txt = read(resource);
-			pw.write(txt);
-		}
-	}
-
-	public static String readResource(String resource) {
-		try (InputStream is = TransformUtil.class.getResourceAsStream(resource)) {
-			return read(is);
-		} catch (Exception e) {
-			throw new RuntimeException(e);
-		}
-	}
-
-	public static String read(InputStream resource) {
-		return new Scanner(resource).useDelimiter("\\A").next();
-	}
-
-	public static FileOutputStream open(File target)
-			throws FileNotFoundException {
-		if (!target.getParentFile().exists()) {
-			target.getParentFile().mkdirs();
-		}
-
-		return new FileOutputStream(target);
 	}
 
 	public static boolean isPrimitiveArray(ITypeBinding tb) {
