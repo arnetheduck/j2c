@@ -1,0 +1,26 @@
+0.3.0
+-----
+* No more mangling of variable names (unless unavoidable)
+* Handle more corner cases
+* Static initalization / construction fixes
+* Better switch break handling
+* Throw correct exception on cast failure
+* Null checking
+* Handle cyclic dependencies due to return type covariance
+* Minimum Java required version is now 1.6 (instead of 1.7)
+
+0.2.2
+-----
+* Handle more selection types in the project explorer
+
+0.2.1
+-----
+* Also show translate menu item in project explorer
+
+0.2.0
+-----
+* Successfully converts most of OpenJDK 6!
+
+0.1.0
+-----
+* Initial release
