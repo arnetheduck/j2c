@@ -143,6 +143,11 @@ public final class TransformUtil {
 		return v;
 	}
 
+	public static Object constexprValue(VariableDeclarationFragment node) {
+		Object cv = constantValue(node);
+		return cv instanceof String ? null : cv;
+	}
+
 	public static Object constantValue(IVariableBinding vb) {
 		Object v = vb.getConstantValue();
 		if (v == null) {
@@ -160,14 +165,17 @@ public final class TransformUtil {
 		return v;
 	}
 
+	public static Object constexprValue(IVariableBinding vb) {
+		Object cv = constantValue(vb);
+		return cv instanceof String ? null : cv;
+	}
+
 	/**
 	 * We make static methods out of static non-constexpr variables to get a
 	 * chance to initialize the class before variable access
 	 */
 	public static boolean asMethod(IVariableBinding vb) {
-		return vb.isField()
-				&& isStatic(vb)
-				&& (constantValue(vb) == null || constantValue(vb) instanceof String)
+		return vb.isField() && isStatic(vb) && constexprValue(vb) == null
 				&& !vb.isEnumConstant();
 	}
 

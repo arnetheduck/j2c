@@ -185,9 +185,9 @@ public class HeaderWriter extends TransformWriter {
 				access = Header.printAccess(out, asMethod ? Modifier.PRIVATE
 						: vb.getModifiers(), access);
 
-				Object cv = TransformUtil.constantValue(f);
+				Object cv = TransformUtil.constexprValue(f);
 				printi(TransformUtil.fieldModifiers(type, node.getModifiers(),
-						true, cv != null && !(cv instanceof String)));
+						true, cv != null));
 
 				print(CName.relative(vb.getType(), type, true) + " ");
 
@@ -199,7 +199,7 @@ public class HeaderWriter extends TransformWriter {
 			access = Header.printAccess(out, node.getModifiers(), access);
 
 			printi(TransformUtil.fieldModifiers(type, node.getModifiers(),
-					true, hasInitilializer(fragments)));
+					true, false));
 
 			print(CName.relative(tb, type, true) + " ");
 

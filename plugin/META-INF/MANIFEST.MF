@@ -7,7 +7,8 @@ Bundle-Activator: se.arnetheduck.j2c.Activator
 Require-Bundle: org.eclipse.ui,
  org.eclipse.core.runtime,
  org.eclipse.jdt.core,
- org.eclipse.core.resources
+ org.eclipse.core.resources,
+ org.eclipse.cdt.core;bundle-version="5.3.2"
 Bundle-ActivationPolicy: lazy
 Bundle-RequiredExecutionEnvironment: JavaSE-1.6
 Export-Package: se.arnetheduck.j2c;uses:="org.eclipse.jface.resource,org.eclipse.ui.plugin,org.osgi.framework",

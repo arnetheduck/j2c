@@ -248,7 +248,7 @@ public class StubWriter {
 			return;
 		}
 
-		Object cv = TransformUtil.constantValue(vb);
+		Object cv = TransformUtil.constexprValue(vb);
 		boolean asMethod = TransformUtil.asMethod(vb);
 
 		ITypeBinding vt = vb.getType();

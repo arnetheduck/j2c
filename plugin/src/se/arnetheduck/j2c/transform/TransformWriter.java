@@ -164,17 +164,6 @@ public abstract class TransformWriter extends ASTVisitor {
 		}
 	}
 
-	public boolean hasInitilializer(
-			Iterable<VariableDeclarationFragment> fragments) {
-		for (VariableDeclarationFragment f : fragments) {
-			if (TransformUtil.constantValue(f) != null) {
-				return true;
-			}
-		}
-
-		return false;
-	}
-
 	public void print(String string) {
 		out.print(string);
 	}
