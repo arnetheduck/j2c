@@ -232,6 +232,10 @@ public class StubWriter {
 				continue;
 			}
 
+			if (TransformUtil.constantValue(vb) != null) {
+				continue;
+			}
+
 			print(i1 + sep + CName.of(vb));
 
 			println("()");
@@ -282,6 +286,8 @@ public class StubWriter {
 			println(" */");
 			return;
 		}
+
+		impl.method(mb);
 
 		if (mb.isConstructor()) {
 			constructors.add(mb);
