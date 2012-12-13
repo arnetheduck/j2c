@@ -1,3 +1,7 @@
+0.3.1
+-----
+* Fix too few stubs and too many natives being generated in certain cases
+
 0.3.0
 -----
 * No more mangling of variable names (unless unavoidable)
