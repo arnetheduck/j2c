@@ -292,6 +292,10 @@ public class Impl {
 	}
 
 	private void printUnhide() {
+		if (isNative) {
+			return;
+		}
+
 		List<IMethodBinding> superMethods = Header.hiddenMethods(type, ctx,
 				methods);
 
