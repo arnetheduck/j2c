@@ -87,7 +87,7 @@ public final class TransformUtil {
 	}
 
 	public static IPath headerPath(IPath root, String name) {
-		return root.append("include").append(name);
+		return root.append("src").append(name);
 	}
 
 	public static String headerName(ITypeBinding tb) {

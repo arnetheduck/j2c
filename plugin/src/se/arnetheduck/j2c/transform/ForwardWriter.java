@@ -65,7 +65,7 @@ public class ForwardWriter {
 
 			PrintWriter pw = null;
 			try {
-				pw = FileUtil.open(root.append("include")
+				pw = FileUtil.open(root.append("src")
 						.append(TransformUtil.packageHeader(e.getKey()))
 						.toFile());
 
