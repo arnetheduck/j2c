@@ -1,9 +1,8 @@
 #pragma once
 
 #include <initializer_list>
-#include <utility>
 
-#include <fwd.hpp>
+#include <stdint.h>
 
 #include <java/lang/Object.hpp>
 #include <java/lang/Cloneable.hpp>

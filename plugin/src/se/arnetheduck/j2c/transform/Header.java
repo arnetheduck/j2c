@@ -99,7 +99,8 @@ public class Header {
 			boolean hasIncludes = false;
 
 			for (String p : packages) {
-				println(TransformUtil.include(TransformUtil.packageHeader(p)));
+				println(TransformUtil.include(TransformUtil.packageHeader(
+						ctx.getName(), p)));
 				hasIncludes = true;
 			}
 

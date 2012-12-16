@@ -57,9 +57,11 @@ public final class TransformUtil {
 		}
 	};
 
-	public static String packageHeader(String packageName) {
-		return packageName == null || packageName.isEmpty() ? "fwd.hpp"
-				: toFileName(packageName) + "/fwd.hpp";
+	public static String packageHeader(String project, String packageName) {
+		String prefix = packageName == null || packageName.isEmpty()
+				? "" : toFileName(packageName) + "/";
+
+		return prefix + "fwd-" + project + ".hpp";
 	}
 
 	public static String qualifiedName(ITypeBinding tb) {
@@ -267,7 +269,7 @@ public final class TransformUtil {
 
 	/**
 	 * Clean up java-escaped string literals for C++.
-	 * 
+	 *
 	 * In java, it is valid to have lone UTF-16 surrogates - in C++, not.
 	 */
 	public static String stringLiteral(String escaped) {

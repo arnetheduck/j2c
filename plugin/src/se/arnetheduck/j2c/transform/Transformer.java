@@ -106,7 +106,7 @@ public class Transformer {
 			processSome(monitor);
 		}
 
-		new ForwardWriter(root).write(forwards.values());
+		new ForwardWriter(this, root).write(forwards.values());
 
 		for (MainWriter.Info main : mains.values()) {
 			MainWriter.write(root, main);
@@ -126,6 +126,10 @@ public class Transformer {
 
 		System.out.println("Done (" + (System.currentTimeMillis() - start)
 				+ " ms).");
+	}
+
+	public String getName() {
+		return name;
 	}
 
 	private void renameOld() throws IOException {

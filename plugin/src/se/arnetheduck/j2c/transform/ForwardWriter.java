@@ -44,7 +44,10 @@ public class ForwardWriter {
 
 	private Stack<String> cur = new Stack<String>();
 
-	public ForwardWriter(IPath root) {
+	private final Transformer ctx;
+
+	public ForwardWriter(Transformer ctx, IPath root) {
+		this.ctx = ctx;
 		this.root = root;
 	}
 
@@ -66,7 +69,8 @@ public class ForwardWriter {
 			PrintWriter pw = null;
 			try {
 				pw = FileUtil.open(root.append("src")
-						.append(TransformUtil.packageHeader(e.getKey()))
+						.append(TransformUtil.packageHeader(ctx.getName(),
+								e.getKey()))
 						.toFile());
 
 				pw.println("// Forward declarations for " + e.getKey());
