@@ -92,10 +92,6 @@ public class Header {
 				packages.add(CName.packageOf(tb));
 			}
 
-			for (ITypeBinding tb : bases) {
-				packages.remove(CName.packageOf(tb));
-			}
-
 			boolean hasIncludes = false;
 
 			for (String p : packages) {
@@ -653,7 +649,7 @@ public class Header {
 	 * ambiguity ensues even if the methods are overloads (name resolution comes
 	 * before overload resolution). This method returns a list of such
 	 * duplicates.
-	 * 
+	 *
 	 * @param type
 	 * @return
 	 */

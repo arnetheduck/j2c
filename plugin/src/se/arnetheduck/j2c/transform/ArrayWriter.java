@@ -85,6 +85,9 @@ public class ArrayWriter {
 				: CName.relative(ct.getSuperclass(), ct, true);
 		ctx.hardDep(ct);
 		includes.append(TransformUtil.include(ct) + "\n");
+		includes.append(TransformUtil.include(TransformUtil.packageHeader(
+				ctx.getName(), CName.packageOf(type)))
+				+ "\n");
 
 		StringBuilder bases = new StringBuilder();
 
