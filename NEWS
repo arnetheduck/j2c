@@ -1,3 +1,6 @@
+* Source and header files are now both generated in the src directory
+* Avoid generating unnecessary clinit's
+
 0.3.1
 -----
 * Fix too few stubs and too many natives being generated in certain cases
