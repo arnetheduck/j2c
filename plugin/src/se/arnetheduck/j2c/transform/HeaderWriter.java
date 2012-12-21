@@ -55,32 +55,38 @@ public class HeaderWriter extends TransformWriter {
 		header = new Header(ctx, type, deps);
 	}
 
-	public void write(AnnotationTypeDeclaration node) throws Exception {
-		writeType(node.bodyDeclarations());
+	public void write(AnnotationTypeDeclaration node, boolean hasClinit)
+			throws Exception {
+		writeType(node.bodyDeclarations(), hasClinit);
 	}
 
-	public void write(AnonymousClassDeclaration node) throws Exception {
-		writeType(node.bodyDeclarations());
+	public void write(AnonymousClassDeclaration node, boolean hasClinit)
+			throws Exception {
+		writeType(node.bodyDeclarations(), hasClinit);
 	}
 
-	public void write(EnumDeclaration node) throws Exception {
-		writeType(node.enumConstants(), node.bodyDeclarations());
+	public void write(EnumDeclaration node, boolean hasClinit)
+			throws Exception {
+		writeType(node.enumConstants(), node.bodyDeclarations(), hasClinit);
 	}
 
-	public void write(TypeDeclaration node) throws Exception {
-		writeType(node.bodyDeclarations());
+	public void write(TypeDeclaration node, boolean hasClinit)
+			throws Exception {
+		writeType(node.bodyDeclarations(), hasClinit);
 	}
 
-	private void writeType(List<BodyDeclaration> declarations) {
-		writeType(new ArrayList<EnumConstantDeclaration>(), declarations);
+	private void writeType(List<BodyDeclaration> declarations, boolean hasClinit) {
+		writeType(new ArrayList<EnumConstantDeclaration>(), declarations,
+				hasClinit);
 	}
 
 	private void writeType(List<EnumConstantDeclaration> enums,
-			List<BodyDeclaration> declarations) {
+			List<BodyDeclaration> declarations, boolean hasClinit) {
 		try {
 			String body = getBody(enums, declarations);
 
-			header.write(root, body, closures, hasInit, unitInfo.types, access);
+			header.write(root, body, closures, hasClinit, hasInit,
+					unitInfo.types, access);
 		} catch (Exception e) {
 			throw new Error(e);
 		}

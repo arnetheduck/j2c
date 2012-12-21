@@ -138,7 +138,7 @@ public class ImplWriter extends TransformWriter {
 		writeType(body);
 
 		HeaderWriter hw = new HeaderWriter(root, ctx, type, unitInfo, closures);
-		hw.write(node);
+		hw.write(node, hasClinit());
 	}
 
 	public void write(AnonymousClassDeclaration node) throws Exception {
@@ -146,7 +146,7 @@ public class ImplWriter extends TransformWriter {
 		writeType(body);
 
 		HeaderWriter hw = new HeaderWriter(root, ctx, type, unitInfo, closures);
-		hw.write(node);
+		hw.write(node, hasClinit());
 	}
 
 	public void write(EnumDeclaration node) throws Exception {
@@ -154,7 +154,7 @@ public class ImplWriter extends TransformWriter {
 		writeType(body);
 
 		HeaderWriter hw = new HeaderWriter(root, ctx, type, unitInfo, closures);
-		hw.write(node);
+		hw.write(node, hasClinit());
 	}
 
 	public void write(TypeDeclaration node) throws Exception {
@@ -162,7 +162,11 @@ public class ImplWriter extends TransformWriter {
 		writeType(body);
 
 		HeaderWriter hw = new HeaderWriter(root, ctx, type, unitInfo, closures);
-		hw.write(node);
+		hw.write(node, hasClinit());
+	}
+
+	private boolean hasClinit() {
+		return clinit != null || getCinit() != null;
 	}
 
 	private String getBody(List<BodyDeclaration> declarations) {

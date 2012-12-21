@@ -135,6 +135,11 @@ public class Impl {
 			return;
 		}
 
+		if (cinit == null && clinit == null
+				&& !TransformUtil.same(type, Object.class)) {
+			return;
+		}
+
 		println("void " + qcname + "::" + CName.STATIC_INIT + "()");
 		println("{");
 

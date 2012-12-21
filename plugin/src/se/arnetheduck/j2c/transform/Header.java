@@ -64,11 +64,12 @@ public class Header {
 	}
 
 	public void write(IPath root, String body,
-			Collection<IVariableBinding> closures, boolean hasInit,
-			Collection<ITypeBinding> nested, String access) throws IOException {
+			Collection<IVariableBinding> closures, boolean hasClinit,
+			boolean hasInit, Collection<ITypeBinding> nested, String access)
+			throws IOException {
 
 		this.access = access;
-		String extras = getExtras(closures, hasInit, nested);
+		String extras = getExtras(closures, hasClinit, hasInit, nested);
 
 		try {
 			out = FileUtil.open(TransformUtil.headerPath(root, type).toFile());
@@ -286,7 +287,7 @@ public class Header {
 	}
 
 	private String getExtras(Collection<IVariableBinding> closures,
-			boolean hasInit, Collection<ITypeBinding> nested) {
+			boolean hasClinit, boolean hasInit, Collection<ITypeBinding> nested) {
 		StringWriter sw = new StringWriter();
 		out = new PrintWriter(sw);
 
@@ -294,7 +295,7 @@ public class Header {
 		printDefaultInitCtor(closures);
 
 		printClassLiteral();
-		printClinit();
+		printClinit(hasClinit);
 		printInit(hasInit);
 		printSuperCalls();
 		printMethods();
@@ -475,8 +476,12 @@ public class Header {
 		}
 	}
 
-	private void printClinit() {
+	private void printClinit(boolean hasClinit) {
 		if (!TypeUtil.isClassLike(type)) {
+			return;
+		}
+
+		if (!hasClinit && !TransformUtil.same(type, Object.class)) {
 			return;
 		}
 
