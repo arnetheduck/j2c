@@ -63,15 +63,15 @@ public class StubWriter {
 
 	private String getExtras(boolean natives, boolean privates)
 			throws IOException {
-		if (natives) {
-			return "";
-		}
-
 		StringWriter sw = new StringWriter();
 		out = new PrintWriter(sw);
 
-		printDefaultInitCtor();
-		printCtors();
+		out.println("extern void unimplemented_(const char16_t* name);");
+
+		if (!natives) {
+			printDefaultInitCtor();
+			printCtors();
+		}
 
 		out.close();
 		out = null;
@@ -320,6 +320,9 @@ public class StubWriter {
 		}
 
 		if (!hasBody) {
+			print(i1 + "unimplemented_(u\"");
+			TransformUtil.printSignature(out, type, mb, deps, true);
+			println("\");");
 			if (!TransformUtil.isVoid(mb.getReturnType())) {
 				println(i1 + "return 0;");
 			}
