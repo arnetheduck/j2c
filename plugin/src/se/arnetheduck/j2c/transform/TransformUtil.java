@@ -445,6 +445,10 @@ public final class TransformUtil {
 				&& !Modifier.isPublic(modifiers);
 	}
 
+	public static boolean isFinal(ITypeBinding tb) {
+		return Modifier.isFinal(tb.getModifiers());
+	}
+
 	public static boolean isFinal(IVariableBinding vb) {
 		return Modifier.isFinal(vb.getModifiers())
 				|| (vb.isField() && vb.getDeclaringClass().isInterface());

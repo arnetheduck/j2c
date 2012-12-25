@@ -127,7 +127,13 @@ public class Header {
 
 			print(type.isInterface() ? "struct " : "class ");
 
-			println(CName.qualified(type, false));
+			print(CName.qualified(type, false));
+
+			if (TransformUtil.isFinal(type)) {
+				print(" final");
+			}
+
+			println();
 
 			String sep = i1 + ": public ";
 
