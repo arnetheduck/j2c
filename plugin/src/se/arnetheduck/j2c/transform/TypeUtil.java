@@ -179,4 +179,30 @@ public class TypeUtil {
 	public static boolean isClassLike(ITypeBinding type) {
 		return type.isClass() || type.isEnum();
 	}
+
+	public static int countBases(ITypeBinding type, ITypeBinding base) {
+		int ret = 0;
+
+		base = base.getErasure();
+		ITypeBinding superclass = type.getSuperclass();
+		if (superclass != null) {
+			superclass = superclass.getErasure();
+			if (superclass.isEqualTo(base)) {
+				return 1; // Base is a class, can only appear once
+			}
+
+			ret += countBases(superclass, base);
+		}
+
+		for (ITypeBinding ib : type.getInterfaces()) {
+			ib = ib.getErasure();
+			if (ib.isEqualTo(base)) {
+				ret += 1;
+			}
+
+			ret += countBases(ib, base);
+		}
+
+		return ret;
+	}
 }

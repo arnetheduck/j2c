@@ -58,8 +58,8 @@ public final class TransformUtil {
 	};
 
 	public static String packageHeader(String project, String packageName) {
-		String prefix = packageName == null || packageName.isEmpty()
-				? "" : toFileName(packageName) + "/";
+		String prefix = packageName == null || packageName.isEmpty() ? ""
+				: toFileName(packageName) + "/";
 
 		return prefix + "fwd-" + project + ".hpp";
 	}
@@ -535,8 +535,21 @@ public final class TransformUtil {
 		return ret;
 	}
 
-	public static String virtual(ITypeBinding tb) {
-		if (tb.isInterface() || same(tb, Object.class)) {
+	public static String virtual(ITypeBinding type, ITypeBinding base) {
+		if (isFinal(type)) {
+			if (same(base, Object.class) && type.getInterfaces().length == 0) {
+				// No interfaces, so Object only inherited once
+				return "";
+			}
+
+			if (base.isInterface() && TypeUtil.countBases(type, base) == 1) {
+				// Interface only inherited once in the chain
+				return "";
+			}
+		}
+
+		if (base.isInterface() || same(base, Object.class)) {
+			// Might be inherited more than once
 			return "virtual ";
 		}
 

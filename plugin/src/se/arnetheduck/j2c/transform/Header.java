@@ -138,7 +138,7 @@ public class Header {
 			String sep = i1 + ": public ";
 
 			for (ITypeBinding base : bases) {
-				println(sep + TransformUtil.virtual(base)
+				println(sep + TransformUtil.virtual(type, base)
 						+ CName.relative(base, type, true));
 				sep = i1 + ", public ";
 			}
