@@ -269,7 +269,7 @@ public class HeaderWriter extends TransformWriter {
 		}
 
 		IMethodBinding mb = node.resolveBinding();
-		if (Header.baseDeclared(ctx, type, mb)) {
+		if (TransformUtil.baseDeclared(ctx, type, mb)) {
 			// Defining once more will lead to virtual inheritance issues
 			printi("/*");
 			TransformUtil.printSignature(out, type, mb, deps, false);
@@ -305,9 +305,7 @@ public class HeaderWriter extends TransformWriter {
 
 		print(TransformUtil.throwsDecl(node.thrownExceptions()));
 
-		if (node.getBody() == null && !Modifier.isNative(node.getModifiers())) {
-			print(" = 0");
-		}
+		print(TransformUtil.methodSpecifiers(mb));
 
 		println(";");
 

@@ -294,19 +294,56 @@ public final class TransformUtil {
 	}
 
 	public static String methodModifiers(IMethodBinding mb) {
-		int modifiers = mb.getModifiers();
-		int typeModifiers = mb.getDeclaringClass() == null ? 0 : mb
-				.getDeclaringClass().getModifiers();
-		if (Modifier.isStatic(modifiers)) {
+		if (isStatic(mb)) {
 			return "static ";
 		}
 
-		if (Modifier.isFinal(modifiers | typeModifiers)
-				|| Modifier.isPrivate(modifiers)) {
+		if (isPrivate(mb)) {
 			return "";
 		}
 
+		if (isFinal(mb)) {
+			return "";
+		}
+
+		if (needsSpecifier(mb)) {
+			return "";
+		}
+
+		// Java methods virtual by default
 		return "virtual ";
+	}
+
+	public static String methodSpecifiers(IMethodBinding mb) {
+		if (Modifier.isAbstract(mb.getModifiers())) {
+			return " = 0";
+		}
+
+		if (needsSpecifier(mb)) {
+			/*
+			 * Can't do this because the method might need a bridge further down
+			 * the inheritance chain
+			 * 
+			 * if (isFinal(mb)) { return " final"; }
+			 */
+			return " override";
+		}
+
+		return "";
+	}
+
+	public static final boolean needsSpecifier(IMethodBinding mb) {
+		List<IMethodBinding> baseMethods = TypeUtil.methods(
+				TypeUtil.allBases(mb.getDeclaringClass(), null),
+				TypeUtil.overrides(mb));
+
+		for (IMethodBinding mb2 : baseMethods) {
+			if (!needsBridge(mb, mb2)) {
+				return true;
+			}
+		}
+
+		return false;
 	}
 
 	public static String variableModifiers(ITypeBinding type, int modifiers) {
@@ -432,7 +469,7 @@ public final class TransformUtil {
 	}
 
 	public static boolean isConstVar(IVariableBinding vb) {
-		return !vb.isField() && Modifier.isFinal(vb.getModifiers());
+		return !vb.isField() && isFinal(vb);
 	}
 
 	public static String ref(Type t) {
@@ -454,12 +491,22 @@ public final class TransformUtil {
 				|| (vb.isField() && vb.getDeclaringClass().isInterface());
 	}
 
+	public static boolean isFinal(IMethodBinding mb) {
+		return Modifier.isFinal(mb.getModifiers())
+				|| (mb.getDeclaringClass() != null && isFinal(mb
+						.getDeclaringClass()));
+	}
+
 	public static boolean isStatic(ITypeBinding tb) {
 		return Modifier.isStatic(tb.getModifiers());
 	}
 
 	public static boolean isStatic(IMethodBinding mb) {
 		return Modifier.isStatic(mb.getModifiers());
+	}
+
+	public static boolean isPrivate(IMethodBinding mb) {
+		return Modifier.isPrivate(mb.getModifiers());
 	}
 
 	public static boolean isStatic(IVariableBinding vb) {
@@ -679,6 +726,8 @@ public final class TransformUtil {
 				pw.print(indent(1));
 
 				printSignature(pw, tb, mb2, deps, false);
+
+				pw.print(" override");
 
 				pw.println(";");
 				break;
@@ -985,5 +1034,12 @@ public final class TransformUtil {
 		}
 
 		return false;
+	}
+
+	public static boolean baseDeclared(Transformer ctx, ITypeBinding type,
+			IMethodBinding mb) {
+		return (Modifier.isAbstract(mb.getModifiers()) || type.isInterface())
+				&& baseHasSame(mb, type,
+						ctx.resolve(Object.class));
 	}
 }

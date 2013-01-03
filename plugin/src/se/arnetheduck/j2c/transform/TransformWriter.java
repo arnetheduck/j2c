@@ -565,7 +565,7 @@ public abstract class TransformWriter extends ASTVisitor {
 		return type;
 	}
 
-	protected boolean unqualified(SimpleName node) {
+	protected static boolean unqualified(SimpleName node) {
 		ASTNode parent = node.getParent();
 		if (parent instanceof QualifiedName) {
 			QualifiedName qn = (QualifiedName) parent;
@@ -585,7 +585,7 @@ public abstract class TransformWriter extends ASTVisitor {
 		return true;
 	}
 
-	protected boolean hidden(ITypeBinding scope, IVariableBinding vb) {
+	protected static boolean hidden(ITypeBinding scope, IVariableBinding vb) {
 		ITypeBinding dc = vb.getDeclaringClass();
 		if (dc == null) {
 			return false;
@@ -602,7 +602,7 @@ public abstract class TransformWriter extends ASTVisitor {
 		return hasName(scope, dc, name, false);
 	}
 
-	protected boolean hidden(ITypeBinding scope, IMethodBinding mb) {
+	protected static boolean hidden(ITypeBinding scope, IMethodBinding mb) {
 		ITypeBinding dc = mb.getDeclaringClass();
 		if (dc == null) {
 			return false;
@@ -619,8 +619,8 @@ public abstract class TransformWriter extends ASTVisitor {
 		return hasName(scope, dc, name, true);
 	}
 
-	private boolean hasName(ITypeBinding scope, ITypeBinding dc, String name,
-			boolean onlyFields) {
+	private static boolean hasName(ITypeBinding scope, ITypeBinding dc,
+			String name, boolean onlyFields) {
 		for (ITypeBinding tb = scope; tb != null
 				&& !dc.isEqualTo(tb.getErasure()); tb = tb.getSuperclass()) {
 

@@ -1751,7 +1751,7 @@ public class ImplWriter extends TransformWriter {
 	@Override
 	public boolean visit(MethodDeclaration node) {
 		IMethodBinding mb = node.resolveBinding();
-		if (Header.baseDeclared(ctx, type, mb)) {
+		if (TransformUtil.baseDeclared(ctx, type, mb)) {
 			return false;
 		}
 

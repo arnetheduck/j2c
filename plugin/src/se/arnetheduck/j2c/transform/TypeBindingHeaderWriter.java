@@ -118,7 +118,7 @@ public class TypeBindingHeaderWriter {
 	}
 
 	private void printMethod(PrintWriter pw, IMethodBinding mb) {
-		if (Header.baseDeclared(ctx, type, mb)) {
+		if (TransformUtil.baseDeclared(ctx, type, mb)) {
 			// Defining once more will lead to virtual inheritance issues
 			pw.print(i1 + "/*");
 			TransformUtil.printSignature(pw, type, mb, deps, false);
@@ -146,9 +146,7 @@ public class TypeBindingHeaderWriter {
 		pw.print(i1);
 		TransformUtil.printSignature(pw, type, mb, deps, false);
 
-		if (Modifier.isAbstract(mb.getModifiers())) {
-			pw.print(" = 0");
-		}
+		pw.print(TransformUtil.methodSpecifiers(mb));
 
 		pw.println(";");
 

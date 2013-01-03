@@ -285,13 +285,6 @@ public class Header {
 		return missing;
 	}
 
-	public static boolean baseDeclared(Transformer ctx, ITypeBinding type,
-			IMethodBinding mb) {
-		return (Modifier.isAbstract(mb.getModifiers()) || type.isInterface())
-				&& TransformUtil.baseHasSame(mb, type,
-						ctx.resolve(Object.class));
-	}
-
 	private String getExtras(Collection<IVariableBinding> closures,
 			boolean hasClinit, boolean hasInit, Collection<ITypeBinding> nested) {
 		StringWriter sw = new StringWriter();

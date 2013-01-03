@@ -39,7 +39,8 @@ public class TypeUtil {
 		return new Predicate<IMethodBinding>() {
 			@Override
 			public boolean apply(IMethodBinding t) {
-				return mb.getMethodDeclaration().overrides(
+				return !mb.isConstructor()
+						&& mb.getMethodDeclaration().overrides(
 						t.getMethodDeclaration());
 			}
 		};
