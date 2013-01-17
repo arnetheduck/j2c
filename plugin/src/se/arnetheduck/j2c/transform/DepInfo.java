@@ -15,6 +15,7 @@ public class DepInfo {
 
 	private boolean javaCast;
 	private boolean npc;
+	private boolean atomic;
 
 	public DepInfo(Transformer ctx) {
 		this.ctx = ctx;
@@ -59,5 +60,13 @@ public class DepInfo {
 	public void setNpc() {
 		npc = true;
 		hard(ctx.resolve(NullPointerException.class));
+	}
+
+	public boolean needsAtomic() {
+		return atomic;
+	}
+
+	public void setNeedsAtomic() {
+		atomic = true;
 	}
 }

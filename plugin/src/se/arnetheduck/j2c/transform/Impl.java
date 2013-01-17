@@ -38,7 +38,7 @@ public class Impl {
 		this.type = type;
 		this.deps = deps;
 
-		qcname = CName.qualified(type, true);
+		qcname = CName.qualified(type, false);
 	}
 
 	public void write(IPath root, String body, String suffix,
@@ -181,14 +181,14 @@ public class Impl {
 			return;
 		}
 
-		println("extern ::java::lang::Class *class_(const char16_t *c, int n);");
+		println("extern java::lang::Class *class_(const char16_t *c, int n);");
 		println();
 		if (type.isArray() && type.getComponentType().isPrimitive()) {
 			println("template<>");
 		}
-		println("::java::lang::Class *" + qcname + "::class_()");
+		println("java::lang::Class* " + qcname + "::class_()");
 		println("{");
-		println("    static ::java::lang::Class *c = ::class_(u\""
+		println("    static ::java::lang::Class* c = ::class_(u\""
 				+ type.getQualifiedName() + "\", "
 				+ type.getQualifiedName().length() + ");");
 		println("    return c;");
@@ -206,7 +206,7 @@ public class Impl {
 			println("template<>");
 		}
 
-		println("::java::lang::Class *" + qcname + "::" + CName.GET_CLASS
+		println("java::lang::Class* " + qcname + "::" + CName.GET_CLASS
 				+ "()");
 		println("{");
 		println(i1 + "return class_();");
@@ -218,7 +218,7 @@ public class Impl {
 		if (isNative || !TransformUtil.same(type, Object.class)) {
 			return;
 		}
-		println("::java::lang::Object::~Object()");
+		println("java::lang::Object::~Object()");
 		println("{");
 		println("}");
 		println();
@@ -317,12 +317,11 @@ public class Impl {
 			ITypeBinding rt = mb.getReturnType();
 			hardDep(rt);
 
-			print(CName.qualified(rt, true));
+			print(TransformUtil.qualifiedRef(rt, false));
 
 			print(" ");
-			print(TransformUtil.ref(rt));
 
-			print(CName.qualified(type, true));
+			print(qcname);
 			print("::");
 
 			print(CName.of(mb));

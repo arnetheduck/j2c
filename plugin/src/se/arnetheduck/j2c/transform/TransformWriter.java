@@ -1,6 +1,7 @@
 package se.arnetheduck.j2c.transform;
 
 import java.io.PrintWriter;
+import java.lang.reflect.Modifier;
 import java.util.Iterator;
 import java.util.List;
 
@@ -8,6 +9,7 @@ import org.eclipse.jdt.core.dom.ASTNode;
 import org.eclipse.jdt.core.dom.ASTVisitor;
 import org.eclipse.jdt.core.dom.ArrayType;
 import org.eclipse.jdt.core.dom.AssertStatement;
+import org.eclipse.jdt.core.dom.Assignment;
 import org.eclipse.jdt.core.dom.Block;
 import org.eclipse.jdt.core.dom.BlockComment;
 import org.eclipse.jdt.core.dom.BooleanLiteral;
@@ -38,12 +40,15 @@ import org.eclipse.jdt.core.dom.NumberLiteral;
 import org.eclipse.jdt.core.dom.PackageDeclaration;
 import org.eclipse.jdt.core.dom.ParameterizedType;
 import org.eclipse.jdt.core.dom.ParenthesizedExpression;
+import org.eclipse.jdt.core.dom.PostfixExpression;
+import org.eclipse.jdt.core.dom.PrefixExpression;
 import org.eclipse.jdt.core.dom.PrimitiveType;
 import org.eclipse.jdt.core.dom.QualifiedName;
 import org.eclipse.jdt.core.dom.QualifiedType;
 import org.eclipse.jdt.core.dom.SimpleName;
 import org.eclipse.jdt.core.dom.SimpleType;
 import org.eclipse.jdt.core.dom.SingleMemberAnnotation;
+import org.eclipse.jdt.core.dom.SingleVariableDeclaration;
 import org.eclipse.jdt.core.dom.StringLiteral;
 import org.eclipse.jdt.core.dom.SuperFieldAccess;
 import org.eclipse.jdt.core.dom.SuperMethodInvocation;
@@ -112,8 +117,8 @@ public abstract class TransformWriter extends ASTVisitor {
 	protected void staticCast(ITypeBinding from, ITypeBinding to) {
 		hardDep(from);
 		hardDep(to);
-		print("static_cast< " + CName.relative(to, type, true)
-				+ TransformUtil.ref(to) + " >(");
+		print("static_cast< " + TransformUtil.relativeRef(to, type, true)
+				+ " >(");
 	}
 
 	protected void npcAccept(Expression expr) {
@@ -368,14 +373,13 @@ public abstract class TransformWriter extends ASTVisitor {
 							((IVariableBinding) x).getDeclaringClass());
 				}
 
-				npc();
-				qualifier.accept(this);
+				npcAccept(qualifier);
 
 				if (hidden) {
 					print(")");
 				}
 
-				print(")->");
+				print("->");
 
 			} else if (b instanceof IPackageBinding) {
 				qualifier.accept(this);
@@ -442,6 +446,71 @@ public abstract class TransformWriter extends ASTVisitor {
 			print(CName.of(mb));
 		} else {
 			print(node.getIdentifier());
+		}
+
+		return false;
+	}
+
+	protected boolean isVolatileAccess(SimpleName node) {
+		IBinding b = node.resolveBinding();
+		if (!(b instanceof IVariableBinding)) {
+			return false;
+		}
+
+		IVariableBinding vb = (IVariableBinding) b;
+		if (!Modifier.isVolatile(vb.getModifiers())) {
+			return false;
+		}
+
+		ASTNode parent = node.getParent();
+
+		if (parent instanceof VariableDeclarationFragment) {
+			return false;
+		}
+
+		if (parent instanceof SingleVariableDeclaration) {
+			return false;
+		}
+
+		if (isLeftHandSide(node)) {
+			return false;
+		}
+
+		return true;
+	}
+
+	protected boolean isLeftHandSide(Expression expr) {
+		ASTNode parent = expr.getParent();
+		if (parent instanceof Assignment) {
+			Assignment assignment = (Assignment) parent;
+			if (expr == assignment.getLeftHandSide()) {
+				return true;
+			}
+		}
+
+		if (parent instanceof QualifiedName) {
+			QualifiedName qualifiedName = (QualifiedName) parent;
+			if (expr == qualifiedName.getQualifier()) {
+				return false;
+			}
+		}
+
+		if (parent instanceof PrefixExpression) {
+			PrefixExpression prefix = (PrefixExpression) parent;
+			if (prefix.getOperator()
+					.equals(PrefixExpression.Operator.INCREMENT)
+					|| prefix.getOperator().equals(
+							PrefixExpression.Operator.DECREMENT)) {
+				return true;
+			}
+		}
+
+		if (parent instanceof PostfixExpression) {
+			return true;
+		}
+
+		if (parent instanceof Expression) {
+			return isLeftHandSide((Expression) parent);
 		}
 
 		return false;
@@ -759,11 +828,10 @@ public abstract class TransformWriter extends ASTVisitor {
 
 	@Override
 	public boolean visit(VariableDeclarationExpression node) {
-		ITypeBinding tb = node.getType().resolveBinding();
-		print(TransformUtil.variableModifiers(type, node.getModifiers())
-				+ CName.relative(tb, type, true) + " ");
-
-		print(" ");
+		int modifiers = node.getModifiers();
+		print(TransformUtil.variableModifiers(type, modifiers)
+				+ CName.relative(node.getType().resolveBinding(), type, true)
+				+ " ");
 
 		visitAllCSV(node.fragments(), false);
 
@@ -773,30 +841,22 @@ public abstract class TransformWriter extends ASTVisitor {
 	@Override
 	public boolean visit(VariableDeclarationStatement node) {
 		List<VariableDeclarationFragment> fragments = node.fragments();
-		boolean special = false;
-		for (VariableDeclarationFragment fragment : fragments) {
-			special |= fragment.getExtraDimensions() > 0;
-			special |= TransformUtil.isConstVar(fragment.resolveBinding());
-		}
 
-		ITypeBinding tb = node.getType().resolveBinding();
-
-		if (special) {
+		int modifiers = node.getModifiers();
+		if (isAnySpecial(fragments)) {
 			for (VariableDeclarationFragment fragment : fragments) {
-				printi(TransformUtil.variableModifiers(type,
-						node.getModifiers()));
-				ITypeBinding fb = tb;
-				if (fragment.getExtraDimensions() > 0) {
-					fb = fb.createArrayType(fragment.getExtraDimensions());
-				}
+				printi(TransformUtil.variableModifiers(type, modifiers));
+				ITypeBinding fb = fragment.resolveBinding().getType();
 				softDep(fb);
-				print(CName.relative(fb, type, true) + " ");
+				print(TransformUtil.varTypeCName(modifiers, fb, type,
+						deps) + " ");
 				fragment.accept(this);
 				println(";");
 			}
 		} else {
-			printi(TransformUtil.variableModifiers(type, node.getModifiers())
-					+ CName.relative(tb, type, true) + " ");
+			printi(TransformUtil.variableModifiers(type, modifiers)
+					+ TransformUtil.varTypeCName(modifiers, node
+							.getType().resolveBinding(), type, deps) + " ");
 
 			visitAllCSV(fragments, false);
 
@@ -818,6 +878,38 @@ public abstract class TransformWriter extends ASTVisitor {
 			}
 			bound.accept(this);
 		}
+		return false;
+	}
+
+	/**
+	 * Fields that for some reason cannot be declared together (different C++
+	 * type, implemented as methods, etc)
+	 */
+	protected static boolean isAnySpecial(
+			List<VariableDeclarationFragment> fragments) {
+		for (VariableDeclarationFragment f : fragments) {
+			if (f.getExtraDimensions() != 0) {
+				return true;
+			}
+
+			if (TransformUtil.constantValue(f) != null) {
+				return true;
+			}
+
+			if (TransformUtil.isStatic(f.resolveBinding())) {
+				return true;
+			}
+
+			if(TransformUtil.isConstVar(f.resolveBinding())) {
+				return true;
+			}
+
+			if (!f.resolveBinding().getType().isPrimitive()) {
+				// Avoid confusion as we print the * close to the type
+				return true;
+			}
+		}
+
 		return false;
 	}
 }

@@ -40,7 +40,7 @@ public class StubWriter {
 
 		deps = new DepInfo(ctx);
 		impl = new Impl(ctx, type, deps);
-		qcname = CName.qualified(type, true);
+		qcname = CName.qualified(type, false);
 		name = CName.of(type);
 	}
 
@@ -118,7 +118,7 @@ public class StubWriter {
 			print(qcname + "::" + name + "(");
 
 			String sep = TransformUtil.printNestedParams(out, type,
-					new ArrayList<IVariableBinding>());
+					new ArrayList<IVariableBinding>(), deps);
 
 			if (mb.getParameterTypes().length > 0) {
 				print(sep);
@@ -165,7 +165,7 @@ public class StubWriter {
 		}
 
 		print(qcname + "::" + name + "(");
-		print(TransformUtil.printNestedParams(out, type, null));
+		print(TransformUtil.printNestedParams(out, type, null, deps));
 		println("const ::" + CName.DEFAULT_INIT_TAG + "&)");
 
 		printFieldInit(": ");
@@ -257,10 +257,11 @@ public class StubWriter {
 
 		ITypeBinding vt = vb.getType();
 		String vname = CName.of(vb);
-		String qvtname = CName.qualified(vt, true);
+		String qvtname = TransformUtil
+				.varTypeCName(vb.getModifiers(), vt, deps);
 		if (asMethod) {
-			print(qvtname + " " + TransformUtil.ref(vt));
-			println("&" + qcname + "::" + vname + "()");
+			print(qvtname);
+			println("& " + qcname + "::" + vname + "()");
 			println("{");
 			println(i1 + CName.STATIC_INIT + "();");
 			println(i1 + "return " + vname + "_;");
@@ -270,7 +271,7 @@ public class StubWriter {
 		print(TransformUtil.fieldModifiers(type, vb.getModifiers(), false,
 				cv != null && !(cv instanceof String)));
 
-		print(qvtname + " " + TransformUtil.ref(vt) + qcname + "::" + vname);
+		print(qvtname + " " + qcname + "::" + vname);
 		println(asMethod ? "_;" : ";");
 	}
 

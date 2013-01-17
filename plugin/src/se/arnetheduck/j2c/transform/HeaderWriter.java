@@ -183,8 +183,8 @@ public class HeaderWriter extends TransformWriter {
 
 		List<VariableDeclarationFragment> fragments = node.fragments();
 
-		ITypeBinding tb = node.getType().resolveBinding();
-		if (isAnySpecial(fragments)) {
+		int modifiers = node.getModifiers();
+		if (TransformWriter.isAnySpecial(fragments)) {
 			for (VariableDeclarationFragment f : fragments) {
 				IVariableBinding vb = f.resolveBinding();
 				boolean asMethod = TransformUtil.asMethod(vb);
@@ -192,49 +192,30 @@ public class HeaderWriter extends TransformWriter {
 						: vb.getModifiers(), access);
 
 				Object cv = TransformUtil.constexprValue(f);
-				printi(TransformUtil.fieldModifiers(type, node.getModifiers(),
+				printi(TransformUtil.fieldModifiers(type, modifiers,
 						true, cv != null));
 
-				print(CName.relative(vb.getType(), type, true) + " ");
+				print(TransformUtil.varTypeCName(modifiers, vb.getType(), type,
+						deps) + " ");
 
 				f.accept(this);
 
 				println(asMethod ? "_;" : ";");
 			}
 		} else {
-			access = Header.printAccess(out, node.getModifiers(), access);
+			access = Header.printAccess(out, modifiers, access);
 
-			printi(TransformUtil.fieldModifiers(type, node.getModifiers(),
+			printi(TransformUtil.fieldModifiers(type, modifiers,
 					true, false));
 
-			print(CName.relative(tb, type, true) + " ");
+			ITypeBinding tb = node.getType().resolveBinding();
+			print(TransformUtil.varTypeCName(modifiers, tb, type, deps));
+
+			print(" ");
 
 			visitAllCSV(fragments, false);
 
 			println(";");
-		}
-
-		return false;
-	}
-
-	/**
-	 * Fields that for some reason cannot be declared together (different C++
-	 * type, implemented as methods, etc)
-	 */
-	private static boolean isAnySpecial(
-			List<VariableDeclarationFragment> fragments) {
-		for (VariableDeclarationFragment f : fragments) {
-			if (f.getExtraDimensions() != 0) {
-				return true;
-			}
-
-			if (TransformUtil.constantValue(f) != null) {
-				return true;
-			}
-
-			if (TransformUtil.isStatic(f.resolveBinding())) {
-				return true;
-			}
 		}
 
 		return false;
@@ -291,7 +272,7 @@ public class HeaderWriter extends TransformWriter {
 
 			ITypeBinding rt = TransformUtil.returnType(type, node);
 			softDep(rt);
-			print(CName.relative(rt, type, true) + " " + TransformUtil.ref(rt));
+			print(TransformUtil.relativeRef(rt, type, true) + " ");
 
 			node.getName().accept(this);
 
@@ -361,13 +342,14 @@ public class HeaderWriter extends TransformWriter {
 
 		if (node.isVarargs()) {
 			tb = tb.createArrayType(1);
-			print(CName.relative(tb, type, true));
+			print(TransformUtil.relativeRef(tb, type, true));
 			print("/*...*/");
 		} else {
-			print(CName.relative(tb, type, true));
+			print(TransformUtil.varTypeCName(node.getModifiers(), tb, type,
+					deps));
 		}
 
-		print(" " + TransformUtil.ref(tb));
+		print(" ");
 
 		node.getName().accept(this);
 
@@ -385,7 +367,6 @@ public class HeaderWriter extends TransformWriter {
 		ITypeBinding tb = vb.getType();
 		header.field(vb);
 		softDep(tb);
-		print(TransformUtil.ref(tb));
 
 		node.getName().accept(this);
 		Object v = TransformUtil.constantValue(node);

@@ -95,18 +95,20 @@ public class TypeBindingHeaderWriter {
 		softDep(vb.getType());
 
 		boolean asMethod = TransformUtil.asMethod(vb);
+		int modifiers = vb.getModifiers();
 		access = Header.printAccess(pw,
-				asMethod ? Modifier.PRIVATE : vb.getModifiers(), access);
+				asMethod ? Modifier.PRIVATE : modifiers, access);
 		pw.print(TransformUtil.indent(1));
 
 		Object cv = TransformUtil.constexprValue(vb);
-		pw.print(TransformUtil.fieldModifiers(type, vb.getModifiers(), true,
+		pw.print(TransformUtil.fieldModifiers(type, modifiers, true,
 				cv != null));
 
-		pw.print(CName.relative(vb.getType(), vb.getDeclaringClass(), true));
+		pw.print(TransformUtil.varTypeCName(modifiers, vb.getType(),
+				vb.getDeclaringClass(), deps));
 		pw.print(" ");
 
-		pw.print(TransformUtil.refName(vb));
+		pw.print(CName.of(vb));
 		pw.print(asMethod ? "_" : "");
 
 		if (cv != null ) {

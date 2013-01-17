@@ -70,6 +70,46 @@ public final class TransformUtil {
 				.of(pkg) + "." + CName.of(tb));
 	}
 
+	/** The type of a variable, taking volatile into account */
+	public static String varTypeCName(int modifiers, ITypeBinding tb,
+			ITypeBinding type, DepInfo deps) {
+		boolean vol = Modifier.isVolatile(modifiers);
+
+		String ret = "";
+		if (vol) {
+			ret += "std::atomic< ";
+			deps.setNeedsAtomic();
+		}
+
+		ret += relativeRef(tb, type, true);
+
+		if (vol) {
+			ret += " >";
+		}
+
+		return ret;
+	}
+
+	/** The type of a variable, taking volatile into account */
+	public static String varTypeCName(int modifiers, ITypeBinding tb,
+			DepInfo deps) {
+		boolean vol = Modifier.isVolatile(modifiers);
+
+		String ret = "";
+		if (vol) {
+			ret += "std::atomic< ";
+			deps.setNeedsAtomic();
+		}
+
+		ret += qualifiedRef(tb, false);
+
+		if (vol) {
+			ret += " >";
+		}
+
+		return ret;
+	}
+
 	public static IPackageBinding elementPackage(ITypeBinding tb) {
 		// When processing generics, only the erasure will have a package
 		return tb.isArray() ? tb.getElementType().getErasure().getPackage()
@@ -323,7 +363,7 @@ public final class TransformUtil {
 			/*
 			 * Can't do this because the method might need a bridge further down
 			 * the inheritance chain
-			 * 
+			 *
 			 * if (isFinal(mb)) { return " final"; }
 			 */
 			return " override";
@@ -456,8 +496,13 @@ public final class TransformUtil {
 		return tb.isPrimitive() ? "" : "*";
 	}
 
-	public static String refName(IVariableBinding vb) {
-		return ref(vb.getType()) + CName.of(vb);
+	public static String qualifiedRef(ITypeBinding tb, boolean global) {
+		return CName.qualified(tb, global) + ref(tb);
+	}
+
+	public static String relativeRef(ITypeBinding tb, ITypeBinding root,
+			boolean global) {
+		return CName.relative(tb, root, global) + ref(tb);
 	}
 
 	public static String constVar(IVariableBinding vb) {
@@ -626,9 +671,8 @@ public final class TransformUtil {
 			ITypeBinding pb = mb.getParameterTypes()[i];
 			deps.soft(pb);
 
-			out.print(CName.relative(pb, tb, true));
+			out.print(TransformUtil.relativeRef(pb, tb, true));
 			out.print(" ");
-			out.print(ref(pb));
 
 			out.print(paramName(mb, i));
 		}
@@ -770,8 +814,7 @@ public final class TransformUtil {
 					if (!pb.isEqualTo(pb2)) {
 						deps.hard(pb);
 						pw.print("dynamic_cast< ");
-						pw.print(CName.relative(pb, tb, false));
-						pw.print(ref(pb));
+						pw.print(TransformUtil.relativeRef(pb, tb, true));
 						pw.print(" >(");
 						pw.print(paramName(mb2, i));
 						pw.print(")");
@@ -869,16 +912,15 @@ public final class TransformUtil {
 
 			if (!qualified) {
 				pw.print(methodModifiers(mb));
-				pw.print(CName.relative(rt, tb, true));
+				pw.print(TransformUtil.relativeRef(rt, tb, true));
 			} else {
-				pw.print(CName.qualified(rt, true));
+				pw.print(TransformUtil.qualifiedRef(rt, false));
 			}
 
 			pw.print(" ");
-			pw.print(ref(rt));
 
 			if (qualified) {
-				pw.print(CName.qualified(tb, true));
+				pw.print(CName.qualified(tb, false));
 				pw.print("::");
 			}
 
@@ -889,7 +931,7 @@ public final class TransformUtil {
 	}
 
 	public static String printNestedParams(PrintWriter pw, ITypeBinding type,
-			Collection<IVariableBinding> closures) {
+			Collection<IVariableBinding> closures, DepInfo deps) {
 		String sep = "";
 		if (hasOuterThis(type)) {
 			pw.print(outerThis(type));
@@ -898,8 +940,10 @@ public final class TransformUtil {
 
 		if (closures != null) {
 			for (IVariableBinding closure : closures) {
-				pw.print(sep + CName.relative(closure.getType(), type, true)
-						+ " " + refName(closure));
+				pw.print(sep
+						+ varTypeCName(closure.getModifiers(),
+								closure.getType(), type, deps) + " "
+						+ CName.of(closure));
 				sep = ", ";
 			}
 		}

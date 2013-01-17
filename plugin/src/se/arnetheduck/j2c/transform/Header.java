@@ -80,8 +80,16 @@ public class Header {
 			println("#pragma once");
 			println();
 
+			boolean hasIncludes = false;
+
 			if (type.getQualifiedName().equals(String.class.getName())) {
 				println("#include <stddef.h>");
+				hasIncludes = true;
+			}
+
+			if (deps.needsAtomic()) {
+				println("#include <atomic>");
+				hasIncludes = true;
 			}
 
 			List<ITypeBinding> bases = TypeUtil.bases(type,
@@ -93,7 +101,6 @@ public class Header {
 				packages.add(CName.packageOf(tb));
 			}
 
-			boolean hasIncludes = false;
 
 			for (String p : packages) {
 				println(TransformUtil.include(TransformUtil.packageHeader(
@@ -331,7 +338,7 @@ public class Header {
 		access = printProtected(out, access);
 
 		print(i1 + CName.of(type) + "(");
-		print(TransformUtil.printNestedParams(out, type, closures));
+		print(TransformUtil.printNestedParams(out, type, closures, deps));
 		println("const ::" + CName.DEFAULT_INIT_TAG + "&);");
 		println();
 	}
@@ -433,7 +440,8 @@ public class Header {
 
 			print(i1 + name + "(");
 
-			String sep = TransformUtil.printNestedParams(out, type, closures);
+			String sep = TransformUtil.printNestedParams(out, type, closures,
+					deps);
 
 			if (mb.getParameterTypes().length > 0) {
 				print(sep);
@@ -454,7 +462,7 @@ public class Header {
 
 			print(i1 + name + "(");
 
-			TransformUtil.printNestedParams(out, type, closures);
+			TransformUtil.printNestedParams(out, type, closures, deps);
 
 			println(");");
 
@@ -742,11 +750,12 @@ public class Header {
 		if (closures != null) {
 			for (IVariableBinding closure : closures) {
 				deps.soft(closure.getType());
-				println(i1 + CName.relative(closure.getType(), type, true)
-						+ " " + TransformUtil.refName(closure) + ";");
+				println(i1
+						+ TransformUtil.varTypeCName(closure.getModifiers(),
+								closure.getType(), type, deps) + " "
+						+ CName.of(closure) + ";");
 			}
 		}
-
 	}
 
 	private void printFields() {
@@ -759,9 +768,8 @@ public class Header {
 		boolean asMethod = TransformUtil.asMethod(vb);
 		if (asMethod) {
 			access = printAccess(out, vb, access);
-			out.format("%sstatic %s %s&%s();\n", i1,
-					CName.relative(vb.getType(), type, true),
-					TransformUtil.ref(vb.getType()), CName.of(vb));
+			out.format("%sstatic %s& %s();\n", i1, TransformUtil.varTypeCName(
+					vb.getModifiers(), vb.getType(), type, deps), CName.of(vb));
 		}
 	}
 
