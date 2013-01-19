@@ -325,6 +325,7 @@ public class ImplWriter extends TransformWriter {
 		}
 
 		boolean hasEmpty = false;
+		boolean hasNonempty = false;
 		for (MethodDeclaration md : constructors) {
 			locals.add(new ArrayList<String>());
 			printi(qcname + "::" + name + "(");
@@ -334,8 +335,8 @@ public class ImplWriter extends TransformWriter {
 
 			if (!md.parameters().isEmpty()) {
 				print(sep);
-
 				visitAllCSV(md.parameters(), false);
+				hasNonempty = true;
 			} else {
 				hasEmpty = true;
 			}
@@ -361,9 +362,7 @@ public class ImplWriter extends TransformWriter {
 			locals.remove(locals.size() - 1);
 		}
 
-		if (!hasEmpty) {
-			printEmptyCtor();
-		}
+		printEmptyCtor(hasEmpty, hasNonempty);
 	}
 
 	private void printDefaultInitCall() {
@@ -466,8 +465,8 @@ public class ImplWriter extends TransformWriter {
 
 	}
 
-	private void printEmptyCtor() {
-		if (type.isAnonymous()) {
+	private void printEmptyCtor(boolean hasEmpty, boolean hasNonempty) {
+		if (type.isAnonymous() || hasEmpty) {
 			return;
 		}
 
@@ -484,18 +483,21 @@ public class ImplWriter extends TransformWriter {
 		println("}");
 		println();
 
-		println("void " + qcname + "::" + CName.CTOR + "()");
-		println("{");
-		if (type.getSuperclass() != null) {
-			println(i1 + "super::" + CName.CTOR + "();");
-		}
+		if (TransformUtil.needsEmptyCtor(hasEmpty, hasNonempty, init != null,
+				type)) {
+			println("void " + qcname + "::" + CName.CTOR + "()");
+			println("{");
+			if (type.getSuperclass() != null) {
+				println(i1 + "super::" + CName.CTOR + "();");
+			}
 
-		if (init != null) {
-			printlni(i1 + CName.INSTANCE_INIT + "();");
-		}
+			if (init != null) {
+				printlni(i1 + CName.INSTANCE_INIT + "();");
+			}
 
-		println("}");
-		println();
+			println("}");
+			println();
+		}
 	}
 
 	private void printFieldInit(String sep) {

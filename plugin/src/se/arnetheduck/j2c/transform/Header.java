@@ -297,7 +297,7 @@ public class Header {
 		StringWriter sw = new StringWriter();
 		out = new PrintWriter(sw);
 
-		printConstructors(closures);
+		printConstructors(hasInit, closures);
 		printDefaultInitCtor(closures);
 
 		printClassLiteral();
@@ -423,7 +423,8 @@ public class Header {
 				&& mb.getParameterTypes().length == 0;
 	}
 
-	private void printConstructors(Collection<IVariableBinding> closures) {
+	private void printConstructors(boolean hasInit,
+			Collection<IVariableBinding> closures) {
 		if (!TypeUtil.isClassLike(type)) {
 			return;
 		}
@@ -435,6 +436,7 @@ public class Header {
 		}
 
 		boolean hasEmpty = false;
+		boolean hasNonempty = false;
 		for (IMethodBinding mb : constructors) {
 			access = printAccess(out, mb, access);
 
@@ -446,6 +448,7 @@ public class Header {
 			if (mb.getParameterTypes().length > 0) {
 				print(sep);
 				TransformUtil.printParams(out, type, mb, false, deps);
+				hasNonempty = true;
 			} else {
 				hasEmpty = true;
 			}
@@ -466,7 +469,8 @@ public class Header {
 
 			println(");");
 
-			if (!type.isAnonymous()) {
+			if (TransformUtil.needsEmptyCtor(hasEmpty, hasNonempty, hasInit,
+					type)) {
 				access = printProtected(out, access);
 				println(i1 + "void " + CName.CTOR + "();");
 			}

@@ -1086,4 +1086,17 @@ public final class TransformUtil {
 				&& baseHasSame(mb, type,
 						ctx.resolve(Object.class));
 	}
+
+	public static boolean needsEmptyCtor(boolean hasEmpty, boolean hasNonempty,
+			boolean hasInit, ITypeBinding type) {
+		if (hasEmpty)
+			return false;
+		if (hasNonempty)
+			return true; // Will otherwise be shadowed
+		if (hasInit)
+			return true;
+		if (same(type, Object.class))
+			return true;
+		return false;
+	}
 }
