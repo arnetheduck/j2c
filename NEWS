@@ -1,5 +1,10 @@
+0.4.0
+-----
 * Source and header files are now both generated in the src directory
-* Avoid generating unnecessary clinit's
+* Avoid generating unnecessary clinit's/ctor:s
+* Report name of unimplemented stubs
+* Implement volatile using std::atomic
+* Other small fixes
 
 0.3.1
 -----
