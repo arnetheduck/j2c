@@ -211,10 +211,7 @@ public class ImplWriter extends TransformWriter {
 		printDefaultInitCtor();
 		printCtors();
 		printAnonCtors();
-
-		if (!(type.isInterface() || type.isAnnotation())) {
-			printInit();
-		}
+		printInit();
 
 		out.close();
 		out = null;
