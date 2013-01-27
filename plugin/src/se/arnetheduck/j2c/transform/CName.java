@@ -38,13 +38,6 @@ public class CName {
 	public static final String GET_CLASS = "getClass0";
 
 	/**
-	 * The default-init constructor takes care of the first phase of Java object
-	 * initialization, namely to initialize all fields to 0, and of calling
-	 * clinit to make sure the class is initialized.
-	 */
-	public static final String DEFAULT_INIT_TAG = "default_init_tag";
-
-	/**
 	 * Cast function that throws an appropriate exception if a cast fails
 	 */
 	public static final String JAVA_CAST = "java_cast";
@@ -65,7 +58,7 @@ public class CName {
 			"static_assert", "static_cast", "struct", "template",
 			"thread_local", "typedef", "typeid", "typename", "union",
 			"unsigned", "using", "virtual", "wchar_t", "xor", "xor_eq", CTOR,
-			INSTANCE_INIT, STATIC_INIT, GET_CLASS, DEFAULT_INIT_TAG, JAVA_CAST,
+			INSTANCE_INIT, STATIC_INIT, GET_CLASS, JAVA_CAST,
 			"int8_t", "int16_t", "int32_t", "int64_t", "char16_t", "NULL",
 			"npc");
 
@@ -296,10 +289,10 @@ public class CName {
 		String[] n = pb.getNameComponents();
 		StringBuilder ret = new StringBuilder();
 		String sep = "";
-		for (int i = 0; i < n.length; ++i) {
+		for (String element : n) {
 			ret.append(sep);
 			sep = ".";
-			ret.append(CName.keywords(n[i]));
+			ret.append(CName.keywords(element));
 		}
 
 		return ret.toString();

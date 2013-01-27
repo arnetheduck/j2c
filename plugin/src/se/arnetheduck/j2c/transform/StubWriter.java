@@ -69,7 +69,6 @@ public class StubWriter {
 		out.println("extern void unimplemented_(const char16_t* name);");
 
 		if (!natives) {
-			printDefaultInitCtor();
 			printCtors();
 		}
 
@@ -131,17 +130,12 @@ public class StubWriter {
 
 			println(")");
 
-			print(i1 + ": " + name + "(");
-			sep = "";
-			if (TransformUtil.hasOuterThis(type)) {
-				print(TransformUtil.outerThisName(type));
-				sep = ", ";
-			}
-
-			println(sep + "*static_cast< ::" + CName.DEFAULT_INIT_TAG
-					+ "* >(0))");
+			printFieldInit();
 
 			println("{");
+
+			printClInitCall();
+
 			print(i1 + CName.CTOR + "(");
 
 			sep = "";
@@ -162,22 +156,8 @@ public class StubWriter {
 		}
 	}
 
-	private void printDefaultInitCtor() {
-		if (!TypeUtil.isClassLike(type) || type.isAnonymous()) {
-			return;
-		}
-
-		print(qcname + "::" + name + "(");
-		print(TransformUtil.printNestedParams(out, type, null, deps));
-		println("const ::" + CName.DEFAULT_INIT_TAG + "&)");
-
-		printFieldInit(": ");
-
-		println("{");
+	private void printClInitCall() {
 		println(i1 + CName.STATIC_INIT + "();");
-		println("}");
-		println();
-
 	}
 
 	private void printEmptyCtor() {
@@ -191,7 +171,8 @@ public class StubWriter {
 		println();
 	}
 
-	private void printFieldInit(String sep) {
+	private void printFieldInit() {
+		String sep = ": ";
 		ITypeBinding sb = type.getSuperclass();
 		if (sb != null && TransformUtil.hasOuterThis(sb)) {
 			print(i1 + sep);
@@ -231,14 +212,16 @@ public class StubWriter {
 				continue;
 			}
 
-			if (TransformUtil.constantValue(vb) != null) {
+			if (TransformUtil.initialValue(vb) != null) {
 				continue;
 			}
 
+			// TODO Init string literals
 			print(i1 + sep + CName.of(vb));
 
 			println("()");
 			sep = ", ";
+
 		}
 	}
 
@@ -262,7 +245,7 @@ public class StubWriter {
 			print(qvtname);
 			println("& " + qcname + "::" + vname + "()");
 			println("{");
-			println(i1 + CName.STATIC_INIT + "();");
+			printClInitCall();
 			println(i1 + "return " + vname + "_;");
 			println("}");
 		}
@@ -304,7 +287,7 @@ public class StubWriter {
 		}
 
 		if (TransformUtil.isStatic(mb)) {
-			println(i1 + CName.STATIC_INIT + "();");
+			printClInitCall();
 		}
 
 		if (mb.isConstructor() && type.getSuperclass() != null) {

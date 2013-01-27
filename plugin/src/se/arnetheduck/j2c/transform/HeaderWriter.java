@@ -65,13 +65,11 @@ public class HeaderWriter extends TransformWriter {
 		writeType(node.bodyDeclarations(), hasClinit);
 	}
 
-	public void write(EnumDeclaration node, boolean hasClinit)
-			throws Exception {
+	public void write(EnumDeclaration node, boolean hasClinit) throws Exception {
 		writeType(node.enumConstants(), node.bodyDeclarations(), hasClinit);
 	}
 
-	public void write(TypeDeclaration node, boolean hasClinit)
-			throws Exception {
+	public void write(TypeDeclaration node, boolean hasClinit) throws Exception {
 		writeType(node.bodyDeclarations(), hasClinit);
 	}
 
@@ -192,8 +190,8 @@ public class HeaderWriter extends TransformWriter {
 						: vb.getModifiers(), access);
 
 				Object cv = TransformUtil.constexprValue(f);
-				printi(TransformUtil.fieldModifiers(type, modifiers,
-						true, cv != null));
+				printi(TransformUtil.fieldModifiers(type, modifiers, true,
+						cv != null));
 
 				print(TransformUtil.varTypeCName(modifiers, vb.getType(), type,
 						deps) + " ");
@@ -205,8 +203,7 @@ public class HeaderWriter extends TransformWriter {
 		} else {
 			access = Header.printAccess(out, modifiers, access);
 
-			printi(TransformUtil.fieldModifiers(type, modifiers,
-					true, false));
+			printi(TransformUtil.fieldModifiers(type, modifiers, true, false));
 
 			ITypeBinding tb = node.getType().resolveBinding();
 			print(TransformUtil.varTypeCName(modifiers, tb, type, deps));
@@ -369,17 +366,16 @@ public class HeaderWriter extends TransformWriter {
 		softDep(tb);
 
 		node.getName().accept(this);
-		Object v = TransformUtil.constantValue(node);
-		if (v != null) {
-			if (!(v instanceof String)) {
-				print(" = " + TransformUtil.checkConstant(v));
-			}
-		} else {
-			if (node.getInitializer() != null) {
-				if (!Modifier.isStatic(node.resolveBinding().getModifiers())) {
-					hasInit = true;
-				}
-			}
+
+		String iv = TransformUtil.initialValue(vb);
+		if (iv != null) {
+			print(" = " + iv);
+		}
+
+		Object v = TransformUtil.constexprValue(node);
+		if (v == null && !TransformUtil.isStatic(vb)
+				&& node.getInitializer() != null) {
+				hasInit = true;
 		}
 
 		return false;

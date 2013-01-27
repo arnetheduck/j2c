@@ -92,7 +92,8 @@ public class TypeBindingHeaderWriter {
 	}
 
 	private void printField(PrintWriter pw, IVariableBinding vb) {
-		softDep(vb.getType());
+		ITypeBinding tb = vb.getType();
+		softDep(tb);
 
 		boolean asMethod = TransformUtil.asMethod(vb);
 		int modifiers = vb.getModifiers();
@@ -104,16 +105,17 @@ public class TypeBindingHeaderWriter {
 		pw.print(TransformUtil.fieldModifiers(type, modifiers, true,
 				cv != null));
 
-		pw.print(TransformUtil.varTypeCName(modifiers, vb.getType(),
+		pw.print(TransformUtil.varTypeCName(modifiers, tb,
 				vb.getDeclaringClass(), deps));
 		pw.print(" ");
 
 		pw.print(CName.of(vb));
 		pw.print(asMethod ? "_" : "");
 
-		if (cv != null ) {
+		String iv = TransformUtil.initialValue(vb);
+		if (iv != null) {
 			pw.print(" = ");
-			pw.print(TransformUtil.checkConstant(cv));
+			pw.print(iv);
 		}
 
 		pw.println(";");
