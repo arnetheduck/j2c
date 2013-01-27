@@ -1,3 +1,6 @@
+* Multiselect translates all selected items (have to be from same project)
+* Initialize members in headers, remove default_init_tag constructor
+
 0.4.0
 -----
 * Source and header files are now both generated in the src directory

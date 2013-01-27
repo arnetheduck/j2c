@@ -1,9 +1,14 @@
 Introduction
 --
-J2C will convert Java code into hopefully compilable C++ code. It works on
+J2C will convert Java code into hopefully compilable C++(11) code. It works on
 source level, translating Java source code constructs into their rough
 equivalents in C++ . The output will be reasonably valid C++ code that looks a
-lot like its Java counterpart and hopefully works mostly the same.
+lot like its Java counterpart and hopefully works mostly the same. 
+
+The translation is based on The Java Language Specification, Third Edition, by 
+Gosling, James and Joy, Bill and Steele, Guy and Bracha, Gilad (that's 
+Java 1.6). The translated code should be valid as specified by the ISO/IEC 
+14882:2011 C++ standard (or C++11 as the rest of the world knows it).
 
 Download
 --
@@ -37,7 +42,6 @@ Running
 --
 J2C comes in the form of an Eclipse plugin. If you downloaded the jar, copy
 it to $ECLIPSE_HOME/dropins.
-
 
 You need at least Eclipse 3.7.2 and Java 1.6 to run this plugin!
 
