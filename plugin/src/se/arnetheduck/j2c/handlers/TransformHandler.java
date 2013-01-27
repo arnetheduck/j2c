@@ -1,6 +1,8 @@
 package se.arnetheduck.j2c.handlers;
 
+import java.util.ArrayList;
 import java.util.Collection;
+import java.util.Iterator;
 
 import org.eclipse.core.commands.AbstractHandler;
 import org.eclipse.core.commands.ExecutionEvent;
@@ -25,29 +27,34 @@ public class TransformHandler extends AbstractHandler {
 			IStructuredSelection selection = (IStructuredSelection) HandlerUtil
 					.getActiveMenuSelection(event);
 
-			Object element = selection.getFirstElement();
+			Collection<ICompilationUnit> units = new ArrayList<ICompilationUnit>();
 			IJavaProject project = null;
-			Collection<ICompilationUnit> units = null;
-			if (element instanceof IJavaProject) {
-				project = (IJavaProject) element;
-				units = HandlerHelper.units(project);
-			} else if (element instanceof IPackageFragmentRoot) {
-				IPackageFragmentRoot pfr = (IPackageFragmentRoot) element;
-				project = pfr.getJavaProject();
-				units = HandlerHelper.units(pfr);
-			} else if (element instanceof IPackageFragment) {
-				IPackageFragment pf = (IPackageFragment) element;
-				project = pf.getJavaProject();
-				units = HandlerHelper.units(pf);
-			} else if (element instanceof ICompilationUnit) {
-				ICompilationUnit cu = (ICompilationUnit) element;
-				project = cu.getJavaProject();
-				units = HandlerHelper.units(cu);
-			} else if (element instanceof IProject) {
-				IProject p = (IProject) element;
-				if (p.isOpen() && p.hasNature(JavaCore.NATURE_ID)) {
-					project = JavaCore.create(p);
-					units = HandlerHelper.units(project);
+
+			Iterator iter = selection.iterator();
+			while (iter.hasNext()) {
+				Object element = iter.next();
+
+				if (element instanceof IJavaProject) {
+					project = (IJavaProject) element;
+					units.addAll(HandlerHelper.units(project));
+				} else if (element instanceof IPackageFragmentRoot) {
+					IPackageFragmentRoot pfr = (IPackageFragmentRoot) element;
+					project = pfr.getJavaProject();
+					units.addAll(HandlerHelper.units(pfr));
+				} else if (element instanceof IPackageFragment) {
+					IPackageFragment pf = (IPackageFragment) element;
+					project = pf.getJavaProject();
+					units.addAll(HandlerHelper.units(pf));
+				} else if (element instanceof ICompilationUnit) {
+					ICompilationUnit cu = (ICompilationUnit) element;
+					project = cu.getJavaProject();
+					units.addAll(HandlerHelper.units(cu));
+				} else if (element instanceof IProject) {
+					IProject p = (IProject) element;
+					if (p.isOpen() && p.hasNature(JavaCore.NATURE_ID)) {
+						project = JavaCore.create(p);
+						units.addAll(HandlerHelper.units(project));
+					}
 				}
 			}
 
