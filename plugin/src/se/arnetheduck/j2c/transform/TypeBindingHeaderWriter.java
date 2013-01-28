@@ -114,8 +114,7 @@ public class TypeBindingHeaderWriter {
 
 		String iv = TransformUtil.initialValue(vb);
 		if (iv != null) {
-			pw.print(" = ");
-			pw.print(iv);
+			pw.print(" { " + iv + " }");
 		}
 
 		pw.println(";");

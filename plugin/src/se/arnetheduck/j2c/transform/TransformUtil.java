@@ -164,60 +164,18 @@ public final class TransformUtil {
 
 	/** JLS §4.12.5 Initial Values of Variables */
 	public static String initialValue(IVariableBinding vb) {
-		if (Modifier.isVolatile(vb.getModifiers())) {
-			// std::atomic has to be initialized by constructor
-			return null;
-		}
-
 		Object cv = constexprValue(vb);
 		if (cv != null) {
 			return checkConstant(cv);
 		}
 
 		if (isStatic(vb)) {
+			// Statics don't need explicit initialization
 			return null;
 		}
 
-		ITypeBinding tb = vb.getType();
-		if (!tb.isPrimitive()) {
-			return "nullptr";
-		}
-
-		if (tb.getName().equals("byte")) {
-			return "0";
-		}
-
-		if (tb.getName().equals("short")) {
-			return "0";
-		}
-
-		if (tb.getName().equals("int")) {
-			return "0";
-		}
-
-		if (tb.getName().equals("long")) {
-			return "0";
-		}
-
-		if (tb.getName().equals("float")) {
-			return "0.0f";
-		}
-
-		if (tb.getName().equals("double")) {
-			return "0.0";
-		}
-
-		if (tb.getName().equals("char")) {
-			return "0";
-		}
-
-		if (tb.getName().equals("boolean")) {
-			return "false";
-		}
-
-		throw new RuntimeException("type " + tb.getName()
-				+ " has no initial value");
-
+		// The rest match C++'s default initialization values
+		return "";
 	}
 
 	public static Object constantValue(VariableDeclarationFragment node) {
@@ -430,6 +388,7 @@ public final class TransformUtil {
 		return "";
 	}
 
+	/** Does the method need a final/override specifier? */
 	public static final boolean needsSpecifier(IMethodBinding mb) {
 		List<IMethodBinding> baseMethods = TypeUtil.methods(
 				TypeUtil.allBases(mb.getDeclaringClass(), null),

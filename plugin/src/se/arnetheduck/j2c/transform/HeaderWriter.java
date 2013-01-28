@@ -369,7 +369,7 @@ public class HeaderWriter extends TransformWriter {
 
 		String iv = TransformUtil.initialValue(vb);
 		if (iv != null) {
-			print(" = " + iv);
+			print(" { " + iv + " }");
 		}
 
 		Object v = TransformUtil.constexprValue(node);
