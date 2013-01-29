@@ -1116,4 +1116,8 @@ public final class TransformUtil {
 			return true;
 		return false;
 	}
+
+	public static String makeDefaultInitTag() {
+		return "*static_cast< ::" + CName.DEFAULT_INIT_TAG + "* >(0)";
+	}
 }

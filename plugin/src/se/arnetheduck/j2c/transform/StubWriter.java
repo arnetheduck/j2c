@@ -138,8 +138,7 @@ public class StubWriter {
 				sep = ", ";
 			}
 
-			println(sep + "*static_cast< ::" + CName.DEFAULT_INIT_TAG
-					+ "* >(0))");
+			println(sep + TransformUtil.makeDefaultInitTag() + ")");
 
 			println("{");
 			print(i1 + CName.CTOR + "(");
@@ -197,26 +196,30 @@ public class StubWriter {
 
 	private void printFieldInit(String sep) {
 		ITypeBinding sb = type.getSuperclass();
-		if (sb != null && TransformUtil.hasOuterThis(sb)) {
+		if (sb != null) {
 			print(i1 + sep);
 			print("super(");
-			String sepx = "";
-			for (ITypeBinding tb = type; tb.getDeclaringClass() != null; tb = tb
-					.getDeclaringClass().getErasure()) {
-				print(sepx);
-				sepx = "->";
-				hardDep(tb.getDeclaringClass());
-				print(TransformUtil.outerThisName(tb));
-				if (tb.getDeclaringClass()
-						.getErasure()
-						.isSubTypeCompatible(
-								sb.getDeclaringClass().getErasure())) {
-					break;
+			if (TransformUtil.hasOuterThis(sb)) {
+				String sepx = "";
+				for (ITypeBinding tb = type; tb.getDeclaringClass() != null; tb = tb
+						.getDeclaringClass().getErasure()) {
+					print(sepx);
+					sepx = "->";
+					hardDep(tb.getDeclaringClass());
+					print(TransformUtil.outerThisName(tb));
+					if (tb.getDeclaringClass()
+							.getErasure()
+							.isSubTypeCompatible(
+									sb.getDeclaringClass().getErasure())) {
+						break;
+					}
+
 				}
 
+				print(", ");
 			}
 
-			println(")");
+			println(TransformUtil.makeDefaultInitTag() + ")");
 			sep = ", ";
 		}
 
