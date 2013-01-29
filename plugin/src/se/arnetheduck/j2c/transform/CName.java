@@ -38,6 +38,15 @@ public class CName {
 	public static final String GET_CLASS = "getClass0";
 
 	/**
+	 * The default-init constructor takes care of the first phase of Java object
+	 * initialization, namely of calling clinit to make sure the class and all
+	 * its bases are initialized.
+	 * 
+	 * See §12.4.1 and §12.5
+	 */
+	public static final String DEFAULT_INIT_TAG = "default_init_tag";
+
+	/**
 	 * Cast function that throws an appropriate exception if a cast fails
 	 */
 	public static final String JAVA_CAST = "java_cast";
@@ -58,7 +67,7 @@ public class CName {
 			"static_assert", "static_cast", "struct", "template",
 			"thread_local", "typedef", "typeid", "typename", "union",
 			"unsigned", "using", "virtual", "wchar_t", "xor", "xor_eq", CTOR,
-			INSTANCE_INIT, STATIC_INIT, GET_CLASS, JAVA_CAST,
+			INSTANCE_INIT, STATIC_INIT, GET_CLASS, DEFAULT_INIT_TAG, JAVA_CAST,
 			"int8_t", "int16_t", "int32_t", "int64_t", "char16_t", "NULL",
 			"npc");
 

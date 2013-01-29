@@ -69,6 +69,7 @@ public class StubWriter {
 		out.println("extern void unimplemented_(const char16_t* name);");
 
 		if (!natives) {
+			printDefaultInitCtor();
 			printCtors();
 		}
 
@@ -130,12 +131,17 @@ public class StubWriter {
 
 			println(")");
 
-			printFieldInit();
+			print(i1 + ": " + name + "(");
+			sep = "";
+			if (TransformUtil.hasOuterThis(type)) {
+				print(TransformUtil.outerThisName(type));
+				sep = ", ";
+			}
+
+			println(sep + "*static_cast< ::" + CName.DEFAULT_INIT_TAG
+					+ "* >(0))");
 
 			println("{");
-
-			printClInitCall();
-
 			print(i1 + CName.CTOR + "(");
 
 			sep = "";
@@ -156,6 +162,24 @@ public class StubWriter {
 		}
 	}
 
+	private void printDefaultInitCtor() {
+		if (!TypeUtil.isClassLike(type) || type.isAnonymous()) {
+			return;
+		}
+
+		print(qcname + "::" + name + "(");
+		print(TransformUtil.printNestedParams(out, type, null, deps));
+		println("const ::" + CName.DEFAULT_INIT_TAG + "&)");
+
+		printFieldInit(": ");
+
+		println("{");
+		printClInitCall();
+		println("}");
+		println();
+
+	}
+
 	private void printClInitCall() {
 		println(i1 + CName.STATIC_INIT + "();");
 	}
@@ -171,8 +195,7 @@ public class StubWriter {
 		println();
 	}
 
-	private void printFieldInit() {
-		String sep = ": ";
+	private void printFieldInit(String sep) {
 		ITypeBinding sb = type.getSuperclass();
 		if (sb != null && TransformUtil.hasOuterThis(sb)) {
 			print(i1 + sep);

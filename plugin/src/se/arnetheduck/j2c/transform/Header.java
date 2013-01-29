@@ -130,6 +130,8 @@ public class Header {
 				println();
 			}
 
+			printDefaultInitTag();
+
 			print(type.isInterface() ? "struct " : "class ");
 
 			print(CName.qualified(type, false));
@@ -296,6 +298,7 @@ public class Header {
 		out = new PrintWriter(sw);
 
 		printConstructors(hasInit, closures);
+		printDefaultInitCtor(closures);
 
 		printClassLiteral();
 		printClinit(hasClinit);
@@ -316,6 +319,28 @@ public class Header {
 		out.close();
 		out = null;
 		return sw.toString();
+	}
+
+	private void printDefaultInitTag() {
+		if (!TypeUtil.isClassLike(type)) {
+			return;
+		}
+
+		println("struct " + CName.DEFAULT_INIT_TAG + ";");
+		println();
+	}
+
+	private void printDefaultInitCtor(Collection<IVariableBinding> closures) {
+		if (!TypeUtil.isClassLike(type) || type.isAnonymous()) {
+			return;
+		}
+
+		access = printProtected(out, access);
+
+		print(i1 + CName.of(type) + "(");
+		print(TransformUtil.printNestedParams(out, type, closures, deps));
+		println("const ::" + CName.DEFAULT_INIT_TAG + "&);");
+		println();
 	}
 
 	private void printStringOperator() {

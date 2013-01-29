@@ -208,6 +208,7 @@ public class ImplWriter extends TransformWriter {
 		printFinally();
 		printSynchronized();
 
+		printDefaultInitCtor();
 		printCtors();
 		printAnonCtors();
 		printInit();
@@ -340,13 +341,11 @@ public class ImplWriter extends TransformWriter {
 			println(") " + TransformUtil.throwsDecl(md.thrownExceptions()));
 
 			indent++;
-			printFieldInit();
+			printDefaultInitCall();
 			indent--;
 
 			println("{");
 			indent++;
-
-			printClInitCall();
 
 			printi(CName.CTOR + "(");
 
@@ -365,6 +364,25 @@ public class ImplWriter extends TransformWriter {
 
 	private void printClInitCall() {
 		printlni(CName.STATIC_INIT + "();");
+	}
+
+	private void printDefaultInitCall() {
+		String sep;
+		printi(": " + name + "(");
+		sep = "";
+		if (TransformUtil.hasOuterThis(type)) {
+			print(TransformUtil.outerThisName(type));
+			sep = ", ";
+		}
+
+		if (closures != null) {
+			for (IVariableBinding closure : closures) {
+				print(sep + CName.of(closure));
+				sep = ", ";
+			}
+		}
+
+		println(sep + "*static_cast< ::" + CName.DEFAULT_INIT_TAG + "* >(0))");
 	}
 
 	private void printAnonCtors() {
@@ -411,7 +429,7 @@ public class ImplWriter extends TransformWriter {
 
 	private void printAnonCtorBody() {
 		indent++;
-		printFieldInit();
+		printFieldInit(": ");
 		indent--;
 
 		println("{");
@@ -428,6 +446,28 @@ public class ImplWriter extends TransformWriter {
 		println();
 	}
 
+	private void printDefaultInitCtor() {
+		if (!TypeUtil.isClassLike(type) || type.isAnonymous()) {
+			return;
+		}
+
+		print(qcname + "::" + name + "(");
+		print(TransformUtil.printNestedParams(out, type, closures, deps));
+		println("const ::" + CName.DEFAULT_INIT_TAG + "&)");
+
+		indent++;
+		printFieldInit(": ");
+		indent--;
+
+		println("{");
+		indent++;
+		printClInitCall();
+		indent--;
+		println("}");
+		println();
+
+	}
+
 	private void printEmptyCtor(boolean hasEmpty, boolean hasNonempty) {
 		if (type.isAnonymous() || hasEmpty) {
 			return;
@@ -437,11 +477,10 @@ public class ImplWriter extends TransformWriter {
 		TransformUtil.printNestedParams(out, type, closures, deps);
 		println(")");
 		indent++;
-		printFieldInit();
+		printDefaultInitCall();
 		indent--;
 		println("{");
 		indent++;
-		printClInitCall();
 		printlni(CName.CTOR + "();");
 		indent--;
 		println("}");
@@ -464,8 +503,7 @@ public class ImplWriter extends TransformWriter {
 		}
 	}
 
-	private void printFieldInit() {
-		String sep = ": ";
+	private void printFieldInit(String sep) {
 		ITypeBinding sb = type.getSuperclass();
 		if (sb != null && TransformUtil.hasOuterThis(sb)) {
 			print(i1 + sep);
