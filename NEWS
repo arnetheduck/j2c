@@ -1,5 +1,6 @@
 * Multiselect translates all selected items (have to be from same project)
-* Initialize members in headers, remove default_init_tag constructor
+* Initialize members in headers, don't generate default constructors that shouldn't be there
+* Implement values and valueOf for enums, and fix their name / ordinal
 
 0.4.0
 -----
