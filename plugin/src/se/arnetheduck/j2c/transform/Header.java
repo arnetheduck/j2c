@@ -373,49 +373,32 @@ public class Header {
 		List<IMethodBinding> m = methods.get("values");
 		if (m != null) {
 			for (IMethodBinding mb : m) {
-				hasValues |= isValues(mb);
+				hasValues |= TransformUtil.isValues(mb, type);
 			}
 		}
 
 		m = methods.get("valueOf");
 		if (m != null) {
 			for (IMethodBinding mb : m) {
-				hasValueOf |= isValueOf(mb);
+				hasValueOf |= TransformUtil.isValueOf(mb, type);
 			}
 		}
 
 		for (IMethodBinding mb : type.getDeclaredMethods()) {
-			if (!hasValues && isValues(mb)) {
+			if (!hasValues && TransformUtil.isValues(mb, type)) {
 				access = printAccess(out, Modifier.PUBLIC, access);
 				print(i1);
 				TransformUtil.printSignature(ctx, out, type, mb, deps, false);
-				println(" { return nullptr; /* TODO */ }");
+				println(";");
 				hasValues = true;
-			} else if (!hasValueOf && isValueOf(mb)) {
+			} else if (!hasValueOf && TransformUtil.isValueOf(mb, type)) {
 				access = printAccess(out, Modifier.PUBLIC, access);
 				print(i1);
 				TransformUtil.printSignature(ctx, out, type, mb, deps, false);
-				println(" { return nullptr; /* TODO */ }");
+				println(";");
 				hasValueOf = true;
 			}
 		}
-
-		return;
-	}
-
-	private boolean isValueOf(IMethodBinding mb) {
-		return type.getErasure().isEqualTo(mb.getReturnType().getErasure())
-				&& mb.getName().equals("valueOf")
-				&& mb.getParameterTypes().length == 1
-				&& TransformUtil.same(mb.getParameterTypes()[0], String.class);
-	}
-
-	private boolean isValues(IMethodBinding mb) {
-		return mb.getReturnType().isArray()
-				&& type.getErasure().isEqualTo(
-						mb.getReturnType().getComponentType().getErasure())
-				&& mb.getName().equals("values")
-				&& mb.getParameterTypes().length == 0;
 	}
 
 	private void printConstructors(boolean hasInit,

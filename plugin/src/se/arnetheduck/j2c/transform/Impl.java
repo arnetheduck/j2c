@@ -84,6 +84,7 @@ public class Impl {
 		printSuperCalls();
 		printUnhide();
 
+		printEnumMethods();
 		printDtor();
 		printGetClass();
 
@@ -222,6 +223,69 @@ public class Impl {
 		println("{");
 		println("}");
 		println();
+	}
+
+	/** Generate implicit enum methods */
+	private void printEnumMethods() {
+		if (!type.isEnum()) {
+			return;
+		}
+
+		boolean hasValues = false;
+		boolean hasValueOf = false;
+		List<IMethodBinding> m = methods.get("values");
+		if (m != null) {
+			for (IMethodBinding mb : m) {
+				hasValues |= TransformUtil.isValues(mb, type);
+			}
+		}
+
+		m = methods.get("valueOf");
+		if (m != null) {
+			for (IMethodBinding mb : m) {
+				hasValueOf |= TransformUtil.isValueOf(mb, type);
+			}
+		}
+
+		for (IMethodBinding mb : type.getDeclaredMethods()) {
+			if (!hasValues && TransformUtil.isValues(mb, type)) {
+				deps.hard(type.createArrayType(1));
+				TransformUtil.printSignature(ctx, out, type, mb, deps, true);
+				println();
+				println("{");
+				println(i1 + "return new " + qcname + "Array({");
+				for (IVariableBinding vb : type.getDeclaredFields()) {
+					if (!vb.isEnumConstant())
+						continue;
+					println(i1 + i1 + CName.of(vb) + ",");
+				}
+				println(i1 + "});");
+				println("}");
+				println();
+				hasValues = true;
+			} else if (!hasValueOf && TransformUtil.isValueOf(mb, type)) {
+				ITypeBinding iae = ctx.resolve(IllegalArgumentException.class);
+				deps.hard(iae);
+				TransformUtil.printSignature(ctx, out, type, mb, deps, true);
+				println();
+				println("{");
+				String arg = TransformUtil.paramName(mb, 0);
+				for (IVariableBinding vb : type.getDeclaredFields()) {
+					if (!vb.isEnumConstant())
+						continue;
+
+					println(i1 + "if(" + CName.of(vb) + "->toString()->equals("
+							+ arg + "))");
+					println(i1 + i1 + "return " + CName.of(vb) + ";");
+				}
+
+				println(i1 + "throw new " + CName.relative(iae, type, true)
+						+ "(" + arg + ");");
+				println("}");
+				println();
+				hasValueOf = true;
+			}
+		}
 	}
 
 	private void printSuperCalls() {

@@ -1160,4 +1160,19 @@ public final class TransformUtil {
 	public static String makeDefaultInitTag() {
 		return "*static_cast< ::" + CName.DEFAULT_INIT_TAG + "* >(0)";
 	}
+
+	public static boolean isValueOf(IMethodBinding mb, ITypeBinding type) {
+		return type.getErasure().isEqualTo(mb.getReturnType().getErasure())
+				&& mb.getName().equals("valueOf")
+				&& mb.getParameterTypes().length == 1
+				&& same(mb.getParameterTypes()[0], String.class);
+	}
+
+	public static boolean isValues(IMethodBinding mb, ITypeBinding type) {
+		return mb.getReturnType().isArray()
+				&& type.getErasure().isEqualTo(
+						mb.getReturnType().getComponentType().getErasure())
+				&& mb.getName().equals("values")
+				&& mb.getParameterTypes().length == 0;
+	}
 }
