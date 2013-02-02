@@ -248,8 +248,8 @@ public class Impl {
 
 	private void printSuperCall(IMethodBinding decl, IMethodBinding impl) {
 		IMethodBinding md = decl.getMethodDeclaration();
-		TransformUtil.printSignature(out, type, md, impl.getReturnType(), deps,
-				true);
+		TransformUtil.printSignature(ctx, out, type, md, impl.getReturnType(),
+				deps, true);
 		println();
 		println("{");
 

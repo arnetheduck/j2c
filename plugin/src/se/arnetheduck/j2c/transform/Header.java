@@ -101,7 +101,6 @@ public class Header {
 				packages.add(CName.packageOf(tb));
 			}
 
-
 			for (String p : packages) {
 				println(TransformUtil.include(TransformUtil.packageHeader(
 						ctx.getName(), p)));
@@ -180,11 +179,6 @@ public class Header {
 
 	public static String printAccess(PrintWriter pw, IMethodBinding mb,
 			String access) {
-		if (mb.isConstructor() && mb.getParameterTypes().length == 0
-				&& Modifier.isPrivate(mb.getModifiers())) {
-			return printProtected(pw, access);
-		}
-
 		if (mb.getDeclaringClass() != null
 				&& (mb.getDeclaringClass().isInterface() || mb
 						.getDeclaringClass().isAnnotation())) {
@@ -338,8 +332,9 @@ public class Header {
 		access = printProtected(out, access);
 
 		print(i1 + CName.of(type) + "(");
-		print(TransformUtil.printNestedParams(out, type, closures, deps));
-		println("const ::" + CName.DEFAULT_INIT_TAG + "&);");
+		TransformUtil
+				.printExtraCtorParams(ctx, out, type, closures, deps, true);
+		println(");");
 		println();
 	}
 
@@ -393,13 +388,13 @@ public class Header {
 			if (!hasValues && isValues(mb)) {
 				access = printAccess(out, Modifier.PUBLIC, access);
 				print(i1);
-				TransformUtil.printSignature(out, type, mb, deps, false);
+				TransformUtil.printSignature(ctx, out, type, mb, deps, false);
 				println(" { return nullptr; /* TODO */ }");
 				hasValues = true;
 			} else if (!hasValueOf && isValueOf(mb)) {
 				access = printAccess(out, Modifier.PUBLIC, access);
 				print(i1);
-				TransformUtil.printSignature(out, type, mb, deps, false);
+				TransformUtil.printSignature(ctx, out, type, mb, deps, false);
 				println(" { return nullptr; /* TODO */ }");
 				hasValueOf = true;
 			}
@@ -442,8 +437,8 @@ public class Header {
 
 			print(i1 + name + "(");
 
-			String sep = TransformUtil.printNestedParams(out, type, closures,
-					deps);
+			String sep = TransformUtil.printExtraCtorParams(ctx, out, type,
+					closures, deps, false);
 
 			if (mb.getParameterTypes().length > 0) {
 				print(sep);
@@ -456,23 +451,25 @@ public class Header {
 			println(");");
 		}
 
-		if (!hasEmpty && (!type.isAnonymous() || constructors.isEmpty())) {
-			if (constructors.size() > 0) {
-				access = printProtected(out, access);
-			} else {
-				access = printAccess(out, Modifier.PUBLIC, access);
-			}
-
+		if (constructors.isEmpty()) {
+			// No explicit constructor in the Java code, so per §8.8.9 a default
+			// one should be generated, just like C++. We need it to make it
+			// explicit to call the default_init_tag constructor to ensure that
+			// clinit takes place
+			access = printAccess(out, Modifier.PUBLIC, access);
 			print(i1 + name + "(");
 
-			TransformUtil.printNestedParams(out, type, closures, deps);
+			TransformUtil.printExtraCtorParams(ctx, out, type, closures, deps,
+					false);
 
 			println(");");
 
 			if (TransformUtil.needsEmptyCtor(hasEmpty, hasNonempty, hasInit,
 					type)) {
 				access = printProtected(out, access);
-				println(i1 + "void " + CName.CTOR + "();");
+				print(i1 + "void " + CName.CTOR + "(");
+				TransformUtil.printEnumCtorParams(ctx, out, type, "", deps);
+				println(");");
 			}
 		}
 	}
@@ -513,8 +510,8 @@ public class Header {
 		if (TypeUtil.isClassLike(type)) {
 			for (List<IMethodBinding> e : methods.values()) {
 				for (IMethodBinding mb : e) {
-					access = TransformUtil.declareBridge(out, type, mb, deps,
-							access);
+					access = TransformUtil.declareBridge(ctx, out, type, mb,
+							deps, access);
 				}
 			}
 		}
@@ -527,8 +524,8 @@ public class Header {
 		for (IMethodBinding mb : superMethods) {
 			access = printAccess(out, mb.getModifiers(), access);
 			print(i1);
-			TransformUtil.printSignature(out, type, mb.getMethodDeclaration(),
-					deps, false);
+			TransformUtil.printSignature(ctx, out, type,
+					mb.getMethodDeclaration(), deps, false);
 			if (Modifier.isAbstract(mb.getModifiers())) {
 				print(" = 0");
 			}
@@ -605,7 +602,7 @@ public class Header {
 				access = printAccess(out, Modifier.PUBLIC, access);
 
 				print(i1);
-				TransformUtil.printSignature(out, type,
+				TransformUtil.printSignature(ctx, out, type,
 						dupe.getMethodDeclaration(), dupe.getReturnType(),
 						deps, false);
 				println(" = 0;");
@@ -640,8 +637,8 @@ public class Header {
 
 		print(i1);
 		ITypeBinding irt = impl.getReturnType();
-		TransformUtil.printSignature(out, type, decl.getMethodDeclaration(),
-				irt, deps, false);
+		TransformUtil.printSignature(ctx, out, type,
+				decl.getMethodDeclaration(), irt, deps, false);
 
 		if (Modifier.isAbstract(impl.getModifiers())) {
 			print(" = 0");

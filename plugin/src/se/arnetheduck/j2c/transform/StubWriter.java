@@ -118,8 +118,8 @@ public class StubWriter {
 		for (IMethodBinding mb : constructors) {
 			print(qcname + "::" + name + "(");
 
-			String sep = TransformUtil.printNestedParams(out, type,
-					new ArrayList<IVariableBinding>(), deps);
+			String sep = TransformUtil.printExtraCtorParams(ctx, out, type,
+					null, deps, false);
 
 			if (mb.getParameterTypes().length > 0) {
 				print(sep);
@@ -143,7 +143,7 @@ public class StubWriter {
 			println("{");
 			print(i1 + CName.CTOR + "(");
 
-			sep = "";
+			sep = TransformUtil.printEnumCtorCallParams(out, type, "");
 			for (int i = 0; i < mb.getParameterTypes().length; ++i) {
 				print(sep + TransformUtil.paramName(mb, i));
 				sep = ", ";
@@ -167,8 +167,8 @@ public class StubWriter {
 		}
 
 		print(qcname + "::" + name + "(");
-		print(TransformUtil.printNestedParams(out, type, null, deps));
-		println("const ::" + CName.DEFAULT_INIT_TAG + "&)");
+		TransformUtil.printExtraCtorParams(ctx, out, type, null, deps, true);
+		println(")");
 
 		printFieldInit(": ");
 
@@ -184,10 +184,14 @@ public class StubWriter {
 	}
 
 	private void printEmptyCtor() {
-		println("void " + qcname + "::" + CName.CTOR + "()");
+		print("void " + qcname + "::" + CName.CTOR + "(");
+		TransformUtil.printEnumCtorParams(ctx, out, type, "", deps);
+		println(")");
 		println("{");
 		if (type.getSuperclass() != null) {
-			println(i1 + "super::" + CName.CTOR + "();");
+			println(i1 + "super::" + CName.CTOR + "(");
+			TransformUtil.printEnumCtorCallParams(out, type, "");
+			print(");");
 		}
 
 		println("}");
@@ -291,7 +295,7 @@ public class StubWriter {
 
 		if (Modifier.isPrivate(mb.getModifiers()) && !privates) {
 			print("/* private: ");
-			TransformUtil.printSignature(out, type, mb, deps, true);
+			TransformUtil.printSignature(ctx, out, type, mb, deps, true);
 			println(" */");
 			return;
 		}
@@ -302,7 +306,7 @@ public class StubWriter {
 			constructors.add(mb);
 		}
 
-		TransformUtil.printSignature(out, type, mb, deps, true);
+		TransformUtil.printSignature(ctx, out, type, mb, deps, true);
 
 		println();
 		print("{");
@@ -317,7 +321,10 @@ public class StubWriter {
 		}
 
 		if (mb.isConstructor() && type.getSuperclass() != null) {
-			println(i1 + "super::" + CName.CTOR + "();");
+			// Remind the user that this has to be done one way or another
+			// TODO Maybe try to find a suitable candidate to pass as many
+			// parameters as possible
+			println(i1 + "/* super::" + CName.CTOR + "(); */");
 		}
 
 		boolean hasBody = false;
@@ -330,7 +337,7 @@ public class StubWriter {
 
 		if (!hasBody) {
 			print(i1 + "unimplemented_(u\"");
-			TransformUtil.printSignature(out, type, mb, deps, true);
+			TransformUtil.printSignature(ctx, out, type, mb, deps, true);
 			println("\");");
 			if (!TransformUtil.isVoid(mb.getReturnType())) {
 				println(i1 + "return 0;");
@@ -340,7 +347,7 @@ public class StubWriter {
 		println("}");
 		println();
 
-		TransformUtil.defineBridge(out, type, mb, deps);
+		TransformUtil.defineBridge(ctx, out, type, mb, deps);
 	}
 
 	private void hardDep(ITypeBinding dep) {

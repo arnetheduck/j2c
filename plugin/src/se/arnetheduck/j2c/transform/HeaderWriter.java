@@ -130,8 +130,8 @@ public class HeaderWriter extends TransformWriter {
 	@Override
 	public boolean visit(AnnotationTypeMemberDeclaration node) {
 		printi();
-		TransformUtil.printSignature(out, type, node.resolveBinding(), deps,
-				false);
+		TransformUtil.printSignature(ctx, out, type, node.resolveBinding(),
+				deps, false);
 		// TODO defaults
 		println(" = 0;");
 		return false;
@@ -250,7 +250,7 @@ public class HeaderWriter extends TransformWriter {
 		if (TransformUtil.baseDeclared(ctx, type, mb)) {
 			// Defining once more will lead to virtual inheritance issues
 			printi("/*");
-			TransformUtil.printSignature(out, type, mb, deps, false);
+			TransformUtil.printSignature(ctx, out, type, mb, deps, false);
 			println("; (already declared) */");
 			return false;
 		}
@@ -260,7 +260,12 @@ public class HeaderWriter extends TransformWriter {
 		if (node.isConstructor()) {
 			access = Header.printProtected(out, access);
 
-			printi("void " + CName.CTOR);
+			printi("void " + CName.CTOR + "(");
+			String sep = TransformUtil.printEnumCtorParams(ctx, out, type, "",
+					deps);
+			if (!node.parameters().isEmpty()) {
+				print(sep);
+			}
 		} else {
 			access = Header.printAccess(out, mb, access);
 
@@ -272,6 +277,7 @@ public class HeaderWriter extends TransformWriter {
 			print(TransformUtil.relativeRef(rt, type, true) + " ");
 
 			node.getName().accept(this);
+			print("(");
 
 			for (ITypeBinding rd : TransformUtil.returnDeps(type, mb,
 					ctx.resolve(Object.class))) {
@@ -279,7 +285,9 @@ public class HeaderWriter extends TransformWriter {
 			}
 		}
 
-		visitAllCSV(node.parameters(), true);
+		visitAllCSV(node.parameters(), false);
+
+		print(")");
 
 		print(TransformUtil.throwsDecl(node.thrownExceptions()));
 
@@ -375,7 +383,7 @@ public class HeaderWriter extends TransformWriter {
 		Object v = TransformUtil.constexprValue(node);
 		if (v == null && !TransformUtil.isStatic(vb)
 				&& node.getInitializer() != null) {
-				hasInit = true;
+			hasInit = true;
 		}
 
 		return false;

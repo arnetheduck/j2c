@@ -124,7 +124,7 @@ public class TypeBindingHeaderWriter {
 		if (TransformUtil.baseDeclared(ctx, type, mb)) {
 			// Defining once more will lead to virtual inheritance issues
 			pw.print(i1 + "/*");
-			TransformUtil.printSignature(pw, type, mb, deps, false);
+			TransformUtil.printSignature(ctx, pw, type, mb, deps, false);
 			pw.println("; (already declared) */");
 			return;
 		}
@@ -132,7 +132,7 @@ public class TypeBindingHeaderWriter {
 		if (Modifier.isPrivate(mb.getModifiers())) {
 			// Skip implementation details
 			pw.print(i1 + "/*");
-			TransformUtil.printSignature(pw, type, mb, deps, false);
+			TransformUtil.printSignature(ctx, pw, type, mb, deps, false);
 			pw.println("; (private) */");
 			return;
 		}
@@ -147,7 +147,7 @@ public class TypeBindingHeaderWriter {
 		header.method(mb);
 
 		pw.print(i1);
-		TransformUtil.printSignature(pw, type, mb, deps, false);
+		TransformUtil.printSignature(ctx, pw, type, mb, deps, false);
 
 		pw.print(TransformUtil.methodSpecifiers(mb));
 

@@ -327,8 +327,8 @@ public class ImplWriter extends TransformWriter {
 			locals.add(new ArrayList<String>());
 			printi(qcname + "::" + name + "(");
 
-			String sep = TransformUtil.printNestedParams(out, type, closures,
-					deps);
+			String sep = TransformUtil.printExtraCtorParams(ctx, out, type,
+					closures, deps, false);
 
 			if (!md.parameters().isEmpty()) {
 				print(sep);
@@ -348,8 +348,11 @@ public class ImplWriter extends TransformWriter {
 			indent++;
 
 			printi(CName.CTOR + "(");
-
-			printNames(md.parameters());
+			sep = TransformUtil.printEnumCtorCallParams(out, type, "");
+			if (!md.parameters().isEmpty()) {
+				print(sep);
+				printNames(md.parameters());
+			}
 
 			println(");");
 
@@ -399,8 +402,8 @@ public class ImplWriter extends TransformWriter {
 
 			printi(qcname + "::" + name + "(");
 
-			String sep = TransformUtil.printNestedParams(out, type, closures,
-					deps);
+			String sep = TransformUtil.printExtraCtorParams(ctx, out, type,
+					closures, deps, false);
 
 			if (mb.getParameterTypes().length > 0) {
 				out.print(sep);
@@ -408,7 +411,7 @@ public class ImplWriter extends TransformWriter {
 			}
 
 			println(")");
-			printAnonCtorBody();
+			printAnonCtorBody(mb);
 
 			locals.remove(locals.size() - 1);
 		}
@@ -418,18 +421,19 @@ public class ImplWriter extends TransformWriter {
 
 			printi(qcname + "::" + name + "(");
 
-			TransformUtil.printNestedParams(out, type, closures, deps);
+			TransformUtil.printExtraCtorParams(ctx, out, type, closures, deps,
+					false);
 
 			println(")");
-			printAnonCtorBody();
+			printAnonCtorBody(null);
 
 			locals.remove(locals.size() - 1);
 		}
 	}
 
-	private void printAnonCtorBody() {
+	private void printAnonCtorBody(IMethodBinding mb) {
 		indent++;
-		printFieldInit(": ");
+		printFieldInit();
 		indent--;
 
 		println("{");
@@ -440,6 +444,17 @@ public class ImplWriter extends TransformWriter {
 		if (init != null) {
 			printlni(CName.INSTANCE_INIT + "();");
 		}
+
+		printi(CName.CTOR + "(");
+		String sep = TransformUtil.printEnumCtorCallParams(out, type, "");
+
+		if (mb != null && mb.getParameterTypes().length > 0) {
+			for (int i = 0; i < mb.getParameterTypes().length; ++i) {
+				print(sep + TransformUtil.paramName(mb, i));
+				sep = ", ";
+			}
+		}
+		println(");");
 
 		indent--;
 		println("}");
@@ -452,11 +467,12 @@ public class ImplWriter extends TransformWriter {
 		}
 
 		print(qcname + "::" + name + "(");
-		print(TransformUtil.printNestedParams(out, type, closures, deps));
-		println("const ::" + CName.DEFAULT_INIT_TAG + "&)");
+		TransformUtil
+				.printExtraCtorParams(ctx, out, type, closures, deps, true);
+		println(")");
 
 		indent++;
-		printFieldInit(": ");
+		printFieldInit();
 		indent--;
 
 		println("{");
@@ -469,29 +485,37 @@ public class ImplWriter extends TransformWriter {
 	}
 
 	private void printEmptyCtor(boolean hasEmpty, boolean hasNonempty) {
-		if (type.isAnonymous() || hasEmpty) {
+		if (!constructors.isEmpty()) {
 			return;
 		}
 
 		print(qcname + "::" + name + "(");
-		TransformUtil.printNestedParams(out, type, closures, deps);
+		TransformUtil.printExtraCtorParams(ctx, out, type, closures, deps,
+				false);
 		println(")");
 		indent++;
 		printDefaultInitCall();
 		indent--;
 		println("{");
 		indent++;
-		printlni(CName.CTOR + "();");
+
+		printi();
+		TransformUtil.printEmptyCtorCall(out, type);
+		println(";");
 		indent--;
 		println("}");
 		println();
 
 		if (TransformUtil.needsEmptyCtor(hasEmpty, hasNonempty, init != null,
 				type)) {
-			println("void " + qcname + "::" + CName.CTOR + "()");
+			print("void " + qcname + "::" + CName.CTOR + "(");
+			TransformUtil.printEnumCtorParams(ctx, out, type, "", deps);
+			println(")");
 			println("{");
 			if (type.getSuperclass() != null) {
-				println(i1 + "super::" + CName.CTOR + "();");
+				print(i1 + "super::");
+				TransformUtil.printEmptyCtorCall(out, type);
+				println(";");
 			}
 
 			if (init != null) {
@@ -503,9 +527,10 @@ public class ImplWriter extends TransformWriter {
 		}
 	}
 
-	private void printFieldInit(String sep) {
+	private void printFieldInit() {
 		ITypeBinding sb = type.getSuperclass();
 
+		String sep = ": ";
 		if (sb != null) {
 			print(i1 + sep);
 			print("super(");
@@ -1110,7 +1135,7 @@ public class ImplWriter extends TransformWriter {
 		hardDep(tb);
 
 		consArgs(node.getExpression(), node.arguments(),
-				node.resolveConstructorBinding(), tb);
+				node.resolveConstructorBinding(), tb, null, 0);
 
 		print(")");
 
@@ -1118,7 +1143,7 @@ public class ImplWriter extends TransformWriter {
 	}
 
 	private void consArgs(Expression expression, List<Expression> arguments,
-			IMethodBinding mb, ITypeBinding tb) {
+			IMethodBinding mb, ITypeBinding tb, String name, int ordinal) {
 		print("(");
 
 		String sep = "";
@@ -1151,9 +1176,15 @@ public class ImplWriter extends TransformWriter {
 			}
 		}
 
+		if (tb.isEnum()) {
+			print("u\"" + name + "\"_j, " + ordinal);
+			sep = ", ";
+			deps.hard(ctx.resolve(String.class));
+		}
+
 		if (!arguments.isEmpty()) {
 			print(sep);
-			callArgs(mb, arguments, false);
+			callArgs(mb, arguments, false, false);
 		}
 
 		print(")");
@@ -1176,7 +1207,8 @@ public class ImplWriter extends TransformWriter {
 
 		print(CName.CTOR);
 
-		callArgs(node.resolveConstructorBinding(), node.arguments(), true);
+		callArgs(node.resolveConstructorBinding(), node.arguments(), true,
+				true);
 
 		println(";");
 		return false;
@@ -1314,7 +1346,11 @@ public class ImplWriter extends TransformWriter {
 		hardDep(tb);
 		print(" = new " + CName.qualified(tb, true));
 
-		consArgs(null, node.arguments(), node.resolveConstructorBinding(), tb);
+		EnumDeclaration enumDeclaration = (EnumDeclaration) node.getParent();
+
+		consArgs(null, node.arguments(), node.resolveConstructorBinding(), tb,
+				CName.of(node.resolveVariable()),
+				enumDeclaration.enumConstants().indexOf(node));
 
 		println(";");
 
@@ -1788,7 +1824,13 @@ public class ImplWriter extends TransformWriter {
 		if (node.isConstructor()) {
 			constructors.add(node);
 
-			printi("void " + qcname + "::" + CName.CTOR);
+			printi("void " + qcname + "::" + CName.CTOR + "(");
+
+			String sep = TransformUtil.printEnumCtorParams(ctx, out, type, "",
+					deps);
+			if (!node.parameters().isEmpty()) {
+				print(sep);
+			}
 		} else {
 			ITypeBinding rt = TransformUtil.returnType(type, node);
 			softDep(rt);
@@ -1797,9 +1839,13 @@ public class ImplWriter extends TransformWriter {
 			print(qcname + "::");
 
 			node.getName().accept(this);
+
+			print("(");
 		}
 
-		visitAllCSV(node.parameters(), true);
+		visitAllCSV(node.parameters(), false);
+
+		print(")");
 
 		println(TransformUtil.throwsDecl(node.thrownExceptions()));
 
@@ -1815,7 +1861,9 @@ public class ImplWriter extends TransformWriter {
 			if (!(first instanceof ConstructorInvocation)) {
 				if (!(first instanceof SuperConstructorInvocation)) {
 					if (type.getSuperclass() != null) {
-						printlni("super::" + CName.CTOR + "();");
+						printi("super::");
+						TransformUtil.printEmptyCtorCall(out, type);
+						println(";");
 					}
 				} else {
 					first.accept(this);
@@ -1839,7 +1887,7 @@ public class ImplWriter extends TransformWriter {
 		println();
 		println();
 
-		TransformUtil.defineBridge(out, type, mb, deps);
+		TransformUtil.defineBridge(ctx, out, type, mb, deps);
 
 		return false;
 	}
@@ -1957,7 +2005,7 @@ public class ImplWriter extends TransformWriter {
 
 		node.getName().accept(this);
 
-		callArgs(b, node.arguments(), true);
+		callArgs(b, node.arguments(), true, false);
 
 		if (erased) {
 			print(")");
@@ -1978,11 +2026,16 @@ public class ImplWriter extends TransformWriter {
 	}
 
 	private void callArgs(IMethodBinding b, List<Expression> arguments,
-			boolean parens) {
+			boolean parens, boolean isCtorCall) {
 		if (parens) {
 			print("(");
 		}
+
 		String s = "";
+		if (isCtorCall) {
+			s = TransformUtil.printEnumCtorCallParams(out, type, "");
+		}
+
 		boolean isVarArg = false;
 		b = b.getMethodDeclaration();
 
@@ -2245,7 +2298,7 @@ public class ImplWriter extends TransformWriter {
 
 		print("super::" + CName.CTOR);
 
-		callArgs(node.resolveConstructorBinding(), node.arguments(), true);
+		callArgs(node.resolveConstructorBinding(), node.arguments(), true, true);
 
 		println(";");
 		return false;
@@ -2274,7 +2327,7 @@ public class ImplWriter extends TransformWriter {
 
 		node.getName().accept(this);
 
-		callArgs(b, node.arguments(), true);
+		callArgs(b, node.arguments(), true, false);
 
 		if (erased) {
 			print(")");

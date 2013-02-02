@@ -775,8 +775,8 @@ public final class TransformUtil {
 		return ret;
 	}
 
-	public static String declareBridge(PrintWriter pw, ITypeBinding tb,
-			IMethodBinding mb, DepInfo deps, String access) {
+	public static String declareBridge(Transformer ctx, PrintWriter pw,
+			ITypeBinding tb, IMethodBinding mb, DepInfo deps, String access) {
 		List<IMethodBinding> methods = TypeUtil.methods(
 				TypeUtil.allBases(tb, null), TypeUtil.overrides(mb));
 		for (IMethodBinding mb2 : methods) {
@@ -786,7 +786,7 @@ public final class TransformUtil {
 				access = Header.printAccess(pw, mb2, access);
 				pw.print(indent(1));
 
-				printSignature(pw, tb, mb2, deps, false);
+				printSignature(ctx, pw, tb, mb2, deps, false);
 
 				pw.print(" override");
 
@@ -798,15 +798,15 @@ public final class TransformUtil {
 		return access;
 	}
 
-	public static void defineBridge(PrintWriter pw, ITypeBinding tb,
-			IMethodBinding mb, DepInfo deps) {
+	public static void defineBridge(Transformer ctx, PrintWriter pw,
+			ITypeBinding tb, IMethodBinding mb, DepInfo deps) {
 		List<IMethodBinding> methods = TypeUtil.methods(
 				TypeUtil.allBases(tb, null), TypeUtil.overrides(mb));
 		for (IMethodBinding mb2 : methods) {
 			if (needsBridge(mb, mb2)) {
 				mb2 = mb2.getMethodDeclaration();
 
-				printSignature(pw, tb, mb2, deps, true);
+				printSignature(ctx, pw, tb, mb2, deps, true);
 
 				pw.println();
 				pw.println("{ ");
@@ -909,27 +909,32 @@ public final class TransformUtil {
 		return !sameReturn(mb, mb2) && sameParameters(mb, mb2, true);
 	}
 
-	public static void printSignature(PrintWriter pw, ITypeBinding tb,
-			IMethodBinding mb, DepInfo deps, boolean qualified) {
-		printSignature(pw, tb, mb, mb.getReturnType(), deps, qualified);
+	public static void printSignature(Transformer ctx, PrintWriter pw,
+			ITypeBinding tb, IMethodBinding mb, DepInfo deps, boolean qualified) {
+		printSignature(ctx, pw, tb, mb, mb.getReturnType(), deps, qualified);
 	}
 
-	public static void printSignature(PrintWriter pw, ITypeBinding tb,
-			IMethodBinding mb, ITypeBinding rt, DepInfo deps, boolean qualified) {
+	public static void printSignature(Transformer ctx, PrintWriter pw,
+			ITypeBinding type, IMethodBinding mb, ITypeBinding rt,
+			DepInfo deps, boolean qualified) {
 		if (mb.isConstructor()) {
 			pw.print("void ");
 			if (qualified) {
-				pw.print(CName.qualified(tb, true));
+				pw.print(CName.qualified(type, true));
 				pw.print("::");
 			}
 
-			pw.print(CName.CTOR);
+			pw.print(CName.CTOR + "(");
+			String sep = printEnumCtorParams(ctx, pw, type, "", deps);
+			if (mb.getParameterTypes().length > 0) {
+				pw.print(sep);
+			}
 		} else {
 			deps.soft(rt);
 
 			if (!qualified) {
 				pw.print(methodModifiers(mb));
-				pw.print(TransformUtil.relativeRef(rt, tb, true));
+				pw.print(TransformUtil.relativeRef(rt, type, true));
 			} else {
 				pw.print(TransformUtil.qualifiedRef(rt, false));
 			}
@@ -937,18 +942,20 @@ public final class TransformUtil {
 			pw.print(" ");
 
 			if (qualified) {
-				pw.print(CName.qualified(tb, false));
+				pw.print(CName.qualified(type, false));
 				pw.print("::");
 			}
 
-			pw.print(CName.of(mb));
+			pw.print(CName.of(mb) + "(");
 		}
 
-		printParams(pw, tb, mb, true, deps);
+		printParams(pw, type, mb, false, deps);
+		pw.print(")");
 	}
 
-	public static String printNestedParams(PrintWriter pw, ITypeBinding type,
-			Collection<IVariableBinding> closures, DepInfo deps) {
+	public static String printExtraCtorParams(Transformer ctx, PrintWriter pw,
+			ITypeBinding type, Collection<IVariableBinding> closures,
+			DepInfo deps, boolean isDefaultInitCtor) {
 		String sep = "";
 		if (hasOuterThis(type)) {
 			pw.print(outerThis(type));
@@ -965,8 +972,43 @@ public final class TransformUtil {
 			}
 		}
 
+		if (isDefaultInitCtor) {
+			pw.print(sep + "const ::" + CName.DEFAULT_INIT_TAG + "&");
+			sep = ", ";
+		} else {
+			sep = printEnumCtorParams(ctx, pw, type, sep, deps);
+		}
+
 		return sep;
 	}
+
+	public static String printEnumCtorParams(Transformer ctx, PrintWriter pw,
+			ITypeBinding type, String sep, DepInfo deps) {
+		if (type.isEnum()) {
+			pw.print(sep + "::java::lang::String* name, int ordinal");
+			deps.soft(ctx.resolve(String.class));
+			return ", ";
+		}
+
+		return sep;
+	}
+
+	public static void printEmptyCtorCall(PrintWriter pw, ITypeBinding type) {
+		pw.print(CName.CTOR + "(");
+		TransformUtil.printEnumCtorCallParams(pw, type, "");
+		pw.print(")");
+	}
+
+	public static String printEnumCtorCallParams(PrintWriter pw,
+			ITypeBinding type, String sep) {
+		if (type.isEnum()) {
+			pw.print(sep + "name, ordinal");
+			return ", ";
+		}
+
+		return sep;
+	}
+
 
 	public static boolean isVoid(ITypeBinding tb) {
 		return tb == null || tb.getName().equals("void");
@@ -1108,8 +1150,6 @@ public final class TransformUtil {
 			boolean hasInit, ITypeBinding type) {
 		if (hasEmpty)
 			return false;
-		if (hasNonempty)
-			return true; // Will otherwise be shadowed
 		if (hasInit)
 			return true;
 		if (same(type, Object.class))
