@@ -54,7 +54,7 @@ private:
      
     void set0(size_type i, ::java::lang::Object *x) override
     {
-        if(!dynamic_cast<value_type>(x)) {
+        if(x && !dynamic_cast<value_type>(x)) {
             throw new ::java::lang::ArrayStoreException();
         }
         
