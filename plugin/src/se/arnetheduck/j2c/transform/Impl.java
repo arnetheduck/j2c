@@ -43,7 +43,8 @@ public class Impl {
 
 	public void write(IPath root, String body, String suffix,
 			Collection<IVariableBinding> closures, String cinit,
-			StringWriter clinit, boolean fmod, boolean isNative)
+ String clinit,
+			boolean fmod, boolean isNative)
 			throws IOException {
 
 		this.isNative = isNative;
@@ -75,7 +76,7 @@ public class Impl {
 	}
 
 	private String getExtras(Collection<IVariableBinding> closures,
-			String cinit, StringWriter clinit) {
+			String cinit, String clinit) {
 		StringWriter sw = new StringWriter();
 		out = new PrintWriter(sw);
 
@@ -131,7 +132,7 @@ public class Impl {
 		}
 	}
 
-	private void printClinit(String cinit, StringWriter clinit) {
+	private void printClinit(String cinit, String clinit) {
 		if (isNative || !TypeUtil.isClassLike(type)) {
 			return;
 		}
@@ -164,7 +165,7 @@ public class Impl {
 			println("struct clinit_ {");
 			println(i1 + "clinit_() {");
 			println(i1 + i1 + "in_cl_init = true;");
-			print(clinit.toString());
+			print(clinit);
 			println(i1 + "}");
 			println("};");
 			println();

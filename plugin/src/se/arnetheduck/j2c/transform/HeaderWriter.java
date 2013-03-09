@@ -5,7 +5,6 @@ import java.io.StringWriter;
 import java.lang.reflect.Modifier;
 import java.util.ArrayList;
 import java.util.Arrays;
-import java.util.Collection;
 import java.util.Iterator;
 import java.util.List;
 
@@ -37,54 +36,47 @@ import org.eclipse.jdt.core.dom.VariableDeclarationFragment;
 
 public class HeaderWriter extends TransformWriter {
 	private final IPath root;
-	private final Collection<IVariableBinding> closures;
 
 	private final Header header;
 	private String access;
 
-	private boolean hasInit;
-
-	public HeaderWriter(IPath root, Transformer ctx, ITypeBinding type,
-			UnitInfo unitInfo, Collection<IVariableBinding> closures) {
-		super(ctx, type, unitInfo);
+	public HeaderWriter(IPath root, Transformer ctx, UnitInfo unitInfo,
+			TypeInfo typeInfo) {
+		super(ctx, unitInfo, typeInfo);
 		this.root = root;
-		this.closures = closures;
 
 		access = Header.initialAccess(type);
 
 		header = new Header(ctx, type, deps);
 	}
 
-	public void write(AnnotationTypeDeclaration node, boolean hasClinit)
-			throws Exception {
-		writeType(node.bodyDeclarations(), hasClinit);
+	public void write(AnnotationTypeDeclaration node) throws Exception {
+		writeType(node.bodyDeclarations());
 	}
 
-	public void write(AnonymousClassDeclaration node, boolean hasClinit)
-			throws Exception {
-		writeType(node.bodyDeclarations(), hasClinit);
+	public void write(AnonymousClassDeclaration node) throws Exception {
+		writeType(node.bodyDeclarations());
 	}
 
-	public void write(EnumDeclaration node, boolean hasClinit) throws Exception {
-		writeType(node.enumConstants(), node.bodyDeclarations(), hasClinit);
+	public void write(EnumDeclaration node) throws Exception {
+		writeType(node.enumConstants(), node.bodyDeclarations());
 	}
 
-	public void write(TypeDeclaration node, boolean hasClinit) throws Exception {
-		writeType(node.bodyDeclarations(), hasClinit);
+	public void write(TypeDeclaration node) throws Exception {
+		writeType(node.bodyDeclarations());
 	}
 
-	private void writeType(List<BodyDeclaration> declarations, boolean hasClinit) {
-		writeType(new ArrayList<EnumConstantDeclaration>(), declarations,
-				hasClinit);
+	private void writeType(List<BodyDeclaration> declarations) {
+		writeType(new ArrayList<EnumConstantDeclaration>(), declarations);
 	}
 
 	private void writeType(List<EnumConstantDeclaration> enums,
-			List<BodyDeclaration> declarations, boolean hasClinit) {
+			List<BodyDeclaration> declarations) {
 		try {
 			String body = getBody(enums, declarations);
 
-			header.write(root, body, closures, hasClinit, hasInit,
-					unitInfo.types, access);
+			header.write(root, body, typeInfo.closures(), typeInfo.hasClinit(),
+					typeInfo.hasInit(), unitInfo.types, access);
 		} catch (Exception e) {
 			throw new Error(e);
 		}
@@ -220,10 +212,6 @@ public class HeaderWriter extends TransformWriter {
 
 	@Override
 	public boolean visit(Initializer node) {
-		if (!Modifier.isStatic(node.getModifiers())) {
-			hasInit = true;
-		}
-
 		return false;
 	}
 
@@ -378,12 +366,6 @@ public class HeaderWriter extends TransformWriter {
 		String iv = TransformUtil.initialValue(vb);
 		if (iv != null) {
 			print(" { " + iv + " }");
-		}
-
-		Object v = TransformUtil.constexprValue(node);
-		if (v == null && !TransformUtil.isStatic(vb)
-				&& node.getInitializer() != null) {
-			hasInit = true;
 		}
 
 		return false;

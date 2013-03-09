@@ -21,10 +21,12 @@ import org.eclipse.jdt.core.IJavaElement;
 import org.eclipse.jdt.core.IMethod;
 import org.eclipse.jdt.core.JavaModelException;
 import org.eclipse.jdt.core.dom.Expression;
+import org.eclipse.jdt.core.dom.FieldDeclaration;
 import org.eclipse.jdt.core.dom.IMethodBinding;
 import org.eclipse.jdt.core.dom.IPackageBinding;
 import org.eclipse.jdt.core.dom.ITypeBinding;
 import org.eclipse.jdt.core.dom.IVariableBinding;
+import org.eclipse.jdt.core.dom.Initializer;
 import org.eclipse.jdt.core.dom.MethodDeclaration;
 import org.eclipse.jdt.core.dom.Name;
 import org.eclipse.jdt.core.dom.PrimitiveType;
@@ -565,6 +567,18 @@ public final class TransformUtil {
 
 	public static boolean isStatic(IMethodBinding mb) {
 		return Modifier.isStatic(mb.getModifiers());
+	}
+
+	public static boolean isStatic(FieldDeclaration declaration) {
+		return Modifier.isStatic(declaration.getModifiers());
+	}
+
+	public static boolean isStatic(VariableDeclarationFragment fragment) {
+		return isStatic(fragment.resolveBinding());
+	}
+
+	public static boolean isStatic(Initializer initializer) {
+		return Modifier.isStatic(initializer.getModifiers());
 	}
 
 	public static boolean isPrivate(IMethodBinding mb) {
@@ -1174,5 +1188,22 @@ public final class TransformUtil {
 						mb.getReturnType().getComponentType().getErasure())
 				&& mb.getName().equals("values")
 				&& mb.getParameterTypes().length == 0;
+	}
+
+	/** Check if this fragment should be initialied in init/clinit */
+	public static boolean initInInit(VariableDeclarationFragment fragment) {
+		if (!(fragment.getParent() instanceof FieldDeclaration)) {
+			return false;
+		}
+
+		if (fragment.getInitializer() == null) {
+			return false;
+		}
+
+		if (TransformUtil.constexprValue(fragment) != null) {
+			return false;
+		}
+
+		return true;
 	}
 }

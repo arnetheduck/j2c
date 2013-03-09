@@ -7,15 +7,11 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
 import java.util.Iterator;
-import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
-import java.util.Set;
 import java.util.TreeMap;
 
 import org.eclipse.core.runtime.IPath;
-import org.eclipse.jdt.core.IJavaElement;
-import org.eclipse.jdt.core.IType;
 import org.eclipse.jdt.core.dom.ASTNode;
 import org.eclipse.jdt.core.dom.AnnotationTypeDeclaration;
 import org.eclipse.jdt.core.dom.AnnotationTypeMemberDeclaration;
@@ -92,21 +88,10 @@ public class ImplWriter extends TransformWriter {
 	private static final String i1 = TransformUtil.indent(1);
 
 	private final IPath root;
-	private final Set<IVariableBinding> closures;
-
-	/** Constant expression fields that cannot be represented as such in C++ */
-	private ArrayList<VariableDeclarationFragment> consts = new ArrayList<VariableDeclarationFragment>();
-
-	/** Static initializers */
-	private StringWriter clinit;
-
-	/** Instance initializers */
-	private StringWriter init;
 
 	private List<MethodDeclaration> constructors = new ArrayList<MethodDeclaration>();
-	private List<VariableDeclarationFragment> fields = new ArrayList<VariableDeclarationFragment>();
 
-	public final Map<ITypeBinding, ImplWriter> localTypes = new TreeMap<ITypeBinding, ImplWriter>(
+	private final Map<ITypeBinding, TypeInfo> localTypes = new TreeMap<ITypeBinding, TypeInfo>(
 			new BindingComparator());
 
 	private boolean needsFinally;
@@ -120,13 +105,10 @@ public class ImplWriter extends TransformWriter {
 
 	private final List<List<String>> locals = new ArrayList<List<String>>();
 
-	public ImplWriter(IPath root, Transformer ctx, ITypeBinding type,
-			UnitInfo unitInfo) {
-		super(ctx, type, unitInfo);
+	public ImplWriter(IPath root, Transformer ctx,
+			UnitInfo unitInfo, TypeInfo typeInfo) {
+		super(ctx, unitInfo, typeInfo);
 		this.root = root;
-
-		closures = type.isLocal() ? new LinkedHashSet<IVariableBinding>()
-				: null;
 
 		impl = new Impl(ctx, type, deps);
 		qcname = CName.qualified(type, false);
@@ -137,36 +119,32 @@ public class ImplWriter extends TransformWriter {
 		String body = getBody(node.bodyDeclarations());
 		writeType(body);
 
-		HeaderWriter hw = new HeaderWriter(root, ctx, type, unitInfo, closures);
-		hw.write(node, hasClinit());
+		HeaderWriter hw = new HeaderWriter(root, ctx, unitInfo, typeInfo);
+		hw.write(node);
 	}
 
 	public void write(AnonymousClassDeclaration node) throws Exception {
 		String body = getBody(node.bodyDeclarations());
 		writeType(body);
 
-		HeaderWriter hw = new HeaderWriter(root, ctx, type, unitInfo, closures);
-		hw.write(node, hasClinit());
+		HeaderWriter hw = new HeaderWriter(root, ctx, unitInfo, typeInfo);
+		hw.write(node);
 	}
 
 	public void write(EnumDeclaration node) throws Exception {
 		String body = getBody(node.enumConstants(), node.bodyDeclarations());
 		writeType(body);
 
-		HeaderWriter hw = new HeaderWriter(root, ctx, type, unitInfo, closures);
-		hw.write(node, hasClinit());
+		HeaderWriter hw = new HeaderWriter(root, ctx, unitInfo, typeInfo);
+		hw.write(node);
 	}
 
 	public void write(TypeDeclaration node) throws Exception {
 		String body = getBody(node.bodyDeclarations());
 		writeType(body);
 
-		HeaderWriter hw = new HeaderWriter(root, ctx, type, unitInfo, closures);
-		hw.write(node, hasClinit());
-	}
-
-	private boolean hasClinit() {
-		return clinit != null || getCinit() != null;
+		HeaderWriter hw = new HeaderWriter(root, ctx, unitInfo, typeInfo);
+		hw.write(node);
 	}
 
 	private String getBody(List<BodyDeclaration> declarations) {
@@ -187,10 +165,12 @@ public class ImplWriter extends TransformWriter {
 	}
 
 	private void writeType(String body) throws Exception {
-		String extras = getExtras();
 		String cinit = getCinit();
+		String clinit = getClinit();
+		String extras = getExtras();
 
-		impl.write(root, extras + body, "", closures, cinit, clinit, fmod,
+		impl.write(root, extras + body, "", typeInfo.closures(), cinit, clinit,
+				fmod,
 				false);
 
 		ctx.addImpl(type);
@@ -205,9 +185,6 @@ public class ImplWriter extends TransformWriter {
 		StringWriter sw = new StringWriter();
 		out = new PrintWriter(sw);
 
-		printFinally();
-		printSynchronized();
-
 		printDefaultInitCtor();
 		printCtors();
 		printAnonCtors();
@@ -216,10 +193,11 @@ public class ImplWriter extends TransformWriter {
 		out.close();
 		out = null;
 
-		return sw.toString();
+		return getFinally() + getSynchronized() + sw.toString();
 	}
 
 	private String getCinit() {
+		List<VariableDeclarationFragment> consts = typeInfo.getInit(true).strings;
 		if (consts.isEmpty()) {
 			return null;
 		}
@@ -246,74 +224,83 @@ public class ImplWriter extends TransformWriter {
 		return sw.toString();
 	}
 
-	private void printFinally() throws IOException {
-		if (!needsFinally) {
-			return;
+	private String getClinit() {
+		InitInfo info = typeInfo.getInit(true);
+		if (info.nodes.isEmpty()) {
+			return null;
 		}
 
-		print(FileUtil.readResource(FINALLY_HPP));
+		int oi = indent;
+		indent = 1;
+		PrintWriter old = out;
+		StringWriter sw = new StringWriter();
+		out = new PrintWriter(sw);
+
+		printInitInfo(info);
+
+		indent = oi;
+
+		out.close();
+		out = old;
+
+		return sw.toString();
 	}
 
-	private void printSynchronized() throws IOException {
-		if (!needsSynchronized) {
-			return;
+
+	private String getFinally() throws IOException {
+		if (!needsFinally) {
+			return "";
 		}
 
-		print(FileUtil.readResource(SYNCHRONIZED_HPP));
+		return FileUtil.readResource(FINALLY_HPP);
+	}
+
+	private String getSynchronized() throws IOException {
+		if (!needsSynchronized) {
+			return "";
+		}
+
+		return FileUtil.readResource(SYNCHRONIZED_HPP);
 	}
 
 	private void printInit() {
-		if (init == null) {
+		InitInfo info = typeInfo.getInit(false);
+
+		if (info.nodes.isEmpty()) {
 			return;
 		}
 
 		println("void " + qcname + "::" + CName.INSTANCE_INIT + "()");
 		println("{");
-		print(init.toString());
+		printInitInfo(info);
 		println("}");
 		println();
 	}
 
-	private void addInit(boolean isStatic, Block body,
-			VariableDeclarationFragment field) {
-		PrintWriter old = out;
-		if (isStatic) {
-			if (clinit == null) {
-				clinit = new StringWriter();
-			}
-
-			out = new PrintWriter(clinit);
-		} else {
-			if (init == null) {
-				init = new StringWriter();
-			}
-
-			out = new PrintWriter(init);
-		}
-
+	private void printInitInfo(InitInfo info) {
 		indent++;
-		if (body != null) {
-			printi();
-			body.accept(this);
-			println();
-		} else {
-			assert (field != null);
-			printi();
-			field.getName().accept(this);
-			print(" = ");
-			field.getInitializer().accept(this);
-			println(";");
 
-			ITypeBinding ib = field.getInitializer().resolveTypeBinding();
-			if (!ib.isEqualTo(field.resolveBinding().getType())) {
-				hardDep(ib);
+		for (ASTNode node : info.nodes) {
+			if (node instanceof VariableDeclarationFragment) {
+				VariableDeclarationFragment fragment = (VariableDeclarationFragment) node;
+				printi();
+				fragment.getName().accept(this);
+				print(" = ");
+				fragment.getInitializer().accept(this);
+				println(";");
+				ITypeBinding ib = fragment.getInitializer().resolveTypeBinding();
+				if (!ib.isEqualTo(fragment.resolveBinding().getType())) {
+					hardDep(ib);
+				}
+			} else if (node instanceof Initializer) {
+				printi();
+				Initializer initializer = (Initializer) node;
+				initializer.getBody().accept(this);
+				println();
 			}
 		}
 
 		indent--;
-
-		out.close();
-		out = old;
 	}
 
 	private void printCtors() {
@@ -328,7 +315,7 @@ public class ImplWriter extends TransformWriter {
 			printi(qcname + "::" + name + "(");
 
 			String sep = TransformUtil.printExtraCtorParams(ctx, out, type,
-					closures, deps, false);
+					typeInfo.closures(), deps, false);
 
 			if (!md.parameters().isEmpty()) {
 				print(sep);
@@ -378,8 +365,8 @@ public class ImplWriter extends TransformWriter {
 			sep = ", ";
 		}
 
-		if (closures != null) {
-			for (IVariableBinding closure : closures) {
+		if (typeInfo.closures() != null) {
+			for (IVariableBinding closure : typeInfo.closures()) {
 				print(sep + CName.of(closure));
 				sep = ", ";
 			}
@@ -403,7 +390,7 @@ public class ImplWriter extends TransformWriter {
 			printi(qcname + "::" + name + "(");
 
 			String sep = TransformUtil.printExtraCtorParams(ctx, out, type,
-					closures, deps, false);
+					typeInfo.closures(), deps, false);
 
 			if (mb.getParameterTypes().length > 0) {
 				out.print(sep);
@@ -421,8 +408,8 @@ public class ImplWriter extends TransformWriter {
 
 			printi(qcname + "::" + name + "(");
 
-			TransformUtil.printExtraCtorParams(ctx, out, type, closures, deps,
-					false);
+			TransformUtil.printExtraCtorParams(ctx, out, type,
+					typeInfo.closures(), deps, false);
 
 			println(")");
 			printAnonCtorBody(null);
@@ -441,7 +428,7 @@ public class ImplWriter extends TransformWriter {
 
 		printClInitCall();
 
-		if (init != null) {
+		if (typeInfo.hasInit()) {
 			printlni(CName.INSTANCE_INIT + "();");
 		}
 
@@ -467,8 +454,8 @@ public class ImplWriter extends TransformWriter {
 		}
 
 		print(qcname + "::" + name + "(");
-		TransformUtil
-				.printExtraCtorParams(ctx, out, type, closures, deps, true);
+		TransformUtil.printExtraCtorParams(ctx, out, type, typeInfo.closures(),
+				deps, true);
 		println(")");
 
 		indent++;
@@ -490,8 +477,8 @@ public class ImplWriter extends TransformWriter {
 		}
 
 		print(qcname + "::" + name + "(");
-		TransformUtil.printExtraCtorParams(ctx, out, type, closures, deps,
-				false);
+		TransformUtil.printExtraCtorParams(ctx, out, type, typeInfo.closures(),
+				deps, false);
 		println(")");
 		indent++;
 		printDefaultInitCall();
@@ -506,8 +493,8 @@ public class ImplWriter extends TransformWriter {
 		println("}");
 		println();
 
-		if (TransformUtil.needsEmptyCtor(hasEmpty, hasNonempty, init != null,
-				type)) {
+		if (TransformUtil.needsEmptyCtor(hasEmpty, hasNonempty,
+				typeInfo.hasInit(), type)) {
 			print("void " + qcname + "::" + CName.CTOR + "(");
 			TransformUtil.printEnumCtorParams(ctx, out, type, "", deps);
 			println(")");
@@ -518,7 +505,7 @@ public class ImplWriter extends TransformWriter {
 				println(";");
 			}
 
-			if (init != null) {
+			if (typeInfo.hasInit()) {
 				printlni(i1 + CName.INSTANCE_INIT + "();");
 			}
 
@@ -567,35 +554,23 @@ public class ImplWriter extends TransformWriter {
 			sep = ", ";
 		}
 
-		for (VariableDeclarationFragment vd : fields) {
-			if (TransformUtil.isStatic(vd.resolveBinding())) {
-				continue;
-			}
+		for (VariableDeclarationFragment vd : typeInfo.getInit(false).strings) {
+			assert (TransformUtil.constantValue(vd) instanceof String);
 
-			if (vd.getInitializer() != null
-					&& TransformUtil.constantValue(vd) instanceof String) {
-				print(i1 + sep);
-				vd.getName().accept(this);
+			print(i1 + sep);
+			vd.getName().accept(this);
 
-				print("(");
+			print("(");
 
-				vd.getInitializer().accept(this);
+			vd.getInitializer().accept(this);
 
-				println(")");
+			println(")");
 
-				sep = ", ";
-			} else if (TransformUtil.initialValue(vd.resolveBinding()) == null) {
-				// Not set in header, set here instead
-				print(i1 + sep);
-				vd.getName().accept(this);
-				println("()");
-
-				sep = ", ";
-			}
+			sep = ", ";
 		}
 
-		if (closures != null) {
-			for (IVariableBinding closure : closures) {
+		if (typeInfo.closures() != null) {
+			for (IVariableBinding closure : typeInfo.closures()) {
 				printi(sep);
 				printInit(CName.of(closure));
 				sep = ", ";
@@ -797,7 +772,8 @@ public class ImplWriter extends TransformWriter {
 	@Override
 	public boolean visit(AnnotationTypeDeclaration node) {
 		ITypeBinding tb = node.resolveBinding();
-		ImplWriter iw = new ImplWriter(root, ctx, tb, unitInfo);
+		ImplWriter iw = new ImplWriter(root, ctx, unitInfo,
+				ctx.makeTypeInfo(node));
 		try {
 			iw.write(node);
 		} catch (Exception e) {
@@ -805,7 +781,7 @@ public class ImplWriter extends TransformWriter {
 		}
 
 		if (tb.isLocal()) {
-			localTypes.put(tb, iw);
+			localTypes.put(tb, iw.typeInfo);
 		}
 
 		return false;
@@ -819,23 +795,15 @@ public class ImplWriter extends TransformWriter {
 	@Override
 	public boolean visit(AnonymousClassDeclaration node) {
 		ITypeBinding tb = node.resolveBinding();
-		ImplWriter iw = new ImplWriter(root, ctx, tb, unitInfo);
+		ImplWriter iw = new ImplWriter(root, ctx, unitInfo,
+				ctx.makeTypeInfo(node));
 		try {
 			iw.write(node);
 		} catch (Exception e) {
 			throw new Error(e);
 		}
 
-		localTypes.put(tb, iw);
-
-		if (iw.closures != null && closures != null) {
-			for (IVariableBinding vb : iw.closures) {
-				if (!vb.getDeclaringMethod().getDeclaringClass()
-						.isEqualTo(type)) {
-					closures.add(vb);
-				}
-			}
-		}
+		localTypes.put(tb, iw.typeInfo);
 
 		return false;
 	}
@@ -1169,8 +1137,8 @@ public class ImplWriter extends TransformWriter {
 		}
 
 		if (localTypes.containsKey(tb)) {
-			ImplWriter iw = localTypes.get(tb);
-			for (IVariableBinding closure : iw.closures) {
+			TypeInfo localTypeInfo = localTypes.get(tb);
+			for (IVariableBinding closure : localTypeInfo.closures()) {
 				print(sep + CName.of(closure));
 				sep = ", ";
 			}
@@ -1207,8 +1175,7 @@ public class ImplWriter extends TransformWriter {
 
 		print(CName.CTOR);
 
-		callArgs(node.resolveConstructorBinding(), node.arguments(), true,
-				true);
+		callArgs(node.resolveConstructorBinding(), node.arguments(), true, true);
 
 		println(";");
 		return false;
@@ -1349,8 +1316,8 @@ public class ImplWriter extends TransformWriter {
 		EnumDeclaration enumDeclaration = (EnumDeclaration) node.getParent();
 
 		consArgs(null, node.arguments(), node.resolveConstructorBinding(), tb,
-				CName.of(node.resolveVariable()),
-				enumDeclaration.enumConstants().indexOf(node));
+				CName.of(node.resolveVariable()), enumDeclaration
+						.enumConstants().indexOf(node));
 
 		println(";");
 
@@ -1364,7 +1331,8 @@ public class ImplWriter extends TransformWriter {
 	@Override
 	public boolean visit(EnumDeclaration node) {
 		ITypeBinding tb = node.resolveBinding();
-		ImplWriter iw = new ImplWriter(root, ctx, tb, unitInfo);
+		ImplWriter iw = new ImplWriter(root, ctx, unitInfo,
+				ctx.makeTypeInfo(node));
 		try {
 			iw.write(node);
 		} catch (Exception e) {
@@ -1372,7 +1340,7 @@ public class ImplWriter extends TransformWriter {
 		}
 
 		if (tb.isLocal()) {
-			localTypes.put(tb, iw);
+			localTypes.put(tb, iw.typeInfo);
 		}
 
 		return false;
@@ -1420,26 +1388,12 @@ public class ImplWriter extends TransformWriter {
 	@Override
 	public boolean visit(FieldDeclaration node) {
 		Iterable<VariableDeclarationFragment> fragments = node.fragments();
+		boolean isStatic = TransformUtil.isStatic(node);
 
-		boolean isStatic = Modifier.isStatic(node.getModifiers());
 		for (VariableDeclarationFragment f : fragments) {
-			Object cv = TransformUtil.constantValue(f);
-
-			if (isStatic) {
-				if (cv instanceof String) {
-					consts.add(f);
-				} else if (cv == null && f.getInitializer() != null) {
-					addInit(isStatic, null, f);
-				}
-			} else {
-				if (f.getInitializer() != null && cv == null) {
-					addInit(isStatic, null, f);
-				}
-
-				if (cv instanceof String || cv == null) {
-					fields.add(f);
-					continue;
-				}
+			if (!isStatic
+					&& TransformUtil.constexprValue(f.resolveBinding()) == null) {
+				continue;
 			}
 
 			IVariableBinding vb = f.resolveBinding();
@@ -1459,7 +1413,7 @@ public class ImplWriter extends TransformWriter {
 			}
 
 			printi(TransformUtil.fieldModifiers(type, node.getModifiers(),
-					false, cv != null && !(cv instanceof String)));
+					false, TransformUtil.constexprValue(f) != null));
 
 			print(TransformUtil.varTypeCName(vb.getModifiers(), vb.getType(),
 					deps));
@@ -1698,8 +1652,7 @@ public class ImplWriter extends TransformWriter {
 
 	@Override
 	public boolean visit(Initializer node) {
-		addInit(Modifier.isStatic(node.getModifiers()), node.getBody(), null);
-
+		// Processed using InitInfo
 		return false;
 	}
 
@@ -1869,7 +1822,7 @@ public class ImplWriter extends TransformWriter {
 					first.accept(this);
 				}
 
-				if (init != null) {
+				if (typeInfo.hasInit()) {
 					printlni(CName.INSTANCE_INIT + "();");
 				}
 			}
@@ -2169,14 +2122,6 @@ public class ImplWriter extends TransformWriter {
 	@Override
 	public boolean visit(SimpleName node) {
 		IBinding b = node.resolveBinding();
-		if (b instanceof IVariableBinding) {
-			IVariableBinding vb = (IVariableBinding) b;
-
-			if (isClosure(node, vb)) {
-				closures.add(vb);
-			}
-		}
-
 		boolean ret = super.visit(node);
 
 		if (b instanceof IVariableBinding) {
@@ -2195,64 +2140,6 @@ public class ImplWriter extends TransformWriter {
 		}
 
 		return ret;
-	}
-
-	private boolean isClosure(SimpleName node, IVariableBinding vb) {
-		if (vb.isField()) {
-			return false;
-		}
-
-		if (vb.getDeclaringMethod() == null) {
-			IJavaElement je = vb.getJavaElement().getAncestor(
-					IJavaElement.INITIALIZER);
-
-			// Could be a variable in an initializer block
-			if (je == null
-					|| (((IType) je.getAncestor(IJavaElement.TYPE))
-							.getFullyQualifiedName().equals(((IType) type
-							.getJavaElement()).getFullyQualifiedName()))) {
-				return false;
-			}
-		}
-
-		if (!Modifier.isFinal(vb.getModifiers())) {
-			return false;
-		}
-		VariableDeclarationFragment vdf = initializer(node);
-		if (vdf != null) {
-		} else if (vb.getDeclaringMethod() != null) {
-			IMethodBinding pmb = parentMethod(node);
-			if (pmb.isEqualTo(vb.getDeclaringMethod())) {
-				return false;
-			}
-		}
-
-		return true;
-	}
-
-	private VariableDeclarationFragment initializer(ASTNode node) {
-		for (ASTNode n = node; n != null; n = n.getParent()) {
-			if (n.getParent() instanceof VariableDeclarationFragment) {
-				VariableDeclarationFragment vdf = (VariableDeclarationFragment) n
-						.getParent();
-				if (type.isEqualTo(vdf.resolveBinding().getDeclaringClass())
-						&& vdf.getInitializer() == n) {
-					return vdf;
-				}
-			}
-		}
-
-		return null;
-	}
-
-	private static IMethodBinding parentMethod(ASTNode node) {
-		for (ASTNode n = node; n != null; n = n.getParent()) {
-			if (n instanceof MethodDeclaration) {
-				return ((MethodDeclaration) n).resolveBinding();
-			}
-		}
-
-		return null;
 	}
 
 	@Override
@@ -2697,7 +2584,8 @@ public class ImplWriter extends TransformWriter {
 	@Override
 	public boolean visit(TypeDeclaration node) {
 		ITypeBinding tb = node.resolveBinding();
-		ImplWriter iw = new ImplWriter(root, ctx, tb, unitInfo);
+		ImplWriter iw = new ImplWriter(root, ctx, unitInfo,
+				ctx.makeTypeInfo(node));
 		try {
 			iw.write(node);
 		} catch (Exception e) {
@@ -2705,7 +2593,7 @@ public class ImplWriter extends TransformWriter {
 		}
 
 		if (tb.isLocal()) {
-			localTypes.put(tb, iw);
+			localTypes.put(tb, iw.typeInfo);
 		}
 
 		return false;

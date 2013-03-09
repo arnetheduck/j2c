@@ -67,16 +67,18 @@ public abstract class TransformWriter extends ASTVisitor {
 	public final ITypeBinding type;
 	protected final UnitInfo unitInfo;
 	protected final DepInfo deps;
+	protected final TypeInfo typeInfo;
 
 	protected int indent;
 
 	protected PrintWriter out;
 
-	protected TransformWriter(Transformer ctx, final ITypeBinding type,
-			final UnitInfo unitInfo) {
-		this.type = type;
+	protected TransformWriter(Transformer ctx, final UnitInfo unitInfo,
+			TypeInfo typeInfo) {
+		this.type = typeInfo.type();
 		this.ctx = ctx;
 		this.unitInfo = unitInfo;
+		this.typeInfo = typeInfo;
 
 		deps = new DepInfo(ctx);
 
@@ -848,15 +850,15 @@ public abstract class TransformWriter extends ASTVisitor {
 				printi(TransformUtil.variableModifiers(type, modifiers));
 				ITypeBinding fb = fragment.resolveBinding().getType();
 				softDep(fb);
-				print(TransformUtil.varTypeCName(modifiers, fb, type,
-						deps) + " ");
+				print(TransformUtil.varTypeCName(modifiers, fb, type, deps)
+						+ " ");
 				fragment.accept(this);
 				println(";");
 			}
 		} else {
 			printi(TransformUtil.variableModifiers(type, modifiers)
-					+ TransformUtil.varTypeCName(modifiers, node
-							.getType().resolveBinding(), type, deps) + " ");
+					+ TransformUtil.varTypeCName(modifiers, node.getType()
+							.resolveBinding(), type, deps) + " ");
 
 			visitAllCSV(fragments, false);
 
@@ -900,7 +902,7 @@ public abstract class TransformWriter extends ASTVisitor {
 				return true;
 			}
 
-			if(TransformUtil.isConstVar(f.resolveBinding())) {
+			if (TransformUtil.isConstVar(f.resolveBinding())) {
 				return true;
 			}
 
