@@ -42,10 +42,8 @@ public class Impl {
 	}
 
 	public void write(IPath root, String body, String suffix,
-			Collection<IVariableBinding> closures, String cinit,
- String clinit,
-			boolean fmod, boolean isNative)
-			throws IOException {
+			Collection<IVariableBinding> closures, String cinit, String clinit,
+			boolean fmod, boolean isNative) throws IOException {
 
 		this.isNative = isNative;
 		String extras = getExtras(closures, cinit, clinit);
@@ -208,8 +206,7 @@ public class Impl {
 			println("template<>");
 		}
 
-		println("java::lang::Class* " + qcname + "::" + CName.GET_CLASS
-				+ "()");
+		println("java::lang::Class* " + qcname + "::" + CName.GET_CLASS + "()");
 		println("{");
 		println(i1 + "return class_();");
 		println("}");

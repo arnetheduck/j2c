@@ -41,7 +41,7 @@ public class TypeUtil {
 			public boolean apply(IMethodBinding t) {
 				return !mb.isConstructor()
 						&& mb.getMethodDeclaration().overrides(
-						t.getMethodDeclaration());
+								t.getMethodDeclaration());
 			}
 		};
 	}

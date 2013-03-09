@@ -102,8 +102,8 @@ public class TypeBindingHeaderWriter {
 		pw.print(TransformUtil.indent(1));
 
 		Object cv = TransformUtil.constexprValue(vb);
-		pw.print(TransformUtil.fieldModifiers(type, modifiers, true,
-				cv != null));
+		pw.print(TransformUtil
+				.fieldModifiers(type, modifiers, true, cv != null));
 
 		pw.print(TransformUtil.varTypeCName(modifiers, tb,
 				vb.getDeclaringClass(), deps));

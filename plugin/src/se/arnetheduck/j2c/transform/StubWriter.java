@@ -114,7 +114,6 @@ public class StubWriter {
 		}
 
 		boolean hasEmpty = false;
-		boolean hasNonempty = false;
 		for (IMethodBinding mb : constructors) {
 			print(qcname + "::" + name + "(");
 
@@ -124,7 +123,6 @@ public class StubWriter {
 			if (mb.getParameterTypes().length > 0) {
 				print(sep);
 				TransformUtil.printParams(out, type, mb, false, deps);
-				hasNonempty = true;
 			} else {
 				hasEmpty = true;
 			}
@@ -155,8 +153,7 @@ public class StubWriter {
 			println();
 		}
 
-		if (TransformUtil.needsEmptyCtor(hasEmpty, hasNonempty, false,
-				type)) {
+		if (TransformUtil.needsEmptyCtor(hasEmpty, false, type)) {
 			printEmptyCtor();
 		}
 	}

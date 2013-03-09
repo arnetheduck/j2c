@@ -68,10 +68,10 @@ public class ForwardWriter {
 
 			PrintWriter pw = null;
 			try {
-				pw = FileUtil.open(root.append("src")
+				pw = FileUtil.open(root
+						.append("src")
 						.append(TransformUtil.packageHeader(ctx.getName(),
-								e.getKey()))
-						.toFile());
+								e.getKey())).toFile());
 
 				pw.println("// Forward declarations for " + e.getKey());
 

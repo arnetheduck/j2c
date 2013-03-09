@@ -105,8 +105,8 @@ public class ImplWriter extends TransformWriter {
 
 	private final List<List<String>> locals = new ArrayList<List<String>>();
 
-	public ImplWriter(IPath root, Transformer ctx,
-			UnitInfo unitInfo, TypeInfo typeInfo) {
+	public ImplWriter(IPath root, Transformer ctx, UnitInfo unitInfo,
+			TypeInfo typeInfo) {
 		super(ctx, unitInfo, typeInfo);
 		this.root = root;
 
@@ -170,8 +170,7 @@ public class ImplWriter extends TransformWriter {
 		String extras = getExtras();
 
 		impl.write(root, extras + body, "", typeInfo.closures(), cinit, clinit,
-				fmod,
-				false);
+				fmod, false);
 
 		ctx.addImpl(type);
 
@@ -246,7 +245,6 @@ public class ImplWriter extends TransformWriter {
 		return sw.toString();
 	}
 
-
 	private String getFinally() throws IOException {
 		if (!needsFinally) {
 			return "";
@@ -288,7 +286,8 @@ public class ImplWriter extends TransformWriter {
 				print(" = ");
 				fragment.getInitializer().accept(this);
 				println(";");
-				ITypeBinding ib = fragment.getInitializer().resolveTypeBinding();
+				ITypeBinding ib = fragment.getInitializer()
+						.resolveTypeBinding();
 				if (!ib.isEqualTo(fragment.resolveBinding().getType())) {
 					hardDep(ib);
 				}
@@ -309,7 +308,6 @@ public class ImplWriter extends TransformWriter {
 		}
 
 		boolean hasEmpty = false;
-		boolean hasNonempty = false;
 		for (MethodDeclaration md : constructors) {
 			locals.add(new ArrayList<String>());
 			printi(qcname + "::" + name + "(");
@@ -320,7 +318,6 @@ public class ImplWriter extends TransformWriter {
 			if (!md.parameters().isEmpty()) {
 				print(sep);
 				visitAllCSV(md.parameters(), false);
-				hasNonempty = true;
 			} else {
 				hasEmpty = true;
 			}
@@ -349,7 +346,7 @@ public class ImplWriter extends TransformWriter {
 			locals.remove(locals.size() - 1);
 		}
 
-		printEmptyCtor(hasEmpty, hasNonempty);
+		printEmptyCtor(hasEmpty);
 	}
 
 	private void printClInitCall() {
@@ -471,7 +468,7 @@ public class ImplWriter extends TransformWriter {
 
 	}
 
-	private void printEmptyCtor(boolean hasEmpty, boolean hasNonempty) {
+	private void printEmptyCtor(boolean hasEmpty) {
 		if (!constructors.isEmpty()) {
 			return;
 		}
@@ -493,8 +490,7 @@ public class ImplWriter extends TransformWriter {
 		println("}");
 		println();
 
-		if (TransformUtil.needsEmptyCtor(hasEmpty, hasNonempty,
-				typeInfo.hasInit(), type)) {
+		if (TransformUtil.needsEmptyCtor(hasEmpty, typeInfo.hasInit(), type)) {
 			print("void " + qcname + "::" + CName.CTOR + "(");
 			TransformUtil.printEnumCtorParams(ctx, out, type, "", deps);
 			println(")");

@@ -414,7 +414,6 @@ public class Header {
 		}
 
 		boolean hasEmpty = false;
-		boolean hasNonempty = false;
 		for (IMethodBinding mb : constructors) {
 			access = printAccess(out, mb, access);
 
@@ -426,7 +425,6 @@ public class Header {
 			if (mb.getParameterTypes().length > 0) {
 				print(sep);
 				TransformUtil.printParams(out, type, mb, false, deps);
-				hasNonempty = true;
 			} else {
 				hasEmpty = true;
 			}
@@ -447,8 +445,7 @@ public class Header {
 
 			println(");");
 
-			if (TransformUtil.needsEmptyCtor(hasEmpty, hasNonempty, hasInit,
-					type)) {
+			if (TransformUtil.needsEmptyCtor(hasEmpty, hasInit, type)) {
 				access = printProtected(out, access);
 				print(i1 + "void " + CName.CTOR + "(");
 				TransformUtil.printEnumCtorParams(ctx, out, type, "", deps);
@@ -645,7 +642,7 @@ public class Header {
 	 * ambiguity ensues even if the methods are overloads (name resolution comes
 	 * before overload resolution). This method returns a list of such
 	 * duplicates.
-	 *
+	 * 
 	 * @param type
 	 * @return
 	 */
