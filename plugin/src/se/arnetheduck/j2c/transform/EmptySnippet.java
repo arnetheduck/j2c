@@ -35,7 +35,7 @@ public class EmptySnippet implements Snippet {
 	}
 
 	@Override
-	public boolean type(Transformer ctx, StubWriter w, ITypeBinding tb) {
+	public boolean extras(Transformer ctx, StubWriter w, boolean natives) {
 		return true;
 	}
 

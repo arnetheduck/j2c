@@ -37,6 +37,7 @@ import org.eclipse.jdt.core.dom.TypeDeclaration;
 
 import se.arnetheduck.j2c.snippets.GetSetSnippet;
 import se.arnetheduck.j2c.snippets.ReplaceInvocation;
+import se.arnetheduck.j2c.snippets.SWTSnippet;
 
 public class Transformer {
 	private final IJavaProject project;
@@ -64,6 +65,7 @@ public class Transformer {
 
 		snippets.add(new GetSetSnippet());
 		snippets.add(new ReplaceInvocation());
+		snippets.add(new SWTSnippet());
 	}
 
 	public final Set<ICompilationUnit> selection = new TreeSet<ICompilationUnit>(
@@ -330,16 +332,12 @@ public class Transformer {
 					if (tb.isArray()) {
 						arrays.add(tb);
 					} else {
-						IJavaElement elem = project.findElement(tb.getKey(),
-								null);
-						IType type = elem instanceof IType ? (IType) elem
-								: null;
-						if (type == null || type.getCompilationUnit() == null) {
+						ICompilationUnit unit = getICompilationUnit(tb);
+						if (unit == null) {
 							bindings.add(tb);
 						} else {
-							todo.add(type.getCompilationUnit());
-							isSel = selection.contains(type
-									.getCompilationUnit());
+							todo.add(unit);
+							isSel = selection.contains(unit);
 						}
 					}
 				} catch (Exception e) {
@@ -370,6 +368,22 @@ public class Transformer {
 				}
 			}
 		}
+	}
+
+	public ICompilationUnit getICompilationUnit(ITypeBinding tb) {
+		IJavaElement elem;
+		try {
+			elem = project.findElement(tb.getKey(), null);
+		} catch (JavaModelException e) {
+			e.printStackTrace();
+			return null;
+		}
+
+		IType type = elem instanceof IType ? (IType) elem : null;
+		if (type == null || type.getCompilationUnit() == null) {
+			return null;
+		}
+		return type.getCompilationUnit();
 	}
 
 	private IPath getRoot(ICompilationUnit unit) {

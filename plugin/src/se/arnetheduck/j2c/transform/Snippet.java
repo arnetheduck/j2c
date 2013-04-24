@@ -17,7 +17,7 @@ public interface Snippet {
 
 	boolean method(Transformer ctx, TypeBindingHeaderWriter w, IMethodBinding mb);
 
-	boolean type(Transformer ctx, StubWriter w, ITypeBinding tb);
+	boolean extras(Transformer ctx, StubWriter w, boolean natives);
 
 	boolean field(Transformer ctx, StubWriter w, IVariableBinding vb);
 

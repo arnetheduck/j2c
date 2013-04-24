@@ -46,7 +46,7 @@ public class StubWriter {
 
 	public void write(boolean natives, boolean privates) throws Exception {
 		String body = getBody(natives, privates);
-		String extras = getExtras(natives, privates);
+		String extras = getExtras(natives);
 
 		if (natives) {
 			ctx.addNative(type);
@@ -61,10 +61,16 @@ public class StubWriter {
 		}
 	}
 
-	private String getExtras(boolean natives, boolean privates)
+	private String getExtras(boolean natives)
 			throws IOException {
 		StringWriter sw = new StringWriter();
 		out = new PrintWriter(sw);
+
+		for (Snippet snippet : ctx.snippets) {
+			if (!snippet.extras(ctx, this, natives)) {
+				return "";
+			}
+		}
 
 		out.println("extern void unimplemented_(const char16_t* name);");
 
@@ -257,6 +263,12 @@ public class StubWriter {
 	}
 
 	private void printField(IVariableBinding vb) {
+		for (Snippet snippet : ctx.snippets) {
+			if (!snippet.field(ctx, this, vb)) {
+				return;
+			}
+		}
+
 		if (!TransformUtil.isStatic(vb)) {
 			return;
 		}
@@ -286,6 +298,12 @@ public class StubWriter {
 
 	private void printMethod(IMethodBinding mb, boolean privates)
 			throws Exception {
+		for (Snippet snippet : ctx.snippets) {
+			if (!snippet.method(ctx, this, mb)) {
+				return;
+			}
+		}
+
 		if (Modifier.isAbstract(mb.getModifiers())) {
 			return;
 		}
@@ -347,7 +365,7 @@ public class StubWriter {
 		TransformUtil.defineBridge(ctx, out, type, mb, deps);
 	}
 
-	private void hardDep(ITypeBinding dep) {
+	public void hardDep(ITypeBinding dep) {
 		deps.hard(dep);
 	}
 
@@ -361,5 +379,9 @@ public class StubWriter {
 
 	public void println() {
 		out.println();
+	}
+
+	public ITypeBinding type() {
+		return type;
 	}
 }
