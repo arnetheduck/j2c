@@ -1,5 +1,6 @@
 #pragma once
 
+#include <iterator>
 #include <utility>
 
 %1$s
@@ -12,6 +13,30 @@ public:
     typedef %4$sArray super;
 
     typedef %5$s *value_type;
+    struct iterator {
+        typedef %5$s* value_type;
+        typedef std::ptrdiff_t          difference_type;
+        typedef value_type*             pointer;
+        typedef value_type              reference; // Good enough for input iterator
+        typedef std::input_iterator_tag iterator_category;
+
+        iterator() : p(), pt() {}
+        explicit iterator(::java::lang::Object** p) : p(p), pt(dynamic_cast<value_type>(*p)) {}
+
+        pointer     operator->()    { return &pt; }
+        reference   operator*()     { return pt; }
+
+        iterator&   operator++()    { ++p; pt = dynamic_cast<value_type>(*p); return *this; }
+        iterator    operator++(int) { iterator tmp(p); ++*this; return tmp; }
+        iterator&   operator--()    { --p; pt = dynamic_cast<value_type>(*p); return *this; }
+        iterator    operator--(int) { iterator tmp(p); ++*this; return tmp; }
+
+        bool operator==(iterator rhs) { return p == rhs.p; }
+        bool operator!=(iterator rhs) { return !(*this == rhs); }
+
+        ::java::lang::Object**  p;
+        value_type              pt;
+    };
 
     %2$sArray() { }
     %2$sArray(int n) : ::java::lang::ObjectArray(n) { }
@@ -34,8 +59,8 @@ public:
 
     %2$sArray &operator=(const %2$sArray &rhs)
     {
-    	::java::lang::ObjectArray::operator=(rhs);
-    	return *this;
+        ::java::lang::ObjectArray::operator=(rhs);
+        return *this;
     }
 
     %2$sArray &operator=(%2$sArray &&rhs)
@@ -49,9 +74,12 @@ public:
     value_type operator[](size_type i) const { return get(i); }
     value_type get(size_type i) const { return dynamic_cast<value_type>(p[i]); }
 
-private:
+    iterator        begin() { return iterator(p); }
+    iterator        end() { return iterator(p + length); }
+
+private:	
     ::java::lang::Class *getClass0() override;
-     
+
     void set0(size_type i, ::java::lang::Object *x) override
     {
         if(x && !dynamic_cast<value_type>(x)) {

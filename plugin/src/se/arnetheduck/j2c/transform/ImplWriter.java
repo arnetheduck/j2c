@@ -1243,24 +1243,12 @@ public class ImplWriter extends TransformWriter {
 		hardDep(eb);
 		deps.setNpc();
 		if (eb.isArray()) {
-			printlni("{");
-			indent++;
-
-			printi("auto _a = ");
+			printi("for(auto ");
+			node.getParameter().getName().accept(this);
+			print(" : *");
 			npcAccept(expr);
-			println(";");
-
-			printlni("for(int _i = 0; _i < _a->length; ++_i) {");
-			indent++;
-			printi();
-			node.getParameter().accept(this);
-			println(" = (*_a)[_i];");
-			printi();
+			print(") ");
 			handleLoopBody(node, node.getBody());
-			indent--;
-			printlni("}");
-			indent--;
-			printlni("}");
 		} else {
 			printi("for (auto _i = ");
 

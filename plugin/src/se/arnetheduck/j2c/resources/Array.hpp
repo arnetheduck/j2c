@@ -1,7 +1,6 @@
 #pragma once
 
 #include <initializer_list>
-
 #include <stdint.h>
 
 #include <java/lang/Object.hpp>
@@ -19,6 +18,10 @@ public:
 
     typedef T value_type;
     typedef value_type *pointer_type;
+    typedef pointer_type iterator;
+    typedef const value_type *const_pointer_type;
+    typedef const_pointer_type const_iterator;
+
     typedef int size_type;
 
     Array() : length(0), p(nullptr) { }
@@ -29,51 +32,49 @@ public:
 
     Array(const value_type *values, int n) : length(n), p(new value_type[n])
     {
-    	auto x = p;
-    	for(auto v = values; v != values + n; ++v) *x++ = *v;
+        auto x = p;
+        for(auto v = values; v != values + n; ++v) *x++ = *v;
     }
 
     template<typename S>
     Array(std::initializer_list<S> l) : length(l.size()), p(new value_type[l.size()])
     {
-    	auto x = p;
-    	for(auto v : l) *x++ = v;
+        auto x = p;
+        for(auto v : l) *x++ = v;
     }
 
-    Array(const Array &rhs) : Array(rhs.p, rhs.length)
-    {
-    }
+    Array(const Array &rhs) : Array(rhs.p, rhs.length) { }
 
     Array(Array &&rhs) : length(rhs.length), p(rhs.p)
     {
-    	const_cast<pointer_type&>(rhs.p) = 0;
+         const_cast<pointer_type&>(rhs.p) = 0;
     }
 
     Array &operator=(const Array &rhs)
     {
-    	if(&rhs != this) {
-    		if(length != rhs.length) {
-				delete p;
-				const_cast<pointer_type&>(p) = 0;
-				const_cast<size_type&>(length) = rhs.length;
-				const_cast<pointer_type&>(p) = new value_type[length];
-    		}
+        if(&rhs != this) {
+            if(length != rhs.length) {
+                delete p;
+                const_cast<pointer_type&>(p) = 0;
+                const_cast<size_type&>(length) = rhs.length;
+                const_cast<pointer_type&>(p) = new value_type[length];
+            }
 
-	    	auto x = p;
-	    	for(auto v = rhs.p; v != rhs.p + rhs.length; ++v) *x++ = *v;
-    	}
+            auto x = p;
+            for(auto v = rhs.p; v != rhs.p + rhs.length; ++v) *x++ = *v;
+        }
 
-    	return *this;
+        return *this;
     }
 
     Array &operator=(Array &&rhs)
     {
-    	if(&rhs != this) {
-			delete p;
-			const_cast<size_type&>(length) = rhs.length;
-			const_cast<pointer_type&>(p) = rhs.p;
-			const_cast<pointer_type&>(rhs.p) = 0;
-    	}
+        if(&rhs != this) {
+            delete p;
+            const_cast<size_type&>(length) = rhs.length;
+            const_cast<pointer_type&>(p) = rhs.p;
+            const_cast<pointer_type&>(rhs.p) = 0;
+        }
 
     	return *this;
     }
@@ -87,6 +88,14 @@ public:
 
     value_type get(size_type i) const { return p[i]; }
     value_type &set(size_type i, value_type x) { return (p[i] = x); }
+
+    iterator 		begin() { return p; }
+    const_iterator 	begin() const { return p; }
+    const_iterator 	cbegin() const { return begin(); }
+
+    iterator 		end() { return p + length; }
+    const_iterator 	end() const { return p + length; }
+    const_iterator 	cend() const { return end(); }
 
     const size_type length;
     const pointer_type p;

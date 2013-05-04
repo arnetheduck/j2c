@@ -25,6 +25,26 @@ public class ForTest {
 		return ret;
 	}
 
+	public int enhancedObjectArray() {
+		int ret = 0;
+		Object[] x = new Object[] { null };
+		for (Object i : x) {
+			ret++;
+		}
+
+		return ret;
+	}
+
+	public int enhancedStringArray() {
+		int ret = 0;
+		String[] x = new String[] { null };
+		for (String i : x) {
+			ret++;
+		}
+
+		return ret;
+	}
+
 	public Empty enhancedList() {
 		List<Empty> x = new ArrayList<Empty>();
 		for (Empty i : x) {

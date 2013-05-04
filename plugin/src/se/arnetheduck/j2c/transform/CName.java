@@ -41,7 +41,7 @@ public class CName {
 	 * The default-init constructor takes care of the first phase of Java object
 	 * initialization, namely of calling clinit to make sure the class and all
 	 * its bases are initialized.
-	 * 
+	 *
 	 * See §12.4.1 and §12.5
 	 */
 	public static final String DEFAULT_INIT_TAG = "default_init_tag";
@@ -69,7 +69,7 @@ public class CName {
 			"unsigned", "using", "virtual", "wchar_t", "xor", "xor_eq", CTOR,
 			INSTANCE_INIT, STATIC_INIT, GET_CLASS, DEFAULT_INIT_TAG, JAVA_CAST,
 			"int8_t", "int16_t", "int32_t", "int64_t", "char16_t", "NULL",
-			"npc");
+			"npc", "EOF");
 
 	public static String qualified(ITypeBinding tb, boolean global) {
 		IPackageBinding pkg = TransformUtil.elementPackage(tb);

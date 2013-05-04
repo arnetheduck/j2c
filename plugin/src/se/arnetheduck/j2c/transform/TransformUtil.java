@@ -327,7 +327,7 @@ public final class TransformUtil {
 
 	/**
 	 * Clean up java-escaped string literals for C++.
-	 * 
+	 *
 	 * In java, it is valid to have lone UTF-16 surrogates - in C++, not.
 	 */
 	public static String stringLiteral(String escaped) {
@@ -381,7 +381,7 @@ public final class TransformUtil {
 			/*
 			 * Can't do this because the method might need a bridge further down
 			 * the inheritance chain
-			 * 
+			 *
 			 * if (isFinal(mb)) { return " final"; }
 			 */
 			return " override";
@@ -1188,7 +1188,7 @@ public final class TransformUtil {
 				&& mb.getParameterTypes().length == 0;
 	}
 
-	/** Check if this fragment should be initialied in init/clinit */
+	/** Check if this fragment should be initialized in init/clinit */
 	public static boolean initInInit(VariableDeclarationFragment fragment) {
 		if (!(fragment.getParent() instanceof FieldDeclaration)) {
 			return false;
