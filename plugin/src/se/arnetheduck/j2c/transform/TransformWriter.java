@@ -59,7 +59,6 @@ import org.eclipse.jdt.core.dom.Type;
 import org.eclipse.jdt.core.dom.TypeDeclarationStatement;
 import org.eclipse.jdt.core.dom.VariableDeclarationExpression;
 import org.eclipse.jdt.core.dom.VariableDeclarationFragment;
-import org.eclipse.jdt.core.dom.VariableDeclarationStatement;
 import org.eclipse.jdt.core.dom.WildcardType;
 
 public abstract class TransformWriter extends ASTVisitor {
@@ -467,7 +466,11 @@ public abstract class TransformWriter extends ASTVisitor {
 		ASTNode parent = node.getParent();
 
 		if (parent instanceof VariableDeclarationFragment) {
-			return false;
+
+			VariableDeclarationFragment vdf = (VariableDeclarationFragment) parent;
+			if (vdf.getInitializer() != node) {
+				return false;
+			}
 		}
 
 		if (parent instanceof SingleVariableDeclaration) {
@@ -836,34 +839,6 @@ public abstract class TransformWriter extends ASTVisitor {
 				+ " ");
 
 		visitAllCSV(node.fragments(), false);
-
-		return false;
-	}
-
-	@Override
-	public boolean visit(VariableDeclarationStatement node) {
-		List<VariableDeclarationFragment> fragments = node.fragments();
-
-		int modifiers = node.getModifiers();
-		if (isAnySpecial(fragments)) {
-			for (VariableDeclarationFragment fragment : fragments) {
-				printi(TransformUtil.variableModifiers(type, modifiers));
-				ITypeBinding fb = fragment.resolveBinding().getType();
-				softDep(fb);
-				print(TransformUtil.varTypeCName(modifiers, fb, type, deps)
-						+ " ");
-				fragment.accept(this);
-				println(";");
-			}
-		} else {
-			printi(TransformUtil.variableModifiers(type, modifiers)
-					+ TransformUtil.varTypeCName(modifiers, node.getType()
-							.resolveBinding(), type, deps) + " ");
-
-			visitAllCSV(fragments, false);
-
-			println(";");
-		}
 
 		return false;
 	}

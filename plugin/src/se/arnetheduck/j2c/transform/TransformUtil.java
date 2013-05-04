@@ -29,10 +29,13 @@ import org.eclipse.jdt.core.dom.IVariableBinding;
 import org.eclipse.jdt.core.dom.Initializer;
 import org.eclipse.jdt.core.dom.MethodDeclaration;
 import org.eclipse.jdt.core.dom.Name;
+import org.eclipse.jdt.core.dom.NullLiteral;
+import org.eclipse.jdt.core.dom.ParenthesizedExpression;
 import org.eclipse.jdt.core.dom.PrimitiveType;
 import org.eclipse.jdt.core.dom.Type;
 import org.eclipse.jdt.core.dom.TypeParameter;
 import org.eclipse.jdt.core.dom.VariableDeclarationFragment;
+import org.eclipse.jdt.core.dom.VariableDeclarationStatement;
 
 public final class TransformUtil {
 	public static final String NATIVE = "native";
@@ -1203,5 +1206,45 @@ public final class TransformUtil {
 		}
 
 		return true;
+	}
+
+	/** Can use the 'auto' keyword when declaring a variable */
+	public static boolean canDeclareAuto(VariableDeclarationStatement s,
+			VariableDeclarationFragment vdf) {
+		if (vdf == null) {
+			if (s.fragments().size() > 1) {
+				return false;
+			}
+
+			vdf = (VariableDeclarationFragment) s.fragments().get(0);
+		}
+
+		IVariableBinding vb = vdf.resolveBinding();
+		if (vb.isField())
+			return false;
+		if (vdf.getInitializer() == null)
+			return false;
+
+		if (isNullLiteral(vdf.getInitializer()))
+			return false;
+
+		if (!vb.getType()
+				.getErasure()
+				.isEqualTo(
+						vdf.getInitializer().resolveTypeBinding().getErasure())) {
+			return false;
+		}
+
+		return true;
+	}
+
+	public static boolean isNullLiteral(Expression e) {
+		if (e instanceof NullLiteral)
+			return true;
+		if (e instanceof ParenthesizedExpression) {
+			ParenthesizedExpression pe = (ParenthesizedExpression) e;
+			return isNullLiteral(pe.getExpression());
+		}
+		return false;
 	}
 }

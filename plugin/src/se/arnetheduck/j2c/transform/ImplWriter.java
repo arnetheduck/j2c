@@ -52,7 +52,6 @@ import org.eclipse.jdt.core.dom.MethodDeclaration;
 import org.eclipse.jdt.core.dom.MethodInvocation;
 import org.eclipse.jdt.core.dom.Modifier;
 import org.eclipse.jdt.core.dom.Name;
-import org.eclipse.jdt.core.dom.NullLiteral;
 import org.eclipse.jdt.core.dom.ParenthesizedExpression;
 import org.eclipse.jdt.core.dom.PostfixExpression;
 import org.eclipse.jdt.core.dom.PrefixExpression;
@@ -880,7 +879,7 @@ public class ImplWriter extends TransformWriter {
 	}
 
 	private void arrayInitCast(ITypeBinding ct, Expression e) {
-		boolean cast = e instanceof NullLiteral
+		boolean cast = TransformUtil.isNullLiteral(e)
 				|| !ct.isEqualTo(e.resolveTypeBinding());
 		if (cast) {
 			staticCast(e.resolveTypeBinding(), ct);
@@ -1057,7 +1056,8 @@ public class ImplWriter extends TransformWriter {
 		ITypeBinding target = node.getType().resolveBinding();
 		ITypeBinding source = node.getExpression().resolveTypeBinding();
 
-		if (target.isPrimitive() || node.getExpression() instanceof NullLiteral) {
+		if (target.isPrimitive()
+				|| TransformUtil.isNullLiteral(node.getExpression())) {
 			staticCast(source, target);
 		} else {
 			javaCast(source, target);
@@ -2672,6 +2672,44 @@ public class ImplWriter extends TransformWriter {
 			node.getInitializer().accept(this);
 		} else {
 			node.getName().accept(this);
+		}
+
+		return false;
+	}
+
+	@Override
+	public boolean visit(VariableDeclarationStatement node) {
+		List<VariableDeclarationFragment> fragments = node.fragments();
+
+		int modifiers = node.getModifiers();
+		if (isAnySpecial(fragments)) {
+			for (VariableDeclarationFragment fragment : fragments) {
+				printi(TransformUtil.variableModifiers(type, modifiers));
+				ITypeBinding fb = fragment.resolveBinding().getType();
+				softDep(fb);
+
+				if (TransformUtil.canDeclareAuto(node, fragment)) {
+					print("auto ");
+				} else {
+					print(TransformUtil.varTypeCName(modifiers, fb, type, deps)
+							+ " ");
+				}
+				fragment.accept(this);
+				println(";");
+			}
+		} else {
+			printi(TransformUtil.variableModifiers(type, modifiers));
+			if (TransformUtil.canDeclareAuto(node, null)) {
+				print("auto ");
+			} else {
+				print(TransformUtil.varTypeCName(modifiers, node.getType()
+						.resolveBinding(), type, deps)
+						+ " ");
+			}
+
+			visitAllCSV(fragments, false);
+
+			println(";");
 		}
 
 		return false;
