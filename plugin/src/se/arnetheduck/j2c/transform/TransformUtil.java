@@ -20,6 +20,9 @@ import org.eclipse.jdt.core.IInitializer;
 import org.eclipse.jdt.core.IJavaElement;
 import org.eclipse.jdt.core.IMethod;
 import org.eclipse.jdt.core.JavaModelException;
+import org.eclipse.jdt.core.dom.ASTNode;
+import org.eclipse.jdt.core.dom.ArrayCreation;
+import org.eclipse.jdt.core.dom.ClassInstanceCreation;
 import org.eclipse.jdt.core.dom.Expression;
 import org.eclipse.jdt.core.dom.FieldDeclaration;
 import org.eclipse.jdt.core.dom.IMethodBinding;
@@ -28,6 +31,7 @@ import org.eclipse.jdt.core.dom.ITypeBinding;
 import org.eclipse.jdt.core.dom.IVariableBinding;
 import org.eclipse.jdt.core.dom.Initializer;
 import org.eclipse.jdt.core.dom.MethodDeclaration;
+import org.eclipse.jdt.core.dom.MethodInvocation;
 import org.eclipse.jdt.core.dom.Name;
 import org.eclipse.jdt.core.dom.NullLiteral;
 import org.eclipse.jdt.core.dom.ParenthesizedExpression;
@@ -1247,4 +1251,31 @@ public final class TransformUtil {
 		}
 		return false;
 	}
+
+	public static boolean needsExtraParens(ArrayCreation node) {
+		return needsExtraParensX(node);
+	}
+
+	public static boolean needsExtraParens(ClassInstanceCreation node) {
+		return needsExtraParensX(node);
+	}
+
+	/**
+	 * Java gives 'new XXX().yyy()' different operator precedence, thus we need
+	 * extra parenthesis sometimes
+	 */
+	private static boolean needsExtraParensX(Expression creation) {
+		ASTNode parent = creation.getParent();
+		if (parent instanceof MethodInvocation) {
+			MethodInvocation mi = (MethodInvocation) parent;
+			if (mi.getExpression() == creation) {
+				// Here, -> binds tighter than new, thus we get an error without
+				// parens
+				return true;
+			}
+		}
+
+		return false;
+	}
+
 }

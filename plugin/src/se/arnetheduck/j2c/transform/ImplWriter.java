@@ -820,7 +820,11 @@ public class ImplWriter extends TransformWriter {
 	public boolean visit(ArrayCreation node) {
 		ITypeBinding tb = node.getType().resolveBinding();
 		hardDep(tb);
-		print("(new " + CName.relative(tb, type, true));
+		boolean parens = TransformUtil.needsExtraParens(node);
+		if (parens) {
+			print("(");
+		}
+		print("new " + CName.relative(tb, type, true));
 
 		for (Iterator<Expression> it = node.dimensions().iterator(); it
 				.hasNext();) {
@@ -834,7 +838,9 @@ public class ImplWriter extends TransformWriter {
 		if (node.getInitializer() != null) {
 			node.getInitializer().accept(this);
 		}
-		print(")");
+		if (parens) {
+			print(")");
+		}
 		return false;
 	}
 
@@ -1082,7 +1088,12 @@ public class ImplWriter extends TransformWriter {
 
 	@Override
 	public boolean visit(ClassInstanceCreation node) {
-		print("(new ");
+		boolean parens = TransformUtil.needsExtraParens(node);
+
+		if (parens) {
+			print("(");
+		}
+		print("new ");
 
 		ITypeBinding tb = node.getType().resolveBinding();
 
@@ -1101,8 +1112,9 @@ public class ImplWriter extends TransformWriter {
 		consArgs(node.getExpression(), node.arguments(),
 				node.resolveConstructorBinding(), tb, null, 0);
 
-		print(")");
-
+		if (parens) {
+			print(")");
+		}
 		return false;
 	}
 
