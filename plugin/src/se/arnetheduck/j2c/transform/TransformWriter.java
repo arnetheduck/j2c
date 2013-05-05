@@ -57,7 +57,6 @@ import org.eclipse.jdt.core.dom.TextElement;
 import org.eclipse.jdt.core.dom.ThisExpression;
 import org.eclipse.jdt.core.dom.Type;
 import org.eclipse.jdt.core.dom.TypeDeclarationStatement;
-import org.eclipse.jdt.core.dom.VariableDeclarationExpression;
 import org.eclipse.jdt.core.dom.VariableDeclarationFragment;
 import org.eclipse.jdt.core.dom.WildcardType;
 
@@ -828,18 +827,6 @@ public abstract class TransformWriter extends ASTVisitor {
 	@Override
 	public boolean visit(TypeDeclarationStatement node) {
 		node.getDeclaration().accept(this);
-		return false;
-	}
-
-	@Override
-	public boolean visit(VariableDeclarationExpression node) {
-		int modifiers = node.getModifiers();
-		print(TransformUtil.variableModifiers(type, modifiers)
-				+ CName.relative(node.getType().resolveBinding(), type, true)
-				+ " ");
-
-		visitAllCSV(node.fragments(), false);
-
 		return false;
 	}
 

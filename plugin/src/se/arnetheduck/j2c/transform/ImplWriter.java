@@ -2690,6 +2690,22 @@ public class ImplWriter extends TransformWriter {
 	}
 
 	@Override
+	public boolean visit(VariableDeclarationExpression node) {
+		int modifiers = node.getModifiers();
+		print(TransformUtil.variableModifiers(type, modifiers));
+		if (TransformUtil.canDeclareAuto(node, null)) {
+			print("auto ");
+		} else {
+			print(CName.relative(node.getType().resolveBinding(), type, true)
+					+ " ");
+		}
+
+		visitAllCSV(node.fragments(), false);
+
+		return false;
+	}
+
+	@Override
 	public boolean visit(VariableDeclarationStatement node) {
 		List<VariableDeclarationFragment> fragments = node.fragments();
 

@@ -60,4 +60,16 @@ public class ForTest {
 		}
 		return 0;
 	}
+
+	public int twoInts() {
+		for (int i = 0, j = 1; i < 10; ++i)
+			i = i + 1;
+		return 0;
+	}
+
+	public int twoStrings() {
+		for (String i = "", j = null; i.length() < 10; i = i + "1")
+			i = i + 1;
+		return 0;
+	}
 }

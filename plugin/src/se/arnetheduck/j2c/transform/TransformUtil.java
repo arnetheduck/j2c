@@ -38,6 +38,7 @@ import org.eclipse.jdt.core.dom.ParenthesizedExpression;
 import org.eclipse.jdt.core.dom.PrimitiveType;
 import org.eclipse.jdt.core.dom.Type;
 import org.eclipse.jdt.core.dom.TypeParameter;
+import org.eclipse.jdt.core.dom.VariableDeclarationExpression;
 import org.eclipse.jdt.core.dom.VariableDeclarationFragment;
 import org.eclipse.jdt.core.dom.VariableDeclarationStatement;
 
@@ -1223,19 +1224,37 @@ public final class TransformUtil {
 			vdf = (VariableDeclarationFragment) s.fragments().get(0);
 		}
 
+		return canDeclareAutoX(vdf);
+	}
+
+	/** Can use the 'auto' keyword when declaring a variable */
+	public static boolean canDeclareAuto(VariableDeclarationExpression s,
+			VariableDeclarationFragment vdf) {
+		if (vdf == null) {
+			if (s.fragments().size() > 1) {
+				return false;
+			}
+
+			vdf = (VariableDeclarationFragment) s.fragments().get(0);
+		}
+
+		return canDeclareAutoX(vdf);
+	}
+
+	private static boolean canDeclareAutoX(VariableDeclarationFragment vdf) {
 		IVariableBinding vb = vdf.resolveBinding();
 		if (vb.isField())
 			return false;
-		if (vdf.getInitializer() == null)
+
+		Expression initializer = vdf.getInitializer();
+		if (initializer == null)
 			return false;
 
-		if (isNullLiteral(vdf.getInitializer()))
+		if (isNullLiteral(initializer))
 			return false;
 
-		if (!vb.getType()
-				.getErasure()
-				.isEqualTo(
-						vdf.getInitializer().resolveTypeBinding().getErasure())) {
+		if (!vb.getType().getErasure()
+				.isEqualTo(initializer.resolveTypeBinding().getErasure())) {
 			return false;
 		}
 
