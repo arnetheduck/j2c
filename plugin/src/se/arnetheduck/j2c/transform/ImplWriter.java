@@ -5,7 +5,6 @@ import java.io.PrintWriter;
 import java.io.StringWriter;
 import java.util.ArrayList;
 import java.util.Arrays;
-import java.util.Collection;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
@@ -1988,7 +1987,8 @@ public class ImplWriter extends TransformWriter {
 		boolean isVarArg = false;
 		b = b.getMethodDeclaration();
 
-		boolean hasOverloads = isOverloaded(b);
+		boolean hasOverloads = TypeUtil.isOverloaded(b,
+				ctx.resolve(Object.class));
 		ITypeBinding[] paramTypes = b.getParameterTypes();
 		for (int i = 0; i < arguments.size(); ++i) {
 			print(s);
@@ -2041,24 +2041,6 @@ public class ImplWriter extends TransformWriter {
 		if (parens) {
 			print(")");
 		}
-	}
-
-	private boolean isOverloaded(IMethodBinding b) {
-		Collection<IMethodBinding> methods = TypeUtil.methods(TypeUtil.types(
-				b.getDeclaringClass(), ctx.resolve(Object.class)), TypeUtil
-				.named(b.getName()));
-		if (methods.size() < 2) {
-			return false;
-		}
-
-		for (IMethodBinding mb : methods) {
-			if (!mb.isEqualTo(b)
-					&& mb.getParameterTypes().length == b.getParameterTypes().length) {
-				return true;
-			}
-		}
-
-		return false;
 	}
 
 	private void javaCast(ITypeBinding source, ITypeBinding target) {

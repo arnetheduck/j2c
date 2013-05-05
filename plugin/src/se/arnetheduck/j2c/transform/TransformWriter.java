@@ -314,8 +314,9 @@ public abstract class TransformWriter extends ASTVisitor {
 
 	@Override
 	public boolean visit(NumberLiteral node) {
-		print(TransformUtil
-				.checkConstant(node.resolveConstantExpressionValue()));
+		print(TransformUtil.checkConstant(
+				node.resolveConstantExpressionValue(),
+				TransformUtil.needsType(node, ctx.resolve(Object.class))));
 		return false;
 	}
 

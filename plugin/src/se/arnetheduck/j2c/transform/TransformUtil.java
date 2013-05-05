@@ -22,6 +22,7 @@ import org.eclipse.jdt.core.IMethod;
 import org.eclipse.jdt.core.JavaModelException;
 import org.eclipse.jdt.core.dom.ASTNode;
 import org.eclipse.jdt.core.dom.ArrayCreation;
+import org.eclipse.jdt.core.dom.Assignment;
 import org.eclipse.jdt.core.dom.ClassInstanceCreation;
 import org.eclipse.jdt.core.dom.Expression;
 import org.eclipse.jdt.core.dom.FieldDeclaration;
@@ -29,13 +30,17 @@ import org.eclipse.jdt.core.dom.IMethodBinding;
 import org.eclipse.jdt.core.dom.IPackageBinding;
 import org.eclipse.jdt.core.dom.ITypeBinding;
 import org.eclipse.jdt.core.dom.IVariableBinding;
+import org.eclipse.jdt.core.dom.InfixExpression;
+import org.eclipse.jdt.core.dom.InfixExpression.Operator;
 import org.eclipse.jdt.core.dom.Initializer;
 import org.eclipse.jdt.core.dom.MethodDeclaration;
 import org.eclipse.jdt.core.dom.MethodInvocation;
 import org.eclipse.jdt.core.dom.Name;
 import org.eclipse.jdt.core.dom.NullLiteral;
+import org.eclipse.jdt.core.dom.NumberLiteral;
 import org.eclipse.jdt.core.dom.ParenthesizedExpression;
 import org.eclipse.jdt.core.dom.PrimitiveType;
+import org.eclipse.jdt.core.dom.ReturnStatement;
 import org.eclipse.jdt.core.dom.Type;
 import org.eclipse.jdt.core.dom.TypeParameter;
 import org.eclipse.jdt.core.dom.VariableDeclarationExpression;
@@ -248,6 +253,10 @@ public final class TransformUtil {
 	}
 
 	public static String checkConstant(Object cv) {
+		return checkConstant(cv, true);
+	}
+
+	public static String checkConstant(Object cv, boolean forceType) {
 		if (cv instanceof Byte) {
 			return "int8_t(" + cv + ")";
 		}
@@ -281,10 +290,19 @@ public final class TransformUtil {
 		}
 
 		if (cv instanceof Integer) {
+			// This is not quite correct - an unadorned integer literal in C++
+			// is considered to be of int type, which is only guaranteed to hold
+			// values in the range -32767..32767
+			// so any larger values should have the 'L' suffix - investigate
+
 			if ((Integer) cv == Integer.MIN_VALUE) {
 				// In C++, the part after '-' is parsed first which overflows
 				// so we do a trick
 				return "int32_t(-0x7fffffff-1)";
+			}
+
+			if (!forceType) {
+				return cv.toString();
 			}
 
 			return "int32_t(" + cv + ")";
@@ -297,7 +315,11 @@ public final class TransformUtil {
 				return "int64_t(-0x7fffffffffffffffLL-1)";
 			}
 
-			return "int64_t(" + cv + "ll)";
+			if (!forceType) {
+				return cv + "LL";
+			}
+
+			return "int64_t(" + cv + "LL)";
 		}
 
 		if (cv instanceof Float) {
@@ -327,6 +349,10 @@ public final class TransformUtil {
 		}
 
 		if (cv instanceof Short) {
+			if (!forceType) {
+				return cv.toString();
+			}
+
 			return "int16_t(" + cv + ")";
 		}
 
@@ -1261,6 +1287,51 @@ public final class TransformUtil {
 		return true;
 	}
 
+	/**
+	 * In most cases we play it safe and cast literals to their exact types, to
+	 * avoid issues where it might actually matter, but this adds unwanted noise
+	 * so this function returns false for constructs where it is safe to skip it
+	 * - the literal cast might still be added for other reasons though (@see
+	 * TransformUtil.checkConstant)
+	 */
+	public static boolean needsType(NumberLiteral node, ITypeBinding object) {
+		ASTNode parent = node.getParent();
+
+		if (parent instanceof ReturnStatement) {
+			return false;
+		}
+
+		if (parent instanceof InfixExpression) {
+
+			InfixExpression ie = (InfixExpression) parent;
+			Operator op = ie.getOperator();
+			if (op.equals(InfixExpression.Operator.EQUALS)
+					|| op.equals(InfixExpression.Operator.GREATER)
+					|| op.equals(InfixExpression.Operator.GREATER_EQUALS)
+					|| op.equals(InfixExpression.Operator.LESS)
+					|| op.equals(InfixExpression.Operator.LESS_EQUALS)
+					|| op.equals(InfixExpression.Operator.NOT_EQUALS)) {
+				// Only comparators - add, sub etc affect the type of the
+				// resulting expression
+				return false;
+			}
+		}
+
+		if (parent instanceof Assignment) {
+			return false;
+		}
+
+		if (parent instanceof MethodInvocation) {
+			MethodInvocation mi = (MethodInvocation) parent;
+			if (mi.arguments().contains(node)
+					&& !TypeUtil
+							.isOverloaded(mi.resolveMethodBinding(), object)) {
+				return false;
+			}
+		}
+
+		return true;
+	}
 	public static boolean isNullLiteral(Expression e) {
 		if (e instanceof NullLiteral)
 			return true;
@@ -1296,5 +1367,4 @@ public final class TransformUtil {
 
 		return false;
 	}
-
 }

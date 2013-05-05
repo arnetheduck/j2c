@@ -206,4 +206,21 @@ public class TypeUtil {
 
 		return ret;
 	}
+
+	public static boolean isOverloaded(IMethodBinding b, ITypeBinding object) {
+		Collection<IMethodBinding> methods = methods(
+				types(b.getDeclaringClass(), object), named(b.getName()));
+		if (methods.size() < 2) {
+			return false;
+		}
+
+		for (IMethodBinding mb : methods) {
+			if (!mb.isEqualTo(b)
+					&& mb.getParameterTypes().length == b.getParameterTypes().length) {
+				return true;
+			}
+		}
+
+		return false;
+	}
 }
