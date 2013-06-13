@@ -1,6 +1,11 @@
+0.5.0
+-----
 * Multiselect translates all selected items (have to be from same project)
 * Initialize members in headers, don't generate default constructors that shouldn't be there
 * Implement values and valueOf for enums, and fix their name / ordinal
+* Range-for-loops when looping over arrays
+* Use auto when declaring variables
+* Use single template class for arrays instead of generated .hpp/.cpp pairs
 
 0.4.0
 -----
