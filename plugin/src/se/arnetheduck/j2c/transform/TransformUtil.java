@@ -10,6 +10,7 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.Stack;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
@@ -148,8 +149,14 @@ public final class TransformUtil {
 	}
 
 	public static String headerName(ITypeBinding tb) {
-		if (isPrimitiveArray(tb)) {
-			return "Array.hpp";
+		if (tb.isArray()) {
+			ITypeBinding ct = tb.getComponentType();
+			if (ct.isPrimitive()) {
+				return "Array.hpp";
+			} else if (TransformUtil.same(ct, Object.class)) {
+				return "ObjectArray.hpp";
+			}
+			return "SubArray.hpp";
 		}
 
 		return toFileName(qualifiedName(tb)) + ".hpp";
@@ -1366,5 +1373,31 @@ public final class TransformUtil {
 		}
 
 		return false;
+	}
+
+	public static void setNs(PrintWriter pw, List<String> pkg, Stack<String> cur) {
+		while (pkg.size() < cur.size()
+				|| !cur.equals(pkg.subList(0, cur.size()))) {
+	
+			String ns = cur.pop();
+	
+			pw.print(indent(cur.size()) + "} // ");
+			pw.print(ns);
+			pw.println();
+		}
+	
+		if (!cur.equals(pkg)) {
+			pw.println();
+	
+			while (!cur.equals(pkg)) {
+				String i = indent(cur.size());
+				String ns = pkg.get(cur.size());
+	
+				pw.format("%snamespace %s\n", i, ns);
+				pw.println(i + "{");
+	
+				cur.push(ns);
+			}
+		}
 	}
 }

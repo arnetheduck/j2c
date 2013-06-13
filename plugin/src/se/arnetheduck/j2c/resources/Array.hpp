@@ -7,6 +7,8 @@
 #include <java/lang/Cloneable.hpp>
 #include <java/io/Serializable.hpp>
 
+extern java::lang::Class *class_(const char16_t *c, int n);
+
 template<typename T>
 class Array
     : public virtual ::java::lang::Object
@@ -101,5 +103,55 @@ public:
     const pointer_type p;
 
 private:
-     ::java::lang::Class *getClass0() override;
+    ::java::lang::Class *getClass0() override { return class_(); }
 };
+
+typedef Array<bool> boolArray;
+typedef Array<char16_t> char16_tArray;
+typedef Array<int8_t> int8_tArray;
+typedef Array<int16_t> int16_tArray;
+typedef Array<int32_t> int32_tArray;
+typedef Array<int64_t> int64_tArray;
+typedef Array<double> doubleArray;
+typedef Array<float> floatArray;
+
+template<>
+inline java::lang::Class* boolArray::class_() {
+    static ::java::lang::Class* c = ::class_(u"boolean[]", 9);
+    return c;
+}
+template<>
+inline java::lang::Class* char16_tArray::class_() {
+    static ::java::lang::Class* c = ::class_(u"boolean[]", 9);
+    return c;
+}
+template<>
+inline java::lang::Class* int8_tArray::class_() {
+    static ::java::lang::Class* c = ::class_(u"boolean[]", 9);
+    return c;
+}
+template<>
+inline java::lang::Class* int16_tArray::class_() {
+    static ::java::lang::Class* c = ::class_(u"boolean[]", 9);
+    return c;
+}
+template<>
+inline java::lang::Class* int32_tArray::class_() {
+    static ::java::lang::Class* c = ::class_(u"boolean[]", 9);
+    return c;
+}
+template<>
+inline java::lang::Class* int64_tArray::class_() {
+    static ::java::lang::Class* c = ::class_(u"boolean[]", 9);
+    return c;
+}
+template<>
+inline java::lang::Class* doubleArray::class_() {
+    static ::java::lang::Class* c = ::class_(u"boolean[]", 9);
+    return c;
+}
+template<>
+inline java::lang::Class* floatArray::class_() {
+    static ::java::lang::Class* c = ::class_(u"boolean[]", 9);
+    return c;
+}

@@ -6,7 +6,6 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
 import java.util.HashMap;
-import java.util.List;
 import java.util.Map;
 import java.util.Stack;
 import java.util.TreeSet;
@@ -78,8 +77,10 @@ public class ForwardWriter {
 				pw.println("#pragma once");
 				pw.println();
 
-				setNs(pw, e.getKey().length() == 0 ? new ArrayList<String>()
-						: Arrays.asList(e.getKey().split("\\.")));
+				TransformUtil.setNs(pw,
+						e.getKey().length() == 0 ? new ArrayList<String>()
+								: Arrays.asList(e.getKey().split("\\.")), cur);
+
 				String i = TransformUtil.indent(cur.size());
 				for (Info info : e.getValue()) {
 					if (info.isPrimitive) {
@@ -110,38 +111,11 @@ public class ForwardWriter {
 							: "class", info.className);
 				}
 
-				setNs(pw, new ArrayList<String>());
-
+				TransformUtil.setNs(pw, new ArrayList<String>(), cur);
 			} finally {
 				if (pw != null) {
 					pw.close();
 				}
-			}
-		}
-	}
-
-	private void setNs(PrintWriter pw, List<String> pkg) {
-		while (pkg.size() < cur.size()
-				|| !cur.equals(pkg.subList(0, cur.size()))) {
-
-			String ns = cur.pop();
-
-			pw.print(TransformUtil.indent(cur.size()) + "} // ");
-			pw.print(ns);
-			pw.println();
-		}
-
-		if (!cur.equals(pkg)) {
-			pw.println();
-
-			while (!cur.equals(pkg)) {
-				String i = TransformUtil.indent(cur.size());
-				String ns = pkg.get(cur.size());
-
-				pw.format("%snamespace %s\n", i, ns);
-				pw.println(i + "{");
-
-				cur.push(ns);
 			}
 		}
 	}

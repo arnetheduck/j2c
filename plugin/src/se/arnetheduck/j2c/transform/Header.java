@@ -6,6 +6,7 @@ import java.io.StringWriter;
 import java.lang.reflect.Modifier;
 import java.util.ArrayList;
 import java.util.Collection;
+import java.util.HashSet;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
@@ -80,16 +81,14 @@ public class Header {
 			println("#pragma once");
 			println();
 
-			boolean hasIncludes = false;
+			Set<String> includes = new HashSet<String>();
 
 			if (type.getQualifiedName().equals(String.class.getName())) {
-				println("#include <stddef.h>");
-				hasIncludes = true;
+				printlnd("#include <stddef.h>", includes);
 			}
 
 			if (deps.needsAtomic()) {
-				println("#include <atomic>");
-				hasIncludes = true;
+				printlnd("#include <atomic>", includes);
 			}
 
 			List<ITypeBinding> bases = TypeUtil.bases(type,
@@ -102,15 +101,14 @@ public class Header {
 			}
 
 			for (String p : packages) {
-				println(TransformUtil.include(TransformUtil.packageHeader(
-						ctx.getName(), p)));
-				hasIncludes = true;
+				printlnd(
+						TransformUtil.include(TransformUtil.packageHeader(
+								ctx.getName(), p)), includes);
 			}
 
 			for (ITypeBinding dep : bases) {
 				ctx.hardDep(dep);
-				println(TransformUtil.include(dep));
-				hasIncludes = true;
+				printlnd(TransformUtil.include(dep), includes);
 			}
 
 			for (ITypeBinding dep : deps.getHardDeps()) {
@@ -119,15 +117,14 @@ public class Header {
 					continue;
 				}
 
-				if (!bases.contains(dep)) {
-					println(TransformUtil.include(dep));
-					hasIncludes = true;
-				}
+				printlnd(TransformUtil.include(dep), includes);
 			}
 
-			if (hasIncludes) {
+			if (!includes.isEmpty()) {
 				println();
 			}
+
+			deps.printArrays(out);
 
 			printDefaultInitTag();
 
@@ -642,7 +639,7 @@ public class Header {
 	 * ambiguity ensues even if the methods are overloads (name resolution comes
 	 * before overload resolution). This method returns a list of such
 	 * duplicates.
-	 * 
+	 *
 	 * @param type
 	 * @return
 	 */
@@ -781,5 +778,11 @@ public class Header {
 
 	public void println() {
 		out.println();
+	}
+
+	public void printlnd(String s, Set<String> printed) {
+		if (printed.add(s)) {
+			println(s);
+		}
 	}
 }

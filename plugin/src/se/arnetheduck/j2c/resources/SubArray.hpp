@@ -3,18 +3,21 @@
 #include <iterator>
 #include <utility>
 
-%1$s
+#include <ObjectArray.hpp>
 #include <java/lang/ArrayStoreException.hpp>
 
-class %5$sArray
-%3$s{
-public:
-    static ::java::lang::Class *class_();
-    typedef %4$sArray super;
+template<typename ComponentType, typename... Bases>
+struct SubArray : public virtual Bases... {
+    static ::java::lang::Class *class_() {
+        static ::java::lang::Class* c = ::class_(u"TODO[]", 31);
+        return c;
+    }
 
-    typedef %5$s *value_type;
+    typedef ComponentType* value_type;
+    typedef int            size_type;
+
     struct iterator {
-        typedef %5$s* value_type;
+        typedef ComponentType*          value_type;
         typedef std::ptrdiff_t          difference_type;
         typedef value_type*             pointer;
         typedef value_type              reference; // Good enough for input iterator
@@ -38,47 +41,48 @@ public:
         value_type              pt;
     };
 
-    %2$sArray() { }
-    %2$sArray(int n) : ::java::lang::ObjectArray(n) { }
+    SubArray() { }
+    SubArray(int n) : ::java::lang::ObjectArray(n) { }
 
-    %2$sArray(const value_type *values, int n) : ::java::lang::ObjectArray(n)
+    SubArray(const value_type *values, int n) : ::java::lang::ObjectArray(n)
     {
-    	auto x = p;
+    	auto x = this->p;
     	for(auto v = values; v != values + n; ++v) *x++ = *v;
     }
 
     template<typename T>
-    %2$sArray(std::initializer_list<T> l) : ::java::lang::ObjectArray(l.size())
+    SubArray(std::initializer_list<T> l) : ::java::lang::ObjectArray(l.size())
     {
-    	auto x = p;
+    	auto x = this->p;
     	for(auto v : l) *x++ = v;
     }
 
-    %2$sArray(const %2$sArray &rhs) : ::java::lang::ObjectArray(rhs) { }
-    %2$sArray(%2$sArray &&rhs) : ::java::lang::ObjectArray(std::move(rhs)) { }
+    SubArray(const SubArray &rhs) : ::java::lang::ObjectArray(rhs) { }
+    SubArray(SubArray &&rhs) : ::java::lang::ObjectArray(std::move(rhs)) { }
+    virtual ~SubArray() {}
 
-    %2$sArray &operator=(const %2$sArray &rhs)
+    SubArray &operator=(const SubArray &rhs)
     {
         ::java::lang::ObjectArray::operator=(rhs);
         return *this;
     }
 
-    %2$sArray &operator=(%2$sArray &&rhs)
+    SubArray &operator=(SubArray &&rhs)
     {
     	::java::lang::ObjectArray::operator=(std::move(rhs));
     	return *this;
     }
 
-    %2$sArray* clone() override { return new %2$sArray(*this); }
+    SubArray* clone() override { return new SubArray(*this); }
 
     value_type operator[](size_type i) const { return get(i); }
-    value_type get(size_type i) const { return dynamic_cast<value_type>(p[i]); }
+    value_type get(size_type i) const { return dynamic_cast<value_type>(this->p[i]); }
 
-    iterator        begin() { return iterator(p); }
-    iterator        end() { return iterator(p + length); }
+    iterator        begin() { return iterator(this->p); }
+    iterator        end() { return iterator(this->p + this->length); }
 
 private:	
-    ::java::lang::Class *getClass0() override;
+    ::java::lang::Class *getClass0() override { return class_(); }
 
     void set0(size_type i, ::java::lang::Object *x) override
     {
@@ -86,6 +90,6 @@ private:
             throw new ::java::lang::ArrayStoreException();
         }
         
-        p[i] = x;
+        this->p[i] = x;
     }
 };

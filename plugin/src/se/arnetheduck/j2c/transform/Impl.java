@@ -5,8 +5,10 @@ import java.io.PrintWriter;
 import java.io.StringWriter;
 import java.util.ArrayList;
 import java.util.Collection;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.TreeMap;
 
 import org.eclipse.core.runtime.IPath;
@@ -60,6 +62,7 @@ public class Impl {
 
 			printIncludes(fmod);
 
+			deps.printArrays(out);
 			printJavaCast();
 			printNpc();
 
@@ -93,11 +96,9 @@ public class Impl {
 	}
 
 	private void printIncludes(boolean fmod) {
-		println(TransformUtil.include(type));
+		Set<String> includes = new HashSet<String>();
+		printlnd(TransformUtil.include(type), includes);
 		println();
-
-		boolean hasInc = false;
-		boolean hasArray = false;
 
 		for (ITypeBinding dep : deps.getHardDeps()) {
 			if (dep.isEqualTo(type)) {
@@ -108,24 +109,14 @@ public class Impl {
 				continue;
 			}
 
-			if (TransformUtil.isPrimitiveArray(dep)) {
-				if (hasArray) {
-					continue;
-				}
-
-				hasArray = true;
-			}
-
-			println(TransformUtil.include(dep));
-			hasInc = true;
+			printlnd(TransformUtil.include(dep), includes);
 		}
 
 		if (fmod) {
-			println("#include <cmath>");
-			hasInc = true;
+			printlnd("#include <cmath>", includes);
 		}
 
-		if (hasInc) {
+		if (includes.size() > 1) {
 			println();
 		}
 	}
@@ -469,5 +460,11 @@ public class Impl {
 
 	public void println() {
 		out.println();
+	}
+
+	public void printlnd(String s, Set<String> printed) {
+		if (printed.add(s)) {
+			println(s);
+		}
 	}
 }

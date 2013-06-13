@@ -40,6 +40,10 @@ import se.arnetheduck.j2c.snippets.ReplaceInvocation;
 import se.arnetheduck.j2c.snippets.SWTSnippet;
 
 public class Transformer {
+	private static final String ARRAY_HPP = "/se/arnetheduck/j2c/resources/Array.hpp";
+	private static final String OBJECT_ARRAY_HPP = "/se/arnetheduck/j2c/resources/ObjectArray.hpp";
+	private static final String SUB_ARRAY_HPP = "/se/arnetheduck/j2c/resources/SubArray.hpp";
+
 	private final IJavaProject project;
 
 	private final String name;
@@ -109,6 +113,8 @@ public class Transformer {
 			processSome(monitor);
 		}
 
+		writeResources();
+
 		new ForwardWriter(this, root).write(forwards.values());
 
 		for (MainWriter.Info main : mains.values()) {
@@ -129,6 +135,16 @@ public class Transformer {
 
 		System.out.println("Done (" + (System.currentTimeMillis() - start)
 				+ " ms).");
+	}
+
+	private void writeResources() throws IOException {
+		// TODO Auto-generated method stub
+		FileUtil.writeResource(ARRAY_HPP,
+				TransformUtil.headerPath(root, "Array.hpp").toFile());
+		FileUtil.writeResource(OBJECT_ARRAY_HPP,
+				TransformUtil.headerPath(root, "ObjectArray.hpp").toFile());
+		FileUtil.writeResource(SUB_ARRAY_HPP,
+				TransformUtil.headerPath(root, "SubArray.hpp").toFile());
 	}
 
 	public String getName() {
@@ -359,14 +375,6 @@ public class Transformer {
 			}
 
 			cur = sel;
-			for (ITypeBinding tb : arrays) {
-				try {
-					ArrayWriter aw = new ArrayWriter(root, this, tb);
-					aw.write();
-				} catch (Exception e) {
-					e.printStackTrace();
-				}
-			}
 		}
 	}
 
@@ -403,12 +411,23 @@ public class Transformer {
 	}
 
 	public void softDep(ITypeBinding dep) {
-		if (dep != null && !dep.isNullType()) {
-			dep = dep.getErasure();
-			if (!forwards.containsKey(dep.getBinaryName())) {
-				ForwardWriter.Info info = new ForwardWriter.Info(dep);
-				forwards.put(dep.getBinaryName(), info);
-			}
+		if (dep == null)
+			return;
+
+		if (dep.isNullType())
+			return;
+
+		dep = dep.getErasure();
+
+		if (dep.isArray()) {
+			ITypeBinding ct = dep.getComponentType();
+			if (!ct.isPrimitive() && !TransformUtil.same(ct, Object.class))
+				return;
+		}
+
+		if (!forwards.containsKey(dep.getBinaryName())) {
+			ForwardWriter.Info info = new ForwardWriter.Info(dep);
+			forwards.put(dep.getBinaryName(), info);
 		}
 	}
 

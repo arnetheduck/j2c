@@ -14,13 +14,19 @@ namespace java
 	}
 }
 
+extern java::lang::Class *class_(const char16_t *c, int n);
+
 class java::lang::ObjectArray
     : public virtual ::java::lang::Object
     , public virtual ::java::lang::Cloneable
     , public virtual ::java::io::Serializable
 {
 public:
-    static ::java::lang::Class *class_();
+    static ::java::lang::Class *class_() {
+        static ::java::lang::Class* c = ::class_(u"java.lang.Object[]", 31);
+        return c;
+    }
+
     typedef ::java::lang::Object super;
 
     typedef Object *value_type;
@@ -110,7 +116,7 @@ public:
     const pointer_type p;
 
 private:
-     ::java::lang::Class *getClass0() override;
+    ::java::lang::Class *getClass0() override { return class_(); }
 
      virtual void set0(size_type i, Object *x) { p[i] = x; }
 };
