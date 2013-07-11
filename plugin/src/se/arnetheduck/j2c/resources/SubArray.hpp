@@ -17,28 +17,27 @@ struct SubArray : public virtual Bases... {
     typedef int            size_type;
 
     struct iterator {
-        typedef ComponentType*          value_type;
+        typedef SubArray::value_type    value_type;
         typedef std::ptrdiff_t          difference_type;
         typedef value_type*             pointer;
         typedef value_type              reference; // Good enough for input iterator
         typedef std::input_iterator_tag iterator_category;
 
-        iterator() : p(), pt() {}
-        explicit iterator(::java::lang::Object** p) : p(p), pt(dynamic_cast<value_type>(*p)) {}
+        iterator() : p() {}
+        explicit iterator(::java::lang::Object** p) : p(p) {}
 
-        pointer     operator->()    { return &pt; }
-        reference   operator*()     { return pt; }
+        pointer     operator->()    { return &dynamic_cast<value_type>(*p); }
+        reference   operator*()     { return dynamic_cast<value_type>(*p); }
 
-        iterator&   operator++()    { ++p; pt = dynamic_cast<value_type>(*p); return *this; }
+        iterator&   operator++()    { ++p; return *this; }
         iterator    operator++(int) { iterator tmp(p); ++*this; return tmp; }
-        iterator&   operator--()    { --p; pt = dynamic_cast<value_type>(*p); return *this; }
-        iterator    operator--(int) { iterator tmp(p); ++*this; return tmp; }
+        iterator&   operator--()    { --p; return *this; }
+        iterator    operator--(int) { iterator tmp(p); --*this; return tmp; }
 
         bool operator==(iterator rhs) { return p == rhs.p; }
         bool operator!=(iterator rhs) { return !(*this == rhs); }
 
         ::java::lang::Object**  p;
-        value_type              pt;
     };
 
     SubArray() { }
