@@ -37,7 +37,6 @@ import org.eclipse.jdt.core.dom.TypeDeclaration;
 
 import se.arnetheduck.j2c.snippets.GetSetSnippet;
 import se.arnetheduck.j2c.snippets.ReplaceInvocation;
-import se.arnetheduck.j2c.snippets.SWTSnippet;
 
 public class Transformer {
 	private static final String ARRAY_HPP = "/se/arnetheduck/j2c/resources/Array.hpp";
@@ -69,7 +68,6 @@ public class Transformer {
 
 		snippets.add(new GetSetSnippet());
 		snippets.add(new ReplaceInvocation());
-		snippets.add(new SWTSnippet());
 	}
 
 	public final Set<ICompilationUnit> selection = new TreeSet<ICompilationUnit>(
