@@ -33,6 +33,7 @@ import org.eclipse.jdt.core.dom.ITypeBinding;
 import org.eclipse.jdt.core.dom.IVariableBinding;
 import org.eclipse.jdt.core.dom.InfixExpression;
 import org.eclipse.jdt.core.dom.InfixExpression.Operator;
+import org.eclipse.jdt.core.dom.FieldAccess;
 import org.eclipse.jdt.core.dom.Initializer;
 import org.eclipse.jdt.core.dom.MethodDeclaration;
 import org.eclipse.jdt.core.dom.MethodInvocation;
@@ -1367,7 +1368,14 @@ public final class TransformUtil {
 			MethodInvocation mi = (MethodInvocation) parent;
 			if (mi.getExpression() == creation) {
 				// Here, -> binds tighter than new, thus we get an error without
-				// parens
+				// parens.
+				return true;
+			}
+		} else if (parent instanceof FieldAccess) {
+			FieldAccess fi = (FieldAccess) parent;
+			if (fi.getExpression() == creation) {
+				// Here, -> binds tighter than new, thus we get an error without
+				// parens.
 				return true;
 			}
 		}
