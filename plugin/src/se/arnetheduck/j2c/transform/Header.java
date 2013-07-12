@@ -731,7 +731,7 @@ public class Header {
 				println(i1
 						+ TransformUtil.varTypeCName(closure.getModifiers(),
 								closure.getType(), type, deps) + " "
-						+ CName.of(closure) + ";");
+						+ CName.of(closure, type) + ";");
 			}
 		}
 	}

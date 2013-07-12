@@ -362,7 +362,7 @@ public class ImplWriter extends TransformWriter {
 
 		if (typeInfo.closures() != null) {
 			for (IVariableBinding closure : typeInfo.closures()) {
-				print(sep + CName.of(closure));
+				print(sep + CName.of(closure, type));
 				sep = ", ";
 			}
 		}
@@ -566,7 +566,7 @@ public class ImplWriter extends TransformWriter {
 		if (typeInfo.closures() != null) {
 			for (IVariableBinding closure : typeInfo.closures()) {
 				printi(sep);
-				printInit(CName.of(closure));
+				printInit(CName.of(closure, type));
 				sep = ", ";
 			}
 		}

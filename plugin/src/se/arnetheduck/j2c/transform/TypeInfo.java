@@ -56,4 +56,8 @@ public class TypeInfo {
 	public Set<IVariableBinding> closures() {
 		return closures;
 	}
+	
+	public boolean isClosure(IVariableBinding vb) {
+		return closures != null && closures.contains(vb);
+	}
 }

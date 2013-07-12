@@ -1023,7 +1023,7 @@ public final class TransformUtil {
 				pw.print(sep
 						+ varTypeCName(closure.getModifiers(),
 								closure.getType(), type, deps) + " "
-						+ CName.of(closure));
+						+ CName.of(closure, type));
 				sep = ", ";
 			}
 		}

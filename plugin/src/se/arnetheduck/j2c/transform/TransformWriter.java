@@ -427,8 +427,15 @@ public abstract class TransformWriter extends ASTVisitor {
 			} else if (hidden) {
 				print(CName.relative(vb.getDeclaringClass(), type, true) + "::");
 			}
-
-			print(CName.of(vb));
+			
+			if (typeInfo.isClosure(vb)) {
+				// Closures need a name resolved differently, to avoid method/
+				// variable name conflicts which are allowed in Java but not
+				// in C++.
+				print(CName.of(vb, type));
+			} else {
+				print(CName.of(vb));
+			}
 		} else if (b instanceof ITypeBinding) {
 			print(CName.relative((ITypeBinding) b, type, true));
 			softDep((ITypeBinding) b);
