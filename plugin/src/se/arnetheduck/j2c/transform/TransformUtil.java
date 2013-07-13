@@ -26,6 +26,7 @@ import org.eclipse.jdt.core.dom.ArrayCreation;
 import org.eclipse.jdt.core.dom.Assignment;
 import org.eclipse.jdt.core.dom.ClassInstanceCreation;
 import org.eclipse.jdt.core.dom.Expression;
+import org.eclipse.jdt.core.dom.FieldAccess;
 import org.eclipse.jdt.core.dom.FieldDeclaration;
 import org.eclipse.jdt.core.dom.IMethodBinding;
 import org.eclipse.jdt.core.dom.IPackageBinding;
@@ -33,7 +34,6 @@ import org.eclipse.jdt.core.dom.ITypeBinding;
 import org.eclipse.jdt.core.dom.IVariableBinding;
 import org.eclipse.jdt.core.dom.InfixExpression;
 import org.eclipse.jdt.core.dom.InfixExpression.Operator;
-import org.eclipse.jdt.core.dom.FieldAccess;
 import org.eclipse.jdt.core.dom.Initializer;
 import org.eclipse.jdt.core.dom.MethodDeclaration;
 import org.eclipse.jdt.core.dom.MethodInvocation;
@@ -1340,6 +1340,16 @@ public final class TransformUtil {
 
 		return true;
 	}
+
+	public static boolean needsJavaCast(ITypeBinding source, ITypeBinding target) {
+		// Cast needed for multiply bounded generic types (<T extends A & B>)
+		// Primitive check to avoid returning true for boxing/unboxing
+		return !source.isPrimitive()
+				&& !target.isPrimitive()
+				&& !source.getErasure().isAssignmentCompatible(
+						target.getErasure());
+	}
+
 	public static boolean isNullLiteral(Expression e) {
 		if (e instanceof NullLiteral)
 			return true;
@@ -1386,24 +1396,24 @@ public final class TransformUtil {
 	public static void setNs(PrintWriter pw, List<String> pkg, Stack<String> cur) {
 		while (pkg.size() < cur.size()
 				|| !cur.equals(pkg.subList(0, cur.size()))) {
-	
+
 			String ns = cur.pop();
-	
+
 			pw.print(indent(cur.size()) + "} // ");
 			pw.print(ns);
 			pw.println();
 		}
-	
+
 		if (!cur.equals(pkg)) {
 			pw.println();
-	
+
 			while (!cur.equals(pkg)) {
 				String i = indent(cur.size());
 				String ns = pkg.get(cur.size());
-	
+
 				pw.format("%snamespace %s\n", i, ns);
 				pw.println(i + "{");
-	
+
 				cur.push(ns);
 			}
 		}

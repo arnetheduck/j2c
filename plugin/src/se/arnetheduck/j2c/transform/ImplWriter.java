@@ -691,7 +691,7 @@ public class ImplWriter extends TransformWriter {
 	 * Java allows conversions on assignment when boxing byte, short, char -
 	 * this method returns the type after conversion
 	 */
-	private ITypeBinding boxingType(Expression node) {
+	private static ITypeBinding boxingType(Expression node) {
 		ITypeBinding ret = null;
 		ASTNode parent = node.getParent();
 		if (parent instanceof Assignment) {
@@ -720,7 +720,7 @@ public class ImplWriter extends TransformWriter {
 						.getName()));
 	}
 
-	private boolean checkBoxNesting(Expression expr) {
+	private static boolean checkBoxNesting(Expression expr) {
 		ASTNode parent = expr.getParent();
 		if (parent instanceof ParenthesizedExpression) {
 			assert (((ParenthesizedExpression) parent).resolveBoxing() || ((ParenthesizedExpression) parent)
@@ -898,12 +898,13 @@ public class ImplWriter extends TransformWriter {
 	@Override
 	public boolean visit(Assignment node) {
 		Expression lhs = node.getLeftHandSide();
-		ITypeBinding lht = lhs.resolveTypeBinding();
+		ITypeBinding ltb = lhs.resolveTypeBinding();
 		Expression rhs = node.getRightHandSide();
+		ITypeBinding rtb = rhs.resolveTypeBinding();
 
-		hardDep(rhs.resolveTypeBinding());
+		hardDep(rtb);
 
-		if (TransformUtil.same(lht, String.class)
+		if (TransformUtil.same(ltb, String.class)
 				&& node.getOperator() == Operator.PLUS_ASSIGN) {
 
 			if (lhs instanceof ArrayAccess) {
@@ -936,7 +937,7 @@ public class ImplWriter extends TransformWriter {
 		if (node.getOperator() == Operator.RIGHT_SHIFT_UNSIGNED_ASSIGN) {
 			lhs.accept(this);
 			print(" = ");
-			if (lht.getName().equals("long")) {
+			if (ltb.getName().equals("long")) {
 				print("static_cast<uint64_t>(");
 			} else {
 				print("static_cast<uint32_t>(");
@@ -949,7 +950,7 @@ public class ImplWriter extends TransformWriter {
 		}
 
 		if (node.getOperator().equals(Operator.REMAINDER_ASSIGN)) {
-			if (lht.getName().equals("float") || lht.getName().equals("double")) {
+			if (ltb.getName().equals("float") || ltb.getName().equals("double")) {
 				fmod = true;
 				lhs.accept(this);
 				print(" = ");
@@ -982,7 +983,17 @@ public class ImplWriter extends TransformWriter {
 
 		print(" " + node.getOperator() + " ");
 
+		boolean cast = false;
+		if (TransformUtil.needsJavaCast(rtb, ltb)) {
+			javaCast(rtb, ltb);
+			cast = true;
+		}
+
 		rhs.accept(this);
+
+		if (cast) {
+			print(")");
+		}
 
 		return false;
 	}
@@ -1042,7 +1053,7 @@ public class ImplWriter extends TransformWriter {
 		return false;
 	}
 
-	private boolean isLoopStatement(ASTNode node) {
+	private static boolean isLoopStatement(ASTNode node) {
 		return node instanceof ForStatement || node instanceof WhileStatement
 				|| node instanceof DoStatement;
 	}
@@ -1875,11 +1886,7 @@ public class ImplWriter extends TransformWriter {
 
 		Expression expr = node.getExpression();
 		if (expr != null) {
-			// This cast is need for multiply bounded generic types (<T extends
-			// A & B>)
 			ITypeBinding etb = expr.resolveTypeBinding().getErasure();
-			boolean castExpr = !etb.isSubTypeCompatible(b.getDeclaringClass()
-					.getErasure());
 			boolean isType = expr instanceof Name
 					&& ((Name) expr).resolveBinding() instanceof ITypeBinding;
 
@@ -1892,7 +1899,7 @@ public class ImplWriter extends TransformWriter {
 				parens++;
 			}
 
-			if (castExpr) {
+			if (TransformUtil.needsJavaCast(etb, b.getDeclaringClass())) {
 				javaCast(etb, b.getDeclaringClass());
 				parens++;
 			}
@@ -2058,7 +2065,11 @@ public class ImplWriter extends TransformWriter {
 			// Java has different implicit cast rules when resolving overloads
 			// i e int -> double promotion, int vs pointer
 			hardDep(tb);
-			if (hasOverloads) {
+			if (TransformUtil.needsJavaCast(tb, pb)) {
+				javaCast(tb, pb);
+				argument.accept(this);
+				print(")");
+			} else if (hasOverloads) {
 				staticCast(tb, pb);
 				argument.accept(this);
 				print(")");
@@ -2142,17 +2153,35 @@ public class ImplWriter extends TransformWriter {
 
 		print(" ");
 
-		if (node.getInitializer() != null) {
-			print(TransformUtil.constVar(vb));
-			node.getName().accept(this);
-			hardDep(node.getInitializer().resolveTypeBinding());
-			print(" = ");
-			node.getInitializer().accept(this);
-		} else {
-			node.getName().accept(this);
-		}
+		SimpleName name = node.getName();
+		Expression initializer = node.getInitializer();
+		acceptVariableInit(vb, name, initializer);
 
 		return false;
+	}
+
+	private void acceptVariableInit(IVariableBinding vb, SimpleName name,
+			Expression initializer) {
+		if (initializer != null) {
+			print(TransformUtil.constVar(vb));
+			name.accept(this);
+			ITypeBinding ntb = initializer.resolveTypeBinding();
+			hardDep(ntb);
+			print(" = ");
+
+			boolean cast = false;
+			if (TransformUtil.needsJavaCast(ntb, vb.getType())) {
+				javaCast(ntb, vb.getType());
+				cast = true;
+			}
+
+			initializer.accept(this);
+			if (cast) {
+				print(")");
+			}
+		} else {
+			name.accept(this);
+		}
 	}
 
 	@Override
@@ -2658,15 +2687,7 @@ public class ImplWriter extends TransformWriter {
 			print(TransformUtil.ref(vb.getType()));
 		}
 
-		if (node.getInitializer() != null) {
-			print(TransformUtil.constVar(vb));
-			node.getName().accept(this);
-			hardDep(node.getInitializer().resolveTypeBinding());
-			print(" = ");
-			node.getInitializer().accept(this);
-		} else {
-			node.getName().accept(this);
-		}
+		acceptVariableInit(vb, node.getName(), node.getInitializer());
 
 		return false;
 	}
