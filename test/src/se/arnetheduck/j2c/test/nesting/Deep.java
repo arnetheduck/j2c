@@ -11,4 +11,20 @@ public class Deep {
 			}
 		}
 	}
+
+	interface Y {
+	}
+
+	class X implements Y {
+	}
+
+	class A {
+		class B extends X {
+			class C {
+				public Y get() {
+					return B.this;
+				}
+			}
+		}
+	}
 }

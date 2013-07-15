@@ -1310,7 +1310,6 @@ public final class TransformUtil {
 		}
 
 		if (parent instanceof InfixExpression) {
-
 			InfixExpression ie = (InfixExpression) parent;
 			Operator op = ie.getOperator();
 			if (op.equals(InfixExpression.Operator.EQUALS)
