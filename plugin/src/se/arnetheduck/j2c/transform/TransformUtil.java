@@ -1303,6 +1303,12 @@ public final class TransformUtil {
 	 * TransformUtil.checkConstant)
 	 */
 	public static boolean needsType(NumberLiteral node, ITypeBinding object) {
+		if (node.resolveBoxing()) {
+			// Boxing results in an extra call to valueOf which is overloaded
+			// for the unboxed type and String, resulting in ambiguity
+			return true;
+		}
+
 		ASTNode parent = node.getParent();
 
 		if (parent instanceof ReturnStatement) {

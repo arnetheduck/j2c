@@ -1,6 +1,5 @@
 package se.arnetheduck.j2c.test;
 
-
 public class BoxTest {
 	int k;
 
@@ -33,5 +32,16 @@ public class BoxTest {
 
 	public java.lang.Object m1(java.lang.Object o) {
 		return ((BoxTest) o).k;
+	}
+
+	static void genericBox() {
+		gbox('c');
+		gbox(0l);
+		gbox(0);
+		gbox(0.0f);
+		gbox(0.0);
+	}
+
+	static <T> void gbox(T o) {
 	}
 }
