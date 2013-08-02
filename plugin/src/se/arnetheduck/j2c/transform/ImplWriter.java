@@ -2509,14 +2509,15 @@ public class ImplWriter extends TransformWriter {
 			return false;
 		}
 
-		ITypeBinding qt = qualifier.resolveTypeBinding();
-		if (type.isSubTypeCompatible(qt)) {
+		ITypeBinding qt = qualifier.resolveTypeBinding().getErasure();
+		ITypeBinding x = type.getErasure();
+		if (x.isSubTypeCompatible(qt)) {
 			return false;
 		}
 
 		String sep = "";
-		for (ITypeBinding x = type; x.getDeclaringClass() != null
-				&& !x.isSubTypeCompatible(qt); x = x.getDeclaringClass()) {
+		for (; x.getDeclaringClass() != null && !x.isSubTypeCompatible(qt); x = x
+				.getDeclaringClass().getErasure()) {
 			hardDep(x.getDeclaringClass());
 
 			print(sep + TransformUtil.outerThisName(x));
