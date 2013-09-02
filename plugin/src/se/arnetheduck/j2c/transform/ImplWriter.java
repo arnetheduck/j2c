@@ -598,7 +598,6 @@ public class ImplWriter extends TransformWriter {
 
 		if (node instanceof Expression) {
 			Expression expr = (Expression) node;
-			ITypeBinding tb = expr.resolveTypeBinding();
 
 			if ((expr.resolveBoxing() || expr.resolveUnboxing())
 					&& checkBoxNesting(expr)) {
@@ -610,6 +609,7 @@ public class ImplWriter extends TransformWriter {
 
 					visits.add(new NodeInfo(node, ")"));
 				} else if (expr.resolveUnboxing()) {
+					ITypeBinding tb = expr.resolveTypeBinding().getErasure();
 					if (TransformUtil.reverses.containsKey(tb
 							.getQualifiedName())) {
 						hardDep(tb);
