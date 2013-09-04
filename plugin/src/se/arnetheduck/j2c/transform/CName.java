@@ -225,7 +225,7 @@ public class CName {
 		// from base classes
 		name = CName.keywords(mb.getName());
 
-		IMethodBinding lastOverride = couldOverrideDefault(mb, name);
+		IMethodBinding lastOverride = couldOverrideDefault(mb);
 		if (lastOverride != null) {
 			name = of(lastOverride.getDeclaringClass()) + "_" + name;
 		}
@@ -265,8 +265,7 @@ public class CName {
 	 * base class, it will not override the base class member. In C++, we have
 	 * nothing of the sort so we have to rename the non-overriding method
 	 */
-	private static IMethodBinding couldOverrideDefault(IMethodBinding mb,
-			String ret) {
+	private static IMethodBinding couldOverrideDefault(IMethodBinding mb) {
 		ITypeBinding tb = mb.getDeclaringClass();
 		if (tb != null) {
 			IMethodBinding last = mb;
@@ -300,7 +299,7 @@ public class CName {
 	 * variables which have the original definition in one class, but will be
 	 * instantiated in a separate class that may have a method with the same
 	 * name:
-	 * 
+	 *
 	 * final Object o = ...; return new Thing() { public Object o() { return o;
 	 * } }
 	 */

@@ -311,7 +311,7 @@ public class ImplWriter extends TransformWriter {
 			printi(qcname + "::" + name + "(");
 
 			String sep = TransformUtil.printExtraCtorParams(ctx, out, type,
-					typeInfo.closures(), deps, false);
+					typeInfo.closures(), deps, false, md.resolveBinding());
 
 			if (!md.parameters().isEmpty()) {
 				print(sep);
@@ -323,7 +323,7 @@ public class ImplWriter extends TransformWriter {
 			println(") " + TransformUtil.throwsDecl(md.thrownExceptions()));
 
 			indent++;
-			printDefaultInitCall();
+			printDefaultInitCall(md.resolveBinding());
 			indent--;
 
 			println("{");
@@ -351,7 +351,7 @@ public class ImplWriter extends TransformWriter {
 		printlni(CName.STATIC_INIT + "();");
 	}
 
-	private void printDefaultInitCall() {
+	private void printDefaultInitCall(IMethodBinding ctor) {
 		String sep;
 		printi(": " + name + "(");
 		sep = "";
@@ -362,7 +362,7 @@ public class ImplWriter extends TransformWriter {
 
 		if (typeInfo.closures() != null) {
 			for (IVariableBinding closure : typeInfo.closures()) {
-				print(sep + CName.of(closure, type));
+				print(sep + TransformUtil.ctorClosureName(closure, type, ctor));
 				sep = ", ";
 			}
 		}
@@ -385,7 +385,7 @@ public class ImplWriter extends TransformWriter {
 			printi(qcname + "::" + name + "(");
 
 			String sep = TransformUtil.printExtraCtorParams(ctx, out, type,
-					typeInfo.closures(), deps, false);
+					typeInfo.closures(), deps, false, mb);
 
 			if (mb.getParameterTypes().length > 0) {
 				out.print(sep);
@@ -404,7 +404,7 @@ public class ImplWriter extends TransformWriter {
 			printi(qcname + "::" + name + "(");
 
 			TransformUtil.printExtraCtorParams(ctx, out, type,
-					typeInfo.closures(), deps, false);
+					typeInfo.closures(), deps, false, null);
 
 			println(")");
 			printAnonCtorBody(null);
@@ -415,7 +415,7 @@ public class ImplWriter extends TransformWriter {
 
 	private void printAnonCtorBody(IMethodBinding mb) {
 		indent++;
-		printFieldInit();
+		printFieldInit(mb);
 		indent--;
 
 		println("{");
@@ -450,11 +450,11 @@ public class ImplWriter extends TransformWriter {
 
 		print(qcname + "::" + name + "(");
 		TransformUtil.printExtraCtorParams(ctx, out, type, typeInfo.closures(),
-				deps, true);
+				deps, true, null);
 		println(")");
 
 		indent++;
-		printFieldInit();
+		printFieldInit(null);
 		indent--;
 
 		println("{");
@@ -473,10 +473,10 @@ public class ImplWriter extends TransformWriter {
 
 		print(qcname + "::" + name + "(");
 		TransformUtil.printExtraCtorParams(ctx, out, type, typeInfo.closures(),
-				deps, false);
+				deps, false, null);
 		println(")");
 		indent++;
-		printDefaultInitCall();
+		printDefaultInitCall(null);
 		indent--;
 		println("{");
 		indent++;
@@ -508,7 +508,7 @@ public class ImplWriter extends TransformWriter {
 		}
 	}
 
-	private void printFieldInit() {
+	private void printFieldInit(IMethodBinding ctor) {
 		ITypeBinding sb = type.getSuperclass();
 
 		String sep = ": ";
@@ -566,7 +566,9 @@ public class ImplWriter extends TransformWriter {
 		if (typeInfo.closures() != null) {
 			for (IVariableBinding closure : typeInfo.closures()) {
 				printi(sep);
-				printInit(CName.of(closure, type));
+				println(CName.of(closure, type) + "("
+						+ TransformUtil.ctorClosureName(closure, type, ctor)
+						+ ")");
 				sep = ", ";
 			}
 		}

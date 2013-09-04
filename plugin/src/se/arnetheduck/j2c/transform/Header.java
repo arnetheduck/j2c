@@ -330,7 +330,8 @@ public class Header {
 
 		print(i1 + CName.of(type) + "(");
 		TransformUtil
-				.printExtraCtorParams(ctx, out, type, closures, deps, true);
+.printExtraCtorParams(ctx, out, type, closures, deps,
+				true, null);
 		println(");");
 		println();
 	}
@@ -417,7 +418,7 @@ public class Header {
 			print(i1 + name + "(");
 
 			String sep = TransformUtil.printExtraCtorParams(ctx, out, type,
-					closures, deps, false);
+					closures, deps, false, mb);
 
 			if (mb.getParameterTypes().length > 0) {
 				print(sep);
@@ -438,7 +439,7 @@ public class Header {
 			print(i1 + name + "(");
 
 			TransformUtil.printExtraCtorParams(ctx, out, type, closures, deps,
-					false);
+					false, null);
 
 			println(");");
 

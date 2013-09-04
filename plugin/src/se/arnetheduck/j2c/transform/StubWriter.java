@@ -124,7 +124,7 @@ public class StubWriter {
 			print(qcname + "::" + name + "(");
 
 			String sep = TransformUtil.printExtraCtorParams(ctx, out, type,
-					null, deps, false);
+					null, deps, false, mb);
 
 			if (mb.getParameterTypes().length > 0) {
 				print(sep);
@@ -170,7 +170,8 @@ public class StubWriter {
 		}
 
 		print(qcname + "::" + name + "(");
-		TransformUtil.printExtraCtorParams(ctx, out, type, null, deps, true);
+		TransformUtil.printExtraCtorParams(ctx, out, type, null, deps, true,
+				null);
 		println(")");
 
 		printFieldInit(": ");

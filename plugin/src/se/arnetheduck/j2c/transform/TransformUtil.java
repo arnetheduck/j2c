@@ -1011,7 +1011,7 @@ public final class TransformUtil {
 
 	public static String printExtraCtorParams(Transformer ctx, PrintWriter pw,
 			ITypeBinding type, Collection<IVariableBinding> closures,
-			DepInfo deps, boolean isDefaultInitCtor) {
+			DepInfo deps, boolean isDefaultInitCtor, IMethodBinding ctor) {
 		String sep = "";
 		if (hasOuterThis(type)) {
 			pw.print(outerThis(type));
@@ -1023,7 +1023,7 @@ public final class TransformUtil {
 				pw.print(sep
 						+ varTypeCName(closure.getModifiers(),
 								closure.getType(), type, deps) + " "
-						+ CName.of(closure, type));
+						+ ctorClosureName(closure, type, ctor));
 				sep = ", ";
 			}
 		}
@@ -1036,6 +1036,20 @@ public final class TransformUtil {
 		}
 
 		return sep;
+	}
+
+	// There may be a conflict between the name of a closure an a constructor
+	// parameter - avoid this conflict by renaming the closure
+	public static String ctorClosureName(IVariableBinding closure,
+			ITypeBinding type, IMethodBinding ctor) {
+		String ret = CName.of(closure, type);
+		for (int i = 0; ctor != null && i < ctor.getParameterTypes().length; ++i) {
+			if (ret.equals(paramName(ctor, i))) {
+				ret = ret + "_";
+				i = 0; // Start over
+			}
+		}
+		return ret;
 	}
 
 	public static String printEnumCtorParams(Transformer ctx, PrintWriter pw,
