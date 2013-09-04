@@ -98,14 +98,13 @@ public class TypeInfoVisitor extends ShallowASTVisitor {
 			return false;
 		}
 		VariableDeclarationFragment vdf = initializer(node);
-		if (vdf != null) {
-		} else if (vb.getDeclaringMethod() != null) {
+		if (vdf == null && vb.getDeclaringMethod() != null) {
 			IMethodBinding pmb = parentMethod(node);
 			if (pmb.isEqualTo(vb.getDeclaringMethod())) {
+				// Final local variable
 				return false;
 			}
 		}
-
 		return true;
 	}
 
