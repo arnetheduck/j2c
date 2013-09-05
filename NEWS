@@ -6,6 +6,9 @@
 * Range-for-loops when looping over arrays
 * Use auto when declaring variables
 * Use single template class for arrays instead of generated .hpp/.cpp pairs
+* Bugfixes
+* Drop unused CDT dependency (might come back)
+* Release through update site
 
 0.4.0
 -----
