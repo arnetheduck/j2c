@@ -2,7 +2,7 @@ INCLUDES := $(INCLUDES) -Isrc -Iext/src
 EXTRA_LIBS ?= -l$(NAME)-ext
 
 CPPFLAGS := $(CPPFLAGS) $(INCLUDES)
-CFLAGS := $(CFLAGS) -g -pipe
+CFLAGS := $(CFLAGS) -g -pipe -MMD -MP
 CXXFLAGS := $(CFLAGS) -std=gnu++11
 
 BIN := bin
@@ -97,3 +97,5 @@ print-opts:
 	@echo Building with \"$(CXX) $(CPPFLAGS) $(CXXFLAGS)\"
 	
 .PHONY: all mains clean print-opts
+
+-include $(OBJS:%%.o=%%.d)
