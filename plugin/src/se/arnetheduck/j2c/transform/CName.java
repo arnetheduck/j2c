@@ -69,7 +69,7 @@ public class CName {
 			"unsigned", "using", "virtual", "wchar_t", "xor", "xor_eq", CTOR,
 			INSTANCE_INIT, STATIC_INIT, GET_CLASS, DEFAULT_INIT_TAG, JAVA_CAST,
 			"int8_t", "int16_t", "int32_t", "int64_t", "char16_t", "NULL",
-			"npc", "EOF");
+			"npc", "EOF", "LITTLE_ENDIAN", "BIG_ENDIAN");
 
 	public static String qualified(ITypeBinding tb, boolean global) {
 		IPackageBinding pkg = TransformUtil.elementPackage(tb);
