@@ -1,6 +1,7 @@
 #pragma once
 
 #include <initializer_list>
+#include <type_traits>
 
 #include <java/lang/Object.hpp>
 #include <java/lang/Cloneable.hpp>
@@ -120,3 +121,17 @@ private:
 
      virtual void set0(size_type i, Object *x) { p[i] = x; }
 };
+
+template<typename ArrayType>
+ArrayType* __newMultiArray(int dim) {
+	return new ArrayType(dim);
+}
+
+template<typename ArrayType, class... Dims>
+ArrayType* __newMultiArray(int dim, Dims... dims) {
+	auto ret = new ArrayType(dim);
+	for (auto i = 0; i < dim; ++i) {
+		ret->p[i] = __newMultiArray<typename std::remove_pointer<typename ArrayType::value_type>::type>(dims...);
+	}
+	return ret;
+}

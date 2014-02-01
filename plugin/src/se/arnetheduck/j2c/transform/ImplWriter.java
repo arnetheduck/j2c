@@ -825,20 +825,30 @@ public class ImplWriter extends TransformWriter {
 		if (parens) {
 			print("(");
 		}
-		print("new " + CName.relative(tb, type, true));
 
-		for (Iterator<Expression> it = node.dimensions().iterator(); it
-				.hasNext();) {
-			print("(");
-			Expression e = it.next();
-			e.accept(this);
+		if (node.dimensions().size() == 1 || node.getInitializer() != null) {
+			print("new " + CName.relative(tb, type, true));
+			if (node.getInitializer() != null) {
+				node.getInitializer().accept(this);
+			} else {
+				print("(");
+				((Expression) node.dimensions().get(0)).accept(this);
+				print(")");
+			}
+
+		} else {
+			print("__newMultiArray< " + CName.relative(tb, type, true) + " >");
+			String csv = "(";
+			for (Iterator<Expression> it = node.dimensions().iterator(); it
+					.hasNext();) {
+				Expression e = it.next();
+				print(csv);
+				e.accept(this);
+				csv = ",";
+			}
 			print(")");
-			break;
 		}
 
-		if (node.getInitializer() != null) {
-			node.getInitializer().accept(this);
-		}
 		if (parens) {
 			print(")");
 		}
