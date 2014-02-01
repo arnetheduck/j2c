@@ -1,6 +1,5 @@
 package se.arnetheduck.j2c.transform;
 
-import java.io.IOException;
 import java.io.PrintWriter;
 import java.io.StringWriter;
 import java.lang.reflect.Modifier;
@@ -46,28 +45,28 @@ public class StubWriter {
 
 	public void write(boolean natives, boolean privates) throws Exception {
 		String body = getBody(natives, privates);
-		String extras = getExtras(natives);
+		String extras = getPrefix(natives);
+		String suffix = getSuffix(natives);
 
 		if (natives) {
 			ctx.addNative(type);
-			impl.write(root, extras + body, TransformUtil.NATIVE,
+			impl.write(root, extras + body + suffix, TransformUtil.NATIVE,
 					new ArrayList<IVariableBinding>(), null, null, false,
 					natives);
 		} else {
 			ctx.addStub(type);
-			impl.write(root, extras + body, TransformUtil.STUB,
+			impl.write(root, extras + body + suffix, TransformUtil.STUB,
 					new ArrayList<IVariableBinding>(), null, null, false,
 					natives);
 		}
 	}
 
-	private String getExtras(boolean natives)
-			throws IOException {
+	private String getPrefix(boolean natives) {
 		StringWriter sw = new StringWriter();
 		out = new PrintWriter(sw);
 
 		for (Snippet snippet : ctx.snippets) {
-			if (!snippet.extras(ctx, this, natives)) {
+			if (!snippet.prefix(ctx, this, natives)) {
 				return "";
 			}
 		}
@@ -77,6 +76,22 @@ public class StubWriter {
 		if (!natives) {
 			printDefaultInitCtor();
 			printCtors();
+		}
+
+		out.close();
+		out = null;
+
+		return sw.toString();
+	}
+
+	private String getSuffix(boolean natives) {
+		StringWriter sw = new StringWriter();
+		out = new PrintWriter(sw);
+
+		for (Snippet snippet : ctx.snippets) {
+			if (!snippet.suffix(ctx, this, natives)) {
+				return "";
+			}
 		}
 
 		out.close();

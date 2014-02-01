@@ -35,7 +35,12 @@ public class EmptySnippet implements Snippet {
 	}
 
 	@Override
-	public boolean extras(Transformer ctx, StubWriter w, boolean natives) {
+	public boolean prefix(Transformer ctx, StubWriter w, boolean natives) {
+		return true;
+	}
+
+	@Override
+	public boolean suffix(Transformer ctx, StubWriter w, boolean natives) {
 		return true;
 	}
 
