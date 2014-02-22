@@ -215,10 +215,16 @@ public class TypeUtil {
 		}
 
 		for (IMethodBinding mb : methods) {
-			if (!mb.isEqualTo(b)
-					&& mb.getParameterTypes().length == b.getParameterTypes().length) {
-				return true;
-			}
+			if (mb.getParameterTypes().length != b.getParameterTypes().length)
+				continue;
+
+			if (mb.isEqualTo(b))
+				continue;
+
+			if (b.overrides(mb))
+				continue;
+
+			return true;
 		}
 
 		return false;
