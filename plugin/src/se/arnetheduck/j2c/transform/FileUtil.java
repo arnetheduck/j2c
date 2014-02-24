@@ -23,9 +23,7 @@ public class FileUtil {
 					os.write(buf, 0, n);
 				}
 			} finally {
-				if (is != null) {
-					is.close();
-				}
+				is.close();
 			}
 		} finally {
 			if (os != null) {

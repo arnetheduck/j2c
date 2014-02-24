@@ -13,13 +13,11 @@ public class MainWriter {
 		public final String filename;
 		public final String include;
 		public final String qcname;
-		public final String qname;
 
 		public Info(ITypeBinding tb) {
 			filename = TransformUtil.mainName(tb);
 			include = TransformUtil.include(tb);
 			qcname = CName.qualified(tb, true);
-			qname = TransformUtil.qualifiedName(tb);
 		}
 	}
 

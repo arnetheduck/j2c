@@ -2474,7 +2474,7 @@ public class ImplWriter extends TransformWriter {
 		printlni("}");
 	}
 
-	private List<VariableDeclarationStatement> declarations(
+	private static List<VariableDeclarationStatement> declarations(
 			List<Statement> statements) {
 		List<VariableDeclarationStatement> ret = new ArrayList<VariableDeclarationStatement>();
 		for (Statement s : statements) {

@@ -172,7 +172,7 @@ public class Impl {
 			return;
 		}
 
-		println("extern java::lang::Class *class_(const char16_t *c, int n);");
+		println("extern java::lang::Class* class_(const char16_t* c, int n);");
 		println();
 		if (type.isArray() && type.getComponentType().isPrimitive()) {
 			println("template<>");

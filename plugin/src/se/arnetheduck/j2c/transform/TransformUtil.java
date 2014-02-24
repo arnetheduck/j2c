@@ -1065,7 +1065,7 @@ public final class TransformUtil {
 
 	public static void printEmptyCtorCall(PrintWriter pw, ITypeBinding type) {
 		pw.print(CName.CTOR + "(");
-		TransformUtil.printEnumCtorCallParams(pw, type, "");
+		printEnumCtorCallParams(pw, type, "");
 		pw.print(")");
 	}
 
@@ -1098,7 +1098,7 @@ public final class TransformUtil {
 			return;
 		}
 
-		pw.println("namespace java { namespace lang { String *operator \"\" _j(const char16_t *p, size_t n); } }");
+		pw.println("namespace java { namespace lang { String* operator \"\" _j(const char16_t* p, size_t n); } }");
 		pw.println("using java::lang::operator \"\" _j;");
 		pw.println();
 	}
@@ -1415,24 +1415,16 @@ public final class TransformUtil {
 	public static void setNs(PrintWriter pw, List<String> pkg, Stack<String> cur) {
 		while (pkg.size() < cur.size()
 				|| !cur.equals(pkg.subList(0, cur.size()))) {
-
 			String ns = cur.pop();
-
-			pw.print(indent(cur.size()) + "} // ");
-			pw.print(ns);
-			pw.println();
+			pw.format("}  // namespace %s\n", ns);
 		}
 
 		if (!cur.equals(pkg)) {
 			pw.println();
 
 			while (!cur.equals(pkg)) {
-				String i = indent(cur.size());
 				String ns = pkg.get(cur.size());
-
-				pw.format("%snamespace %s\n", i, ns);
-				pw.println(i + "{");
-
+				pw.format("namespace %s {\n", ns);
 				cur.push(ns);
 			}
 		}

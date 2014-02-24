@@ -22,7 +22,7 @@ public class ReplaceInvocation extends EmptySnippet {
 		return super.node(ctx, w, node);
 	}
 
-	private boolean replace(ImplWriter w, MethodInvocation node) {
+	private static boolean replace(ImplWriter w, MethodInvocation node) {
 		if (replaceEnsureClassInitialized(w, node)) {
 			return false;
 		}
@@ -30,7 +30,7 @@ public class ReplaceInvocation extends EmptySnippet {
 		return true;
 	}
 
-	private boolean replaceEnsureClassInitialized(ImplWriter w,
+	private static boolean replaceEnsureClassInitialized(ImplWriter w,
 			MethodInvocation node) {
 		if (!node.getName().getIdentifier().equals("ensureClassInitialized")) {
 			return false;
