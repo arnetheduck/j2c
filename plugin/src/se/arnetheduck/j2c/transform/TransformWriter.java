@@ -101,6 +101,17 @@ public abstract class TransformWriter extends ASTVisitor {
 			return false;
 		}
 
+		if (expr instanceof StringLiteral) {
+			return false;
+		}
+
+		if (expr instanceof Expression) {
+			Expression expression = (Expression) expr;
+			if (expression.resolveConstantExpressionValue() != null) {
+				return false;
+			}
+		}
+
 		if (expr instanceof ParenthesizedExpression) {
 			return needsNpc(((ParenthesizedExpression) expr).getExpression());
 		}
@@ -427,7 +438,7 @@ public abstract class TransformWriter extends ASTVisitor {
 			} else if (hidden) {
 				print(CName.relative(vb.getDeclaringClass(), type, true) + "::");
 			}
-			
+
 			if (typeInfo.isClosure(vb)) {
 				// Closures need a name resolved differently, to avoid method/
 				// variable name conflicts which are allowed in Java but not
