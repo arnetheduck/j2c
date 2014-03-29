@@ -4,7 +4,6 @@ import java.io.IOException;
 import java.io.PrintWriter;
 import java.io.StringWriter;
 import java.util.ArrayList;
-import java.util.Collection;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
@@ -20,6 +19,8 @@ import org.eclipse.jdt.core.dom.Modifier;
 public class Impl {
 	private static final String JAVA_CAST_HPP = "/se/arnetheduck/j2c/resources/java_cast.hpp";
 	private static final String NPC_HPP = "/se/arnetheduck/j2c/resources/npc.hpp";
+	private static final String FINALLY_HPP = "/se/arnetheduck/j2c/resources/finally.hpp";
+	private static final String SYNCHRONIZED_HPP = "/se/arnetheduck/j2c/resources/synchronized.hpp";
 
 	private static final String i1 = TransformUtil.indent(1);
 
@@ -43,12 +44,13 @@ public class Impl {
 		qcname = CName.qualified(type, false);
 	}
 
-	public void write(IPath root, String body, String suffix,
-			Collection<IVariableBinding> closures, String cinit, String clinit,
-			boolean fmod, boolean isNative) throws IOException {
+	public void write(IPath root, String body, String suffix, String cinit,
+			String clinit, boolean fmod, boolean isNative) throws IOException {
 
 		this.isNative = isNative;
-		String extras = getExtras(closures, cinit, clinit);
+
+		// Extras need to be collected first to get the deps
+		String extras = getExtras();
 
 		try {
 			out = FileUtil.open(TransformUtil.implPath(root, type, suffix)
@@ -65,9 +67,18 @@ public class Impl {
 			deps.printArrays(out);
 			printJavaCast();
 			printNpc();
+			printFinally();
+			printSynchronized();
 
 			print(body);
+
+			printClassLiteral();
+			printClinit(cinit, clinit);
+
 			print(extras);
+
+			printDtor();
+			printGetClass();
 		} finally {
 			if (out != null) {
 				out.close();
@@ -76,19 +87,13 @@ public class Impl {
 		}
 	}
 
-	private String getExtras(Collection<IVariableBinding> closures,
-			String cinit, String clinit) {
+	private String getExtras() {
 		StringWriter sw = new StringWriter();
 		out = new PrintWriter(sw);
 
-		printClassLiteral();
-		printClinit(cinit, clinit);
 		printSuperCalls();
 		printUnhide();
-
 		printEnumMethods();
-		printDtor();
-		printGetClass();
 
 		out.close();
 		out = null;
@@ -174,7 +179,7 @@ public class Impl {
 
 		println("extern java::lang::Class* class_(const char16_t* c, int n);");
 		println();
-		if (type.isArray() && type.getComponentType().isPrimitive()) {
+		if (TransformUtil.isPrimitiveArray(type)) {
 			println("template<>");
 		}
 		println("java::lang::Class* " + qcname + "::class_()");
@@ -193,7 +198,7 @@ public class Impl {
 			return;
 		}
 
-		if (type.isArray() && type.getComponentType().isPrimitive()) {
+		if (TransformUtil.isPrimitiveArray(type)) {
 			println("template<>");
 		}
 
@@ -423,6 +428,22 @@ public class Impl {
 		}
 
 		print(FileUtil.readResource(NPC_HPP));
+	}
+
+	private void printFinally() {
+		if (!deps.needsFinally()) {
+			return;
+		}
+
+		print(FileUtil.readResource(FINALLY_HPP));
+	}
+
+	private void printSynchronized() {
+		if (!deps.needsSynchronized()) {
+			return;
+		}
+
+		print(FileUtil.readResource(SYNCHRONIZED_HPP));
 	}
 
 	private void javaCast(ITypeBinding source, ITypeBinding target) {

@@ -51,13 +51,11 @@ public class StubWriter {
 		if (natives) {
 			ctx.addNative(type);
 			impl.write(root, extras + body + suffix, TransformUtil.NATIVE,
-					new ArrayList<IVariableBinding>(), null, null, false,
-					natives);
+					null, null, false, natives);
 		} else {
 			ctx.addStub(type);
-			impl.write(root, extras + body + suffix, TransformUtil.STUB,
-					new ArrayList<IVariableBinding>(), null, null, false,
-					natives);
+			impl.write(root, extras + body + suffix, TransformUtil.STUB, null,
+					null, false, natives);
 		}
 	}
 
@@ -208,9 +206,9 @@ public class StubWriter {
 		println(")");
 		println("{");
 		if (type.getSuperclass() != null) {
-			println(i1 + "super::" + CName.CTOR + "(");
-			TransformUtil.printEnumCtorCallParams(out, type, "");
-			print(");");
+			print(i1 + "super::");
+			TransformUtil.printEmptyCtorCall(out, type);
+			println(";");
 		}
 
 		println("}");

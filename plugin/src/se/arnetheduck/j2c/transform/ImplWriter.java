@@ -79,17 +79,11 @@ import org.eclipse.jdt.core.dom.VariableDeclarationStatement;
 import org.eclipse.jdt.core.dom.WhileStatement;
 
 public class ImplWriter extends TransformWriter {
-	private static final String FINALLY_HPP = "/se/arnetheduck/j2c/resources/finally.hpp";
-	private static final String SYNCHRONIZED_HPP = "/se/arnetheduck/j2c/resources/synchronized.hpp";
-
 	private static final String i1 = TransformUtil.indent(1);
 
 	private final IPath root;
 
 	private List<MethodDeclaration> constructors = new ArrayList<MethodDeclaration>();
-
-	private boolean needsFinally;
-	private boolean needsSynchronized;
 
 	private boolean hasNatives;
 
@@ -163,8 +157,7 @@ public class ImplWriter extends TransformWriter {
 		String clinit = getClinit();
 		String extras = getExtras();
 
-		impl.write(root, extras + body, "", typeInfo.closures(), cinit, clinit,
-				fmod, false);
+		impl.write(root, extras + body, "", cinit, clinit, fmod, false);
 
 		ctx.addImpl(type);
 
@@ -186,7 +179,7 @@ public class ImplWriter extends TransformWriter {
 		out.close();
 		out = null;
 
-		return getFinally() + getSynchronized() + sw.toString();
+		return sw.toString();
 	}
 
 	private String getCinit() {
@@ -237,22 +230,6 @@ public class ImplWriter extends TransformWriter {
 		out = old;
 
 		return sw.toString();
-	}
-
-	private String getFinally() {
-		if (!needsFinally) {
-			return "";
-		}
-
-		return FileUtil.readResource(FINALLY_HPP);
-	}
-
-	private String getSynchronized() {
-		if (!needsSynchronized) {
-			return "";
-		}
-
-		return FileUtil.readResource(SYNCHRONIZED_HPP);
 	}
 
 	private void printInit() {
@@ -2489,7 +2466,8 @@ public class ImplWriter extends TransformWriter {
 
 		printlni("}");
 
-		needsSynchronized = true;
+		deps.setNeedsSynchronized();
+
 		sc++;
 		return false;
 	}
@@ -2541,7 +2519,7 @@ public class ImplWriter extends TransformWriter {
 	@Override
 	public boolean visit(TryStatement node) {
 		if (node.getFinally() != null) {
-			needsFinally = true;
+			deps.setNeedsFinally();
 			printlni("{");
 			indent++;
 

@@ -23,6 +23,10 @@ public class DepInfo {
 	private boolean npc;
 	private boolean atomic;
 
+	private boolean finally_;
+
+	private boolean synchronized_;
+
 	public DepInfo(Transformer ctx) {
 		this.ctx = ctx;
 	}
@@ -109,6 +113,22 @@ public class DepInfo {
 
 	public void setNeedsAtomic() {
 		atomic = true;
+	}
+
+	public boolean needsFinally() {
+		return finally_;
+	}
+
+	public void setNeedsFinally() {
+		finally_ = true;
+	}
+
+	public boolean needsSynchronized() {
+		return synchronized_;
+	}
+
+	public void setNeedsSynchronized() {
+		synchronized_ = true;
 	}
 
 	public void printArrays(PrintWriter out) {
