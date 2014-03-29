@@ -29,7 +29,6 @@ import org.eclipse.jdt.core.dom.ASTParser;
 import org.eclipse.jdt.core.dom.ASTRequestor;
 import org.eclipse.jdt.core.dom.AbstractTypeDeclaration;
 import org.eclipse.jdt.core.dom.AnnotationTypeDeclaration;
-import org.eclipse.jdt.core.dom.AnonymousClassDeclaration;
 import org.eclipse.jdt.core.dom.CompilationUnit;
 import org.eclipse.jdt.core.dom.EnumDeclaration;
 import org.eclipse.jdt.core.dom.ITypeBinding;
@@ -284,33 +283,34 @@ public class Transformer {
 				+ todo.size() + " units and " + hardDeps.size()
 				+ " dependencies pending)");
 		UnitInfo ui = new UnitInfo();
-		cu.accept(ui);
+
+		cu.accept(new TypeInfoVisitor(ui));
 
 		for (AbstractTypeDeclaration type : (Iterable<AbstractTypeDeclaration>) cu
 				.types()) {
 			if (type instanceof TypeDeclaration) {
 				TypeDeclaration td = (TypeDeclaration) type;
 				ImplWriter iw = new ImplWriter(getRoot(unit), this, ui,
-						makeTypeInfo(td));
+						ui.types.get(td.resolveBinding()));
 
 				iw.write(td);
 			} else if (type instanceof AnnotationTypeDeclaration) {
 				AnnotationTypeDeclaration td = (AnnotationTypeDeclaration) type;
 				ImplWriter iw = new ImplWriter(getRoot(unit), this, ui,
-						makeTypeInfo(td));
+						ui.types.get(td.resolveBinding()));
 
 				iw.write(td);
 			} else if (type instanceof EnumDeclaration) {
 				EnumDeclaration td = (EnumDeclaration) type;
 
 				ImplWriter iw = new ImplWriter(getRoot(unit), this, ui,
-						makeTypeInfo(td));
+						ui.types.get(td.resolveBinding()));
 
 				iw.write(td);
 			}
 		}
 
-		for (ITypeBinding tb : ui.types) {
+		for (ITypeBinding tb : ui.types.keySet()) {
 			addDone(tb, cur == sel);
 		}
 	}
@@ -478,17 +478,5 @@ public class Transformer {
 	public void addStub(ITypeBinding tb) {
 		cur.stubs.add(TransformUtil.implPath(root, tb, TransformUtil.STUB)
 				.makeRelativeTo(root).toString());
-	}
-
-	public TypeInfo makeTypeInfo(AnonymousClassDeclaration declaration) {
-		TypeInfo ti = new TypeInfo(declaration.resolveBinding());
-		declaration.accept(new TypeInfoVisitor(this, ti));
-		return ti;
-	}
-
-	public TypeInfo makeTypeInfo(AbstractTypeDeclaration declaration) {
-		TypeInfo ti = new TypeInfo(declaration.resolveBinding());
-		declaration.accept(new TypeInfoVisitor(this, ti));
-		return ti;
 	}
 }

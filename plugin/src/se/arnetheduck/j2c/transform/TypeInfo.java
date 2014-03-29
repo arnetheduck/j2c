@@ -10,7 +10,8 @@ import org.eclipse.jdt.core.dom.VariableDeclarationFragment;
 
 /** Contextual info about a type */
 public class TypeInfo {
-	private ITypeBinding type;
+	private final TypeInfo parent;
+	private final ITypeBinding type;
 
 	private InitInfo init = new InitInfo();
 	private InitInfo clinit = new InitInfo();
@@ -18,10 +19,19 @@ public class TypeInfo {
 	private final Set<IVariableBinding> closures;
 
 	public TypeInfo(ITypeBinding type) {
+		this(null, type);
+	}
+
+	public TypeInfo(TypeInfo parent, ITypeBinding type) {
+		this.parent = parent;
 		this.type = type;
 
 		closures = type.isLocal() ? new LinkedHashSet<IVariableBinding>()
 				: null;
+	}
+
+	public TypeInfo parent() {
+		return parent;
 	}
 
 	public ITypeBinding type() {
@@ -56,7 +66,7 @@ public class TypeInfo {
 	public Set<IVariableBinding> closures() {
 		return closures;
 	}
-	
+
 	public boolean isClosure(IVariableBinding vb) {
 		return closures != null && closures.contains(vb);
 	}

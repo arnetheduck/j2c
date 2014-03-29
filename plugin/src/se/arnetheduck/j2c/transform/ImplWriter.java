@@ -1,6 +1,5 @@
 package se.arnetheduck.j2c.transform;
 
-import java.io.IOException;
 import java.io.PrintWriter;
 import java.io.StringWriter;
 import java.util.ArrayList;
@@ -89,9 +88,6 @@ public class ImplWriter extends TransformWriter {
 
 	private List<MethodDeclaration> constructors = new ArrayList<MethodDeclaration>();
 
-	private final Map<ITypeBinding, TypeInfo> localTypes = new TreeMap<ITypeBinding, TypeInfo>(
-			new BindingComparator());
-
 	private boolean needsFinally;
 	private boolean needsSynchronized;
 
@@ -178,7 +174,7 @@ public class ImplWriter extends TransformWriter {
 		}
 	}
 
-	private String getExtras() throws IOException {
+	private String getExtras() {
 		StringWriter sw = new StringWriter();
 		out = new PrintWriter(sw);
 
@@ -243,7 +239,7 @@ public class ImplWriter extends TransformWriter {
 		return sw.toString();
 	}
 
-	private String getFinally() throws IOException {
+	private String getFinally() {
 		if (!needsFinally) {
 			return "";
 		}
@@ -251,7 +247,7 @@ public class ImplWriter extends TransformWriter {
 		return FileUtil.readResource(FINALLY_HPP);
 	}
 
-	private String getSynchronized() throws IOException {
+	private String getSynchronized() {
 		if (!needsSynchronized) {
 			return "";
 		}
@@ -463,7 +459,6 @@ public class ImplWriter extends TransformWriter {
 		indent--;
 		println("}");
 		println();
-
 	}
 
 	private void printEmptyCtor(boolean hasEmpty) {
@@ -769,15 +764,11 @@ public class ImplWriter extends TransformWriter {
 	public boolean visit(AnnotationTypeDeclaration node) {
 		ITypeBinding tb = node.resolveBinding();
 		ImplWriter iw = new ImplWriter(root, ctx, unitInfo,
-				ctx.makeTypeInfo(node));
+				unitInfo.types.get(tb));
 		try {
 			iw.write(node);
 		} catch (Exception e) {
 			throw new Error(e);
-		}
-
-		if (tb.isLocal()) {
-			localTypes.put(tb, iw.typeInfo);
 		}
 
 		return false;
@@ -792,14 +783,12 @@ public class ImplWriter extends TransformWriter {
 	public boolean visit(AnonymousClassDeclaration node) {
 		ITypeBinding tb = node.resolveBinding();
 		ImplWriter iw = new ImplWriter(root, ctx, unitInfo,
-				ctx.makeTypeInfo(node));
+				unitInfo.types.get(tb));
 		try {
 			iw.write(node);
 		} catch (Exception e) {
 			throw new Error(e);
 		}
-
-		localTypes.put(tb, iw.typeInfo);
 
 		return false;
 	}
@@ -1166,11 +1155,13 @@ public class ImplWriter extends TransformWriter {
 			sep = ", ";
 		}
 
-		if (localTypes.containsKey(tb)) {
-			TypeInfo localTypeInfo = localTypes.get(tb);
-			for (IVariableBinding closure : localTypeInfo.closures()) {
-				print(sep + CName.of(closure));
-				sep = ", ";
+		if (tb.isLocal()) {
+			TypeInfo localTypeInfo = unitInfo.types.get(tb);
+			if (localTypeInfo != null) {
+				for (IVariableBinding closure : localTypeInfo.closures()) {
+					print(sep + CName.of(closure));
+					sep = ", ";
+				}
 			}
 		}
 
@@ -1350,15 +1341,11 @@ public class ImplWriter extends TransformWriter {
 	public boolean visit(EnumDeclaration node) {
 		ITypeBinding tb = node.resolveBinding();
 		ImplWriter iw = new ImplWriter(root, ctx, unitInfo,
-				ctx.makeTypeInfo(node));
+				unitInfo.types.get(tb));
 		try {
 			iw.write(node);
 		} catch (Exception e) {
 			throw new Error(e);
-		}
-
-		if (tb.isLocal()) {
-			localTypes.put(tb, iw.typeInfo);
 		}
 
 		return false;
@@ -2605,15 +2592,11 @@ public class ImplWriter extends TransformWriter {
 	public boolean visit(TypeDeclaration node) {
 		ITypeBinding tb = node.resolveBinding();
 		ImplWriter iw = new ImplWriter(root, ctx, unitInfo,
-				ctx.makeTypeInfo(node));
+				unitInfo.types.get(tb));
 		try {
 			iw.write(node);
 		} catch (Exception e) {
 			throw new Error(e);
-		}
-
-		if (tb.isLocal()) {
-			localTypes.put(tb, iw.typeInfo);
 		}
 
 		return false;

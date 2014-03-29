@@ -1,33 +1,11 @@
 package se.arnetheduck.j2c.transform;
 
-import java.util.ArrayList;
-import java.util.Collection;
+import java.util.LinkedHashMap;
+import java.util.Map;
 
-import org.eclipse.jdt.core.dom.ASTVisitor;
-import org.eclipse.jdt.core.dom.AnonymousClassDeclaration;
-import org.eclipse.jdt.core.dom.EnumDeclaration;
 import org.eclipse.jdt.core.dom.ITypeBinding;
-import org.eclipse.jdt.core.dom.TypeDeclaration;
 
 /** Contextual information about a CompilationUnit */
-public class UnitInfo extends ASTVisitor {
-	public final Collection<ITypeBinding> types = new ArrayList<ITypeBinding>();
-
-	@Override
-	public boolean visit(AnonymousClassDeclaration node) {
-		types.add(node.resolveBinding());
-		return super.visit(node);
-	}
-
-	@Override
-	public boolean visit(EnumDeclaration node) {
-		types.add(node.resolveBinding());
-		return super.visit(node);
-	}
-
-	@Override
-	public boolean visit(TypeDeclaration node) {
-		types.add(node.resolveBinding());
-		return super.visit(node);
-	}
+public class UnitInfo {
+	public final Map<ITypeBinding, TypeInfo> types = new LinkedHashMap<ITypeBinding, TypeInfo>();
 }

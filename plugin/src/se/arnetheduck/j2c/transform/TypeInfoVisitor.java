@@ -3,7 +3,10 @@ package se.arnetheduck.j2c.transform;
 import org.eclipse.jdt.core.IJavaElement;
 import org.eclipse.jdt.core.IType;
 import org.eclipse.jdt.core.dom.ASTNode;
+import org.eclipse.jdt.core.dom.ASTVisitor;
+import org.eclipse.jdt.core.dom.AnnotationTypeDeclaration;
 import org.eclipse.jdt.core.dom.AnonymousClassDeclaration;
+import org.eclipse.jdt.core.dom.EnumDeclaration;
 import org.eclipse.jdt.core.dom.IBinding;
 import org.eclipse.jdt.core.dom.IMethodBinding;
 import org.eclipse.jdt.core.dom.ITypeBinding;
@@ -12,44 +15,79 @@ import org.eclipse.jdt.core.dom.Initializer;
 import org.eclipse.jdt.core.dom.MethodDeclaration;
 import org.eclipse.jdt.core.dom.Modifier;
 import org.eclipse.jdt.core.dom.SimpleName;
+import org.eclipse.jdt.core.dom.TypeDeclaration;
 import org.eclipse.jdt.core.dom.VariableDeclarationFragment;
 
-public class TypeInfoVisitor extends ShallowASTVisitor {
-	private Transformer ctx;
+public class TypeInfoVisitor extends ASTVisitor {
+	private UnitInfo unitInfo;
 	private TypeInfo typeInfo;
 
-	public TypeInfoVisitor(Transformer ctx, TypeInfo typeInfo) {
-		super(typeInfo.type());
-		this.ctx = ctx;
-		this.typeInfo = typeInfo;
+	public TypeInfoVisitor(UnitInfo unitInfo) {
+		this.unitInfo = unitInfo;
+	}
+
+	@Override
+	public boolean visit(AnnotationTypeDeclaration node) {
+		typeInfo = new TypeInfo(typeInfo, node.resolveBinding());
+		unitInfo.types.put(typeInfo.type(), typeInfo);
+		return true;
+	}
+
+	@Override
+	public void endVisit(AnnotationTypeDeclaration node) {
+		typeInfo = typeInfo.parent();
 	}
 
 	@Override
 	public boolean visit(AnonymousClassDeclaration node) {
-		if (node.resolveBinding().isEqualTo(typeInfo.type())) {
-			return true;
-		}
+		typeInfo = new TypeInfo(typeInfo, node.resolveBinding());
+		unitInfo.types.put(typeInfo.type(), typeInfo);
+		return true;
+	}
 
-		// Catch deeply nested closures
-		// TODO avoid generating typeinfo multiple times for same class
-		TypeInfo localTypeInfo = ctx.makeTypeInfo(node);
+	@Override
+	public void endVisit(AnonymousClassDeclaration node) {
+		TypeInfo anonType = typeInfo;
+		typeInfo = typeInfo.parent();
 
-		if (localTypeInfo.closures() != null && typeInfo.closures() != null) {
-			for (IVariableBinding vb : localTypeInfo.closures()) {
+		if (typeInfo.closures() != null && anonType.closures() != null) {
+			for (IVariableBinding vb : anonType.closures()) {
 				if (!vb.getDeclaringMethod().getDeclaringClass()
 						.isEqualTo(typeInfo.type())) {
 					typeInfo.addClosure(vb);
 				}
 			}
 		}
-
-		return false;
 	}
+
+	@Override
+	public boolean visit(EnumDeclaration node) {
+		typeInfo = new TypeInfo(typeInfo, node.resolveBinding());
+		unitInfo.types.put(typeInfo.type(), typeInfo);
+		return true;
+	}
+
+	@Override
+	public void endVisit(EnumDeclaration node) {
+		typeInfo = typeInfo.parent();
+	}
+
+	@Override
+	public boolean visit(TypeDeclaration node) {
+		typeInfo = new TypeInfo(typeInfo, node.resolveBinding());
+		unitInfo.types.put(typeInfo.type(), typeInfo);
+		return true;
+	}
+
+	@Override
+	public void endVisit(TypeDeclaration node) {
+		typeInfo = typeInfo.parent();
+	}
+
 
 	@Override
 	public boolean visit(Initializer node) {
 		typeInfo.addInit(node);
-
 		return super.visit(node);
 	}
 

@@ -76,7 +76,7 @@ public class HeaderWriter extends TransformWriter {
 			String body = getBody(enums, declarations);
 
 			header.write(root, body, typeInfo.closures(), typeInfo.hasClinit(),
-					typeInfo.hasInit(), unitInfo.types, access);
+					typeInfo.hasInit(), unitInfo.types.keySet(), access);
 		} catch (Exception e) {
 			throw new Error(e);
 		}
