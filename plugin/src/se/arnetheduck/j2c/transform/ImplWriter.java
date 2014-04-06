@@ -976,21 +976,9 @@ public class ImplWriter extends TransformWriter {
 		return false;
 	}
 
-	private List<Class<?>> handledBlocks = new ArrayList<Class<?>>(
-			Arrays.asList(Block.class, CatchClause.class, DoStatement.class,
-					EnhancedForStatement.class, ForStatement.class,
-					IfStatement.class, Initializer.class,
-					LabeledStatement.class, MethodDeclaration.class,
-					SynchronizedStatement.class, SwitchStatement.class,
-					TryStatement.class, WhileStatement.class));
-
 	@Override
 	public boolean visit(Block node) {
 		ASTNode parent = node.getParent();
-		if (!handledBlocks.contains(parent.getClass())) {
-			System.out.println("Skipped " + parent.getClass() + " block");
-			return false;
-		}
 
 		locals.add(new ArrayList<String>());
 		println("{");
