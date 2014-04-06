@@ -45,7 +45,7 @@ public class Impl {
 	}
 
 	public void write(IPath root, String body, String suffix, String cinit,
-			String clinit, boolean fmod, boolean isNative) throws IOException {
+			String clinit, boolean isNative) throws IOException {
 
 		this.isNative = isNative;
 
@@ -62,7 +62,7 @@ public class Impl {
 				println("// Generated");
 			}
 
-			printIncludes(fmod);
+			printIncludes();
 
 			deps.printArrays(out);
 			printJavaCast();
@@ -100,7 +100,7 @@ public class Impl {
 		return sw.toString();
 	}
 
-	private void printIncludes(boolean fmod) {
+	private void printIncludes() {
 		Set<String> includes = new HashSet<String>();
 		printlnd(TransformUtil.include(type), includes);
 		println();
@@ -117,7 +117,7 @@ public class Impl {
 			printlnd(TransformUtil.include(dep), includes);
 		}
 
-		if (fmod) {
+		if (deps.needsFmod()) {
 			printlnd("#include <cmath>", includes);
 		}
 

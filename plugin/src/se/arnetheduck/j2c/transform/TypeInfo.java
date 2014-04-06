@@ -17,6 +17,7 @@ public class TypeInfo {
 	private InitInfo clinit = new InitInfo();
 
 	private final Set<IVariableBinding> closures;
+	private boolean natives;
 
 	public TypeInfo(ITypeBinding type) {
 		this(null, type);
@@ -36,6 +37,14 @@ public class TypeInfo {
 
 	public ITypeBinding type() {
 		return type;
+	}
+
+	public boolean hasNatives() {
+		return natives;
+	}
+
+	public void setHasNatives() {
+		natives = true;
 	}
 
 	public void addInit(VariableDeclarationFragment fragment) {

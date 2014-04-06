@@ -26,6 +26,7 @@ public class DepInfo {
 	private boolean finally_;
 
 	private boolean synchronized_;
+	private boolean fmod;
 
 	public DepInfo(Transformer ctx) {
 		this.ctx = ctx;
@@ -129,6 +130,14 @@ public class DepInfo {
 
 	public void setNeedsSynchronized() {
 		synchronized_ = true;
+	}
+
+	public boolean needsFmod() {
+		return fmod;
+	}
+
+	public void setNeedsFmod() {
+		fmod = true;
 	}
 
 	public void printArrays(PrintWriter out) {

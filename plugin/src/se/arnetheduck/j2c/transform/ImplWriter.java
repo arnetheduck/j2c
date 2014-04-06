@@ -85,8 +85,6 @@ public class ImplWriter extends TransformWriter {
 
 	private List<MethodDeclaration> constructors = new ArrayList<MethodDeclaration>();
 
-	private boolean hasNatives;
-
 	private final Impl impl;
 	private final String qcname;
 	private final String name;
@@ -157,11 +155,11 @@ public class ImplWriter extends TransformWriter {
 		String clinit = getClinit();
 		String extras = getExtras();
 
-		impl.write(root, extras + body, "", cinit, clinit, fmod, false);
+		impl.write(root, extras + body, "", cinit, clinit, false);
 
 		ctx.addImpl(type);
 
-		if (hasNatives) {
+		if (typeInfo.hasNatives()) {
 			StubWriter sw = new StubWriter(root, ctx, type);
 			sw.write(true, true);
 		}
@@ -929,7 +927,7 @@ public class ImplWriter extends TransformWriter {
 
 		if (node.getOperator().equals(Operator.REMAINDER_ASSIGN)) {
 			if (ltb.getName().equals("float") || ltb.getName().equals("double")) {
-				fmod = true;
+				deps.setNeedsFmod();
 				lhs.accept(this);
 				print(" = ");
 				print("std::fmod(");
@@ -1429,7 +1427,6 @@ public class ImplWriter extends TransformWriter {
 	}
 
 	private boolean skipIndent = false;
-	private boolean fmod;
 
 	@Override
 	public boolean visit(IfStatement node) {
@@ -1530,7 +1527,7 @@ public class ImplWriter extends TransformWriter {
 
 		if (node.getOperator().equals(InfixExpression.Operator.REMAINDER)) {
 			if (tb.getName().equals("float") || tb.getName().equals("double")) {
-				fmod = true;
+				deps.setNeedsFmod();
 				print("std::fmod(");
 				cast(left, tb, true);
 				print(", ");
@@ -1732,7 +1729,6 @@ public class ImplWriter extends TransformWriter {
 		impl.method(mb);
 
 		if (node.getBody() == null) {
-			hasNatives |= Modifier.isNative(node.getModifiers());
 			return false;
 		}
 

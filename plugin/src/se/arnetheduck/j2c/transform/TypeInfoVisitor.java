@@ -73,6 +73,14 @@ public class TypeInfoVisitor extends ASTVisitor {
 	}
 
 	@Override
+	public boolean visit(MethodDeclaration node) {
+		if (Modifier.isNative(node.getModifiers())) {
+			typeInfo.setHasNatives();
+		}
+		return true;
+	}
+
+	@Override
 	public boolean visit(TypeDeclaration node) {
 		typeInfo = new TypeInfo(typeInfo, node.resolveBinding());
 		unitInfo.types.put(typeInfo.type(), typeInfo);
