@@ -77,6 +77,11 @@ public class TypeInfoVisitor extends ASTVisitor {
 		if (Modifier.isNative(node.getModifiers())) {
 			typeInfo.setHasNatives();
 		}
+
+		if (TransformUtil.isMain(node.resolveBinding())) {
+			typeInfo.setHasMain();
+		}
+
 		return true;
 	}
 

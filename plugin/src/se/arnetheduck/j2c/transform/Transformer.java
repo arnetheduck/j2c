@@ -11,7 +11,6 @@ import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
-import java.util.TreeMap;
 import java.util.TreeSet;
 import java.util.WeakHashMap;
 
@@ -29,6 +28,7 @@ import org.eclipse.jdt.core.dom.ASTParser;
 import org.eclipse.jdt.core.dom.ASTRequestor;
 import org.eclipse.jdt.core.dom.AbstractTypeDeclaration;
 import org.eclipse.jdt.core.dom.AnnotationTypeDeclaration;
+import org.eclipse.jdt.core.dom.AnonymousClassDeclaration;
 import org.eclipse.jdt.core.dom.CompilationUnit;
 import org.eclipse.jdt.core.dom.EnumDeclaration;
 import org.eclipse.jdt.core.dom.ITypeBinding;
@@ -82,8 +82,6 @@ public class Transformer {
 
 	private final Map<String, ForwardWriter.Info> forwards = new HashMap<String, ForwardWriter.Info>();
 
-	private final Map<String, MainWriter.Info> mains = new TreeMap<String, MainWriter.Info>();
-
 	private final MakefileWriter.Info sel = new MakefileWriter.Info();
 	private final MakefileWriter.Info ext = new MakefileWriter.Info();
 
@@ -113,11 +111,6 @@ public class Transformer {
 		writeResources();
 
 		new ForwardWriter(this, root).write(forwards.values());
-
-		for (MainWriter.Info main : mains.values()) {
-			MainWriter.write(root, main);
-			sel.mains.add("src/" + main.filename);
-		}
 
 		MakefileWriter mw = new MakefileWriter(root);
 		mw.write(name, sel, ext);
@@ -286,32 +279,126 @@ public class Transformer {
 
 		cu.accept(new TypeInfoVisitor(ui));
 
+		IPath unitRoot = getRoot(unit);
+
 		for (AbstractTypeDeclaration type : (Iterable<AbstractTypeDeclaration>) cu
 				.types()) {
 			if (type instanceof TypeDeclaration) {
 				TypeDeclaration td = (TypeDeclaration) type;
-				ImplWriter iw = new ImplWriter(getRoot(unit), this, ui,
-						ui.types.get(td.resolveBinding()));
-
-				iw.write(td);
+				write(ui, unitRoot, td);
 			} else if (type instanceof AnnotationTypeDeclaration) {
 				AnnotationTypeDeclaration td = (AnnotationTypeDeclaration) type;
-				ImplWriter iw = new ImplWriter(getRoot(unit), this, ui,
-						ui.types.get(td.resolveBinding()));
-
-				iw.write(td);
+				write(ui, unitRoot, td);
 			} else if (type instanceof EnumDeclaration) {
 				EnumDeclaration td = (EnumDeclaration) type;
 
-				ImplWriter iw = new ImplWriter(getRoot(unit), this, ui,
-						ui.types.get(td.resolveBinding()));
-
-				iw.write(td);
+				write(ui, unitRoot, td);
 			}
 		}
 
 		for (ITypeBinding tb : ui.types.keySet()) {
 			addDone(tb, cur == sel);
+		}
+	}
+
+	public void write(UnitInfo ui, IPath unitRoot, EnumDeclaration node) {
+		TypeInfo typeInfo = ui.types.get(node.resolveBinding());
+		ImplWriter iw = new ImplWriter(unitRoot, this, ui, typeInfo);
+		try {
+			iw.write(node);
+		} catch (Exception e) {
+			e.printStackTrace();
+		}
+
+		HeaderWriter hw = new HeaderWriter(root, this, ui, typeInfo);
+		try {
+			hw.write(node);
+		} catch (Exception e) {
+			e.printStackTrace();
+		}
+
+		writeExtras(unitRoot, typeInfo);
+	}
+
+	public void write(UnitInfo ui, IPath unitRoot,
+			AnnotationTypeDeclaration node) {
+		TypeInfo typeInfo = ui.types.get(node.resolveBinding());
+		ImplWriter iw = new ImplWriter(unitRoot, this, ui, typeInfo);
+		try {
+			iw.write(node);
+		} catch (Exception e) {
+			e.printStackTrace();
+		}
+
+		HeaderWriter hw = new HeaderWriter(root, this, ui, typeInfo);
+		try {
+			hw.write(node);
+		} catch (Exception e) {
+			e.printStackTrace();
+		}
+
+		writeExtras(unitRoot, typeInfo);
+	}
+
+	public void write(UnitInfo ui, IPath unitRoot, TypeDeclaration node) {
+		TypeInfo typeInfo = ui.types.get(node.resolveBinding());
+
+		ImplWriter iw = new ImplWriter(unitRoot, this, ui, typeInfo);
+		try {
+			iw.write(node);
+		} catch (Exception e) {
+			e.printStackTrace();
+		}
+
+		HeaderWriter hw = new HeaderWriter(root, this, ui, typeInfo);
+		try {
+			hw.write(node);
+		} catch (Exception e) {
+			e.printStackTrace();
+		}
+
+		writeExtras(unitRoot, typeInfo);
+	}
+
+	public void write(UnitInfo ui, IPath unitRoot,
+			AnonymousClassDeclaration node) {
+		TypeInfo typeInfo = ui.types.get(node.resolveBinding());
+
+		ImplWriter iw = new ImplWriter(unitRoot, this, ui, typeInfo);
+		try {
+			iw.write(node);
+		} catch (Exception e) {
+			e.printStackTrace();
+		}
+
+		HeaderWriter hw = new HeaderWriter(root, this, ui, typeInfo);
+		try {
+			hw.write(node);
+		} catch (Exception e) {
+			e.printStackTrace();
+		}
+
+		writeExtras(unitRoot, typeInfo);
+	}
+
+	private void writeExtras(IPath unitRoot, TypeInfo ti) {
+		if (ti.hasNatives()) {
+			StubWriter sw = new StubWriter(unitRoot, this, ti.type());
+			try {
+				sw.write(true, true);
+			} catch (Exception e) {
+				e.printStackTrace();
+			}
+		}
+
+		if (ti.hasMain()) {
+			String filename;
+			try {
+				filename = MainWriter.write(unitRoot, ti.type());
+				sel.mains.add("src/" + filename);
+			} catch (IOException e) {
+				e.printStackTrace();
+			}
 		}
 	}
 
@@ -427,11 +514,6 @@ public class Transformer {
 			ForwardWriter.Info info = new ForwardWriter.Info(dep);
 			forwards.put(dep.getBinaryName(), info);
 		}
-	}
-
-	public void main(ITypeBinding tb) {
-		MainWriter.Info info = new MainWriter.Info(tb);
-		mains.put(info.qcname, info);
 	}
 
 	private final Map<String, ITypeBinding> bindings = new WeakHashMap<String, ITypeBinding>();

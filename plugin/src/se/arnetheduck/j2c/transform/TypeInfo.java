@@ -18,10 +18,7 @@ public class TypeInfo {
 
 	private final Set<IVariableBinding> closures;
 	private boolean natives;
-
-	public TypeInfo(ITypeBinding type) {
-		this(null, type);
-	}
+	private boolean main;
 
 	public TypeInfo(TypeInfo parent, ITypeBinding type) {
 		this.parent = parent;
@@ -45,6 +42,14 @@ public class TypeInfo {
 
 	public void setHasNatives() {
 		natives = true;
+	}
+
+	public boolean hasMain() {
+		return main;
+	}
+
+	public void setHasMain() {
+		main = true;
 	}
 
 	public void addInit(VariableDeclarationFragment fragment) {

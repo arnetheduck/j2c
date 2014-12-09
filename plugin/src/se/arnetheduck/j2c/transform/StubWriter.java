@@ -51,11 +51,11 @@ public class StubWriter {
 		if (natives) {
 			ctx.addNative(type);
 			impl.write(root, extras + body + suffix, TransformUtil.NATIVE,
-					null, null, false, natives);
+					null, null, natives);
 		} else {
 			ctx.addStub(type);
 			impl.write(root, extras + body + suffix, TransformUtil.STUB, null,
-					null, false, natives);
+					null, natives);
 		}
 	}
 

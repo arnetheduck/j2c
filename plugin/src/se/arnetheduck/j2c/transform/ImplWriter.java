@@ -104,33 +104,21 @@ public class ImplWriter extends TransformWriter {
 	public void write(AnnotationTypeDeclaration node) throws Exception {
 		String body = getBody(node.bodyDeclarations());
 		writeType(body);
-
-		HeaderWriter hw = new HeaderWriter(root, ctx, unitInfo, typeInfo);
-		hw.write(node);
 	}
 
 	public void write(AnonymousClassDeclaration node) throws Exception {
 		String body = getBody(node.bodyDeclarations());
 		writeType(body);
-
-		HeaderWriter hw = new HeaderWriter(root, ctx, unitInfo, typeInfo);
-		hw.write(node);
 	}
 
 	public void write(EnumDeclaration node) throws Exception {
 		String body = getBody(node.enumConstants(), node.bodyDeclarations());
 		writeType(body);
-
-		HeaderWriter hw = new HeaderWriter(root, ctx, unitInfo, typeInfo);
-		hw.write(node);
 	}
 
 	public void write(TypeDeclaration node) throws Exception {
 		String body = getBody(node.bodyDeclarations());
 		writeType(body);
-
-		HeaderWriter hw = new HeaderWriter(root, ctx, unitInfo, typeInfo);
-		hw.write(node);
 	}
 
 	private String getBody(List<BodyDeclaration> declarations) {
@@ -158,11 +146,6 @@ public class ImplWriter extends TransformWriter {
 		impl.write(root, extras + body, "", cinit, clinit, false);
 
 		ctx.addImpl(type);
-
-		if (typeInfo.hasNatives()) {
-			StubWriter sw = new StubWriter(root, ctx, type);
-			sw.write(true, true);
-		}
 	}
 
 	private String getExtras() {
@@ -737,14 +720,7 @@ public class ImplWriter extends TransformWriter {
 
 	@Override
 	public boolean visit(AnnotationTypeDeclaration node) {
-		ITypeBinding tb = node.resolveBinding();
-		ImplWriter iw = new ImplWriter(root, ctx, unitInfo,
-				unitInfo.types.get(tb));
-		try {
-			iw.write(node);
-		} catch (Exception e) {
-			throw new Error(e);
-		}
+		ctx.write(unitInfo, root, node);
 
 		return false;
 	}
@@ -756,14 +732,7 @@ public class ImplWriter extends TransformWriter {
 
 	@Override
 	public boolean visit(AnonymousClassDeclaration node) {
-		ITypeBinding tb = node.resolveBinding();
-		ImplWriter iw = new ImplWriter(root, ctx, unitInfo,
-				unitInfo.types.get(tb));
-		try {
-			iw.write(node);
-		} catch (Exception e) {
-			throw new Error(e);
-		}
+		ctx.write(unitInfo, root, node);
 
 		return false;
 	}
@@ -1302,14 +1271,7 @@ public class ImplWriter extends TransformWriter {
 
 	@Override
 	public boolean visit(EnumDeclaration node) {
-		ITypeBinding tb = node.resolveBinding();
-		ImplWriter iw = new ImplWriter(root, ctx, unitInfo,
-				unitInfo.types.get(tb));
-		try {
-			iw.write(node);
-		} catch (Exception e) {
-			throw new Error(e);
-		}
+		ctx.write(unitInfo, root, node);
 
 		return false;
 	}
@@ -1733,10 +1695,6 @@ public class ImplWriter extends TransformWriter {
 		}
 
 		locals.add(new ArrayList<String>());
-
-		if (TransformUtil.isMain(mb)) {
-			ctx.main(type);
-		}
 
 		printi(TransformUtil.typeParameters(node.typeParameters()));
 
@@ -2552,14 +2510,7 @@ public class ImplWriter extends TransformWriter {
 
 	@Override
 	public boolean visit(TypeDeclaration node) {
-		ITypeBinding tb = node.resolveBinding();
-		ImplWriter iw = new ImplWriter(root, ctx, unitInfo,
-				unitInfo.types.get(tb));
-		try {
-			iw.write(node);
-		} catch (Exception e) {
-			throw new Error(e);
-		}
+		ctx.write(unitInfo, root, node);
 
 		return false;
 	}
