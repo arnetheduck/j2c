@@ -318,11 +318,11 @@ public class StubWriter {
 			}
 		}
 
-		if (Modifier.isAbstract(mb.getModifiers())) {
-			return;
-		}
-
 		if (Modifier.isPrivate(mb.getModifiers()) && !privates) {
+			if (Modifier.isAbstract(mb.getModifiers())) {
+				return;
+			}
+
 			print("/* private: ");
 			TransformUtil.printSignature(ctx, out, type, mb, deps, true);
 			println(" */");
@@ -330,6 +330,10 @@ public class StubWriter {
 		}
 
 		impl.method(mb);
+
+		if (Modifier.isAbstract(mb.getModifiers())) {
+			return;
+		}
 
 		if (mb.isConstructor()) {
 			constructors.add(mb);

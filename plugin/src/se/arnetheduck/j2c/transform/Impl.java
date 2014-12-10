@@ -373,7 +373,7 @@ public class Impl {
 			mb = mb.getMethodDeclaration();
 
 			ITypeBinding rt = mb.getReturnType();
-			hardDep(rt);
+			softDep(rt);
 
 			print(TransformUtil.qualifiedRef(rt, false));
 
@@ -390,7 +390,6 @@ public class Impl {
 			println("{");
 			print(i1);
 			if (!TransformUtil.isVoid(mb.getReturnType())) {
-				hardDep(mb.getReturnType());
 				print("return ");
 			}
 
@@ -465,6 +464,10 @@ public class Impl {
 		}
 
 		m.add(mb);
+	}
+
+	private void softDep(ITypeBinding dep) {
+		deps.soft(dep);
 	}
 
 	private void hardDep(ITypeBinding dep) {
