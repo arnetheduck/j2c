@@ -310,7 +310,7 @@ public class Transformer {
 			e.printStackTrace();
 		}
 
-		HeaderWriter hw = new HeaderWriter(root, this, ui, typeInfo);
+		HeaderWriter hw = new HeaderWriter(unitRoot, this, ui, typeInfo);
 		try {
 			hw.write(node);
 		} catch (Exception e) {
@@ -330,7 +330,7 @@ public class Transformer {
 			e.printStackTrace();
 		}
 
-		HeaderWriter hw = new HeaderWriter(root, this, ui, typeInfo);
+		HeaderWriter hw = new HeaderWriter(unitRoot, this, ui, typeInfo);
 		try {
 			hw.write(node);
 		} catch (Exception e) {
@@ -350,7 +350,7 @@ public class Transformer {
 			e.printStackTrace();
 		}
 
-		HeaderWriter hw = new HeaderWriter(root, this, ui, typeInfo);
+		HeaderWriter hw = new HeaderWriter(unitRoot, this, ui, typeInfo);
 		try {
 			hw.write(node);
 		} catch (Exception e) {
@@ -371,7 +371,7 @@ public class Transformer {
 			e.printStackTrace();
 		}
 
-		HeaderWriter hw = new HeaderWriter(root, this, ui, typeInfo);
+		HeaderWriter hw = new HeaderWriter(unitRoot, this, ui, typeInfo);
 		try {
 			hw.write(node);
 		} catch (Exception e) {
