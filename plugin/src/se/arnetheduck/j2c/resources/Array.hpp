@@ -12,8 +12,8 @@ extern java::lang::Class *class_(const char16_t *c, int n);
 template<typename T>
 class Array
     : public virtual ::java::lang::Object
-    , public virtual ::java::lang::Cloneable
-    , public virtual ::java::io::Serializable
+    , public ::java::lang::Cloneable
+    , public ::java::io::Serializable
 {
 public:
     static ::java::lang::Class *class_();
@@ -91,13 +91,13 @@ public:
     value_type get(size_type i) const { return p[i]; }
     value_type &set(size_type i, value_type x) { return (p[i] = x); }
 
-    iterator 		begin() { return p; }
-    const_iterator 	begin() const { return p; }
-    const_iterator 	cbegin() const { return begin(); }
+    iterator        begin() { return p; }
+    const_iterator  begin() const { return p; }
+    const_iterator  cbegin() const { return begin(); }
 
-    iterator 		end() { return p + length; }
-    const_iterator 	end() const { return p + length; }
-    const_iterator 	cend() const { return end(); }
+    iterator        end() { return p + length; }
+    const_iterator  end() const { return p + length; }
+    const_iterator  cend() const { return end(); }
 
     const size_type length;
     const pointer_type p;

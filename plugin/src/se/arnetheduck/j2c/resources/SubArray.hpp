@@ -68,8 +68,8 @@ struct SubArray : public virtual Bases... {
 
     SubArray &operator=(SubArray &&rhs)
     {
-    	::java::lang::ObjectArray::operator=(std::move(rhs));
-    	return *this;
+        ::java::lang::ObjectArray::operator=(std::move(rhs));
+        return *this;
     }
 
     SubArray* clone() override { return new SubArray(*this); }
@@ -77,8 +77,8 @@ struct SubArray : public virtual Bases... {
     value_type operator[](size_type i) const { return get(i); }
     value_type get(size_type i) const { return dynamic_cast<value_type>(this->p[i]); }
 
-    iterator        begin() { return iterator(this->p); }
-    iterator        end() { return iterator(this->p + this->length); }
+    iterator   begin() { return iterator(this->p); }
+    iterator   end() { return iterator(this->p + this->length); }
 
 private:	
     ::java::lang::Class *getClass0() override { return class_(); }

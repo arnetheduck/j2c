@@ -9,10 +9,10 @@
 
 namespace java
 {
-	namespace lang
-	{
-		class ObjectArray;
-	}
+namespace lang
+{
+class ObjectArray;
+}
 }
 
 extern java::lang::Class *class_(const char16_t *c, int n);
@@ -124,14 +124,14 @@ private:
 
 template<typename ArrayType>
 ArrayType* __newMultiArray(int dim) {
-	return new ArrayType(dim);
+     return new ArrayType(dim);
 }
 
 template<typename ArrayType, class... Dims>
 ArrayType* __newMultiArray(int dim, Dims... dims) {
-	auto ret = new ArrayType(dim);
-	for (auto i = 0; i < dim; ++i) {
-		ret->p[i] = __newMultiArray<typename std::remove_pointer<typename ArrayType::value_type>::type>(dims...);
-	}
-	return ret;
+    auto ret = new ArrayType(dim);
+    for (auto i = 0; i < dim; ++i) {
+        ret->p[i] = __newMultiArray<typename std::remove_pointer<typename ArrayType::value_type>::type>(dims...);
+    }
+    return ret;
 }
