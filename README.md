@@ -41,7 +41,7 @@ The most recent version of the project is available as source code. You can get
 it either from Bitbucket (https://bitbucket.org/arnetheduck/j2c/)
 or github (https://github.com/arnetheduck/j2c).
 
-From time to time, a release may appear at the Eclipse labs site - see
+From time to time, a release may appear at the Bitbucket site - see
 https://bitbucket.org/arnetheduck/j2c/downloads . About that same
 time, the update site (https://bitbucket.org/arnetheduck/j2c.site/raw/default/)
 should be updated.
