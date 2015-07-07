@@ -10,6 +10,9 @@ Gosling, James and Joy, Bill and Steele, Guy and Bracha, Gilad (that's
 Java 1.6). The translated code should be valid as specified by the ISO/IEC
 14882:2011 C++ standard (or C++11 as the rest of the world knows it).
 
+*The generated code won't work out of the box - you need to remove or implement
+ dependencies such as the JRE.*
+
 Status
 --
 This project is an idea I've been wanting to try out written down in code.
@@ -34,18 +37,18 @@ Install / Run
 J2C comes in the form of an Eclipse plugin. You need at least Eclipse 3.8+ and
 Java 1.6+ to run this plugin!
 
-The most recent version of the project is available as source code. You can get it
-either from Eclipse labs (https://code.google.com/a/eclipselabs.org/p/j2c/) (main
-site) or github (https://github.com/arnetheduck/j2c) (backup).
+The most recent version of the project is available as source code. You can get
+it either from Bitbucket (https://bitbucket.org/arnetheduck/j2c/)
+or github (https://github.com/arnetheduck/j2c).
 
 From time to time, a release may appear at the Eclipse labs site - see
-https://code.google.com/a/eclipselabs.org/p/j2c/downloads/list . About that same
-time, the update site (http://j2c.eclipselabs.org.codespot.com/hg.site/) should be
-updated.
+https://bitbucket.org/arnetheduck/j2c/downloads . About that same
+time, the update site (https://bitbucket.org/arnetheduck/j2c.site/raw/default/)
+should be updated.
 
 If you installed via site, it should just work.
 
-If you downloaded the jar, copy it to $ECLIPSE_HOME/dropins.
+If you downloaded the jar, copy it to `$ECLIPSE_HOME/dropins`.
 
 If you downloaded the source code you'll have run the plugin by opening the
 project in Eclipse and starting a new Eclipse test instance by using the run
@@ -60,14 +63,12 @@ right-clicking the project (or a class/package) in the 'Project Explorer' or
 need to create a folder for the conversion output - the plugin will tell you
 where.
 
-The generated code will contain references to your JRE (stuff from the java.*
+The generated code will contain references to your JRE (stuff from the `java.*`
 packages), as well as some generic helpers. The JRE dependencies will likely be
 stubbed out in the ext folder in the generated code, and trivial, non-working
 implementations of the rest can be found in j2c.cpp. You'll need to supplant
 the converted code with implementations of all JRE features you're using,
 or replace them manually to use equivalents from C++ libraries such as STL.
-
-*The code won't work out of the box*
 
 Testing
 --
@@ -91,13 +92,15 @@ What's missing (that I can think of right now)
 --
  * Reflection
  * Anything involving byte code (class loading, dynamic code generation, etc)
+ * Command line support / build integration
 
 Helping out
 --
 Patches and forks are most welcome, as is testing, but please don't report
 issues unless you also attach a simple test case.
 
-= Final words =
+Final words
+--
 Send me a note if you manage (or not) to do something useful with this
 converter!
 
