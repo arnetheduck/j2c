@@ -1,5 +1,7 @@
-Introduction
---
+# J2C
+
+## Introduction
+
 J2C will convert Java code into hopefully compilable C++(11) code. It works on
 source level, translating Java source code constructs into their rough
 equivalents in C++ . The output will be reasonably valid C++ code that looks a
@@ -13,8 +15,8 @@ Java 1.6). The translated code should be valid as specified by the ISO/IEC
 *The generated code won't work out of the box - you need to remove or implement
  dependencies such as the JRE.*
 
-Status
---
+## Status
+
 This project is an idea I've been wanting to try out written down in code.
 Think of it as a paper napkin with some notes on, but in this case, the notes
 compile and sometimes spit out working stuff. In other words, no guarantees
@@ -32,18 +34,18 @@ generated for missing dependencies.
 
 This is the first time I write an Eclipse plugin, so be nice.
 
-Install / Run
---
+## Install / Run
+
 J2C comes in the form of an Eclipse plugin. You need at least Eclipse 3.8+ and
 Java 1.6+ to run this plugin!
 
 The most recent version of the project is available as source code. You can get
-it either from Bitbucket (https://bitbucket.org/arnetheduck/j2c/)
-or github (https://github.com/arnetheduck/j2c).
+it either from [Bitbucket](https://bitbucket.org/arnetheduck/j2c/)
+or [Github](https://github.com/arnetheduck/j2c).
 
 From time to time, a release may appear at the Bitbucket site - see
-https://bitbucket.org/arnetheduck/j2c/downloads . About that same
-time, the update site (https://bitbucket.org/arnetheduck/j2c.site/raw/default/)
+<https://bitbucket.org/arnetheduck/j2c/downloads> . About that same
+time, the update site <https://bitbucket.org/arnetheduck/j2c.site/raw/default/>
 should be updated.
 
 If you installed via site, it should just work.
@@ -70,15 +72,15 @@ implementations of the rest can be found in j2c.cpp. You'll need to supplant
 the converted code with implementations of all JRE features you're using,
 or replace them manually to use equivalents from C++ libraries such as STL.
 
-Testing
---
+## Testing
+
 The test project contains a few cases which should be handled correctly by the
 translator (by correctly, I mean that they compile with g++ 4.7). You'll find
 a CDT project in ctest that builds using the generated Makefile after running
 the plugin on the test project.
 
-Output
---
+## Output
+
 For each Java class, j2c will output a header file and its implementation.
 Inner classes end up in separate .h/.cpp pairs. Native method stubs will be
 put in a separate file for your editing pleasure.
@@ -88,28 +90,28 @@ a stub file with empty implementations. Throughout, the heap will be used
 to allocate class instances but no attempt is made to collect garbage -
 I recommend Boehm's garbage collector for that.
 
-What's missing (that I can think of right now)
---
+## What's missing (that I can think of right now)
+
  * Reflection
  * Anything involving byte code (class loading, dynamic code generation, etc)
  * Command line support / build integration
 
-Helping out
---
+## Helping out
+
 Patches and forks are most welcome, as is testing, but please don't report
 issues unless you also attach a simple test case.
 
-Final words
---
+## Final words
+
 Send me a note if you manage (or not) to do something useful with this
 converter!
 
-Licensing
---
+## Licensing
+
 The project is licensed under the Eclipse Public License 1.0.
 
-Thanks
---
+## Thanks
+
 No animals were hurt while writing this code, but the Nightwatchman
 might have sore fingers and throat from all that playing...
 
