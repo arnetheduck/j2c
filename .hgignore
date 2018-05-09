@@ -1,6 +1,0 @@
-syntax: glob
-bin/*
-*.o
-
-syntax: regexp
-^ctest/[^.].+
